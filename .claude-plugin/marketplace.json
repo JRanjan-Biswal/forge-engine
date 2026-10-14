@@ -1,0 +1,12 @@
+{
+  "name": "forge",
+  "owner": { "name": "forge contributors" },
+  "description": "forge — a gated, memory-backed product pipeline for coding agents.",
+  "plugins": [
+    {
+      "name": "forge",
+      "source": "./",
+      "description": "Idea → validated → designed → built → verified → shipped, with gates and graph memory."
+    }
+  ]
+}

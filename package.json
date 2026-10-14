@@ -1,0 +1,56 @@
+{
+  "name": "forge-engine",
+  "version": "0.1.0-alpha.0",
+  "description": "forge — idea → validated → designed → built → verified → shipped. A gated, memory-backed product pipeline for Claude Code, Codex, Gemini, Cursor and any MCP agent.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "forge": "dist/cli.js",
+    "forge-engine": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "agents",
+    "commands",
+    "rules",
+    "schemas",
+    ".claude-plugin",
+    ".mcp.json"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@12.9.1",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "schemas": "node dist/cli.js schemas export --out schemas"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "mcp",
+    "agents",
+    "multi-agent",
+    "idea-validation",
+    "design-system",
+    "graphify"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  }
+}

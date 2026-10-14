@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.tmp
+.DS_Store
+.env
+.env.*
+!.env.example
+credentials.md
+# forge's own code graph (dogfooding); user projects may choose to commit theirs
+graphify-out/

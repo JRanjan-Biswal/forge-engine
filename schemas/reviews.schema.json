@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "line": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "claim": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "suggestedFix": {
+            "type": "string"
+          },
+          "verifiedBy": {
+            "type": "string"
+          },
+          "status": {
+            "default": "open",
+            "type": "string",
+            "enum": [
+              "open",
+              "fixed",
+              "wontfix",
+              "false-positive"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "category",
+          "file",
+          "claim"
+        ]
+      }
+    }
+  },
+  "required": [
+    "findings"
+  ]
+}

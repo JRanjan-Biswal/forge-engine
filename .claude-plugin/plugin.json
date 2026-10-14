@@ -1,0 +1,8 @@
+{
+  "name": "forge",
+  "version": "0.1.0-alpha.0",
+  "description": "Idea → validated → designed → built → verified → shipped. A gated, memory-backed product pipeline with a decision ledger and graphify code graph.",
+  "author": { "name": "forge contributors" },
+  "license": "MIT",
+  "keywords": ["pipeline", "orchestration", "idea-validation", "design-system", "memory", "graphify", "mcp"]
+}

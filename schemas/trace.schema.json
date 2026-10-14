@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "vision",
+              "story",
+              "screen",
+              "motion",
+              "component",
+              "endpoint",
+              "code",
+              "test",
+              "release"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "graphifyNode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ]
+      }
+    },
+    "edges": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "designedBy",
+              "animatedBy",
+              "implementedBy",
+              "calls",
+              "verifiedBy",
+              "releasedIn",
+              "uses"
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "type"
+        ]
+      }
+    }
+  }
+}
