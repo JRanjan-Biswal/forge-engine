@@ -97,11 +97,12 @@ const rewriteImports = (dir) => {
 rewriteImports(join(pkg, "dist"));
 
 // 3. Commit onto the `plugin` branch in a separate worktree (never touches your checkout).
-const remoteHas = git("ls-remote", "--heads", "origin", BRANCH) !== "";
-if (remoteHas) git("fetch", "origin", `${BRANCH}:${BRANCH}`);
-const localHas = git("branch", "--list", BRANCH) !== "";
-rmSync(TREE, { recursive: true, force: true });
+// Step 1 deleted any earlier tree; forget its registration. Builds that were never pushed are
+// discarded — the branch is always rebuilt from HEAD.
 git("worktree", "prune");
+const remoteHas = git("ls-remote", "--heads", "origin", BRANCH) !== "";
+if (remoteHas) git("fetch", "origin", `+${BRANCH}:${BRANCH}`);
+const localHas = git("branch", "--list", BRANCH) !== "";
 if (localHas) git("worktree", "add", TREE, BRANCH);
 else git("worktree", "add", "--orphan", "-b", BRANCH, TREE);
 try {
