@@ -2,12 +2,14 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Forge } from "../core/engine.js";
 import { layout } from "../core/paths.js";
+import { detectStacks, useStacks, type StackUseResult } from "../build/stacks.js";
 import { syncProduct, type SyncResult } from "./sync.js";
 
 /**
  * Bring forge into a product that already exists (brownfield): initialise, enable the
  * `adopt` pack (adds the `understand` stage), skip greenfield-only stages with a
- * recorded reason, and build the first product map + code graph.
+ * recorded reason, record the stacks it can recognise (filling only empty gate
+ * commands), and build the first product map + code graph.
  */
 
 const GREENFIELD_ONLY = ["brainstorm", "validate"] as const;
@@ -16,6 +18,8 @@ export interface AdoptResult {
   root: string;
   initialized: boolean;
   skipped: string[];
+  /** Stack packs found in the repo and the gate commands filled from them (absent when none matched). */
+  stacks?: StackUseResult;
   sync: SyncResult;
 }
 
@@ -48,6 +52,7 @@ export async function adoptProject(rootInput: string, options: { name?: string; 
       skipped.push(id);
     }
   }
+  const stacks = detectStacks(root).length ? useStacks(root) : undefined;
   const sync = await syncProduct(root, { graph: options.graph });
-  return { root, initialized, skipped, sync };
+  return { root, initialized, skipped, ...(stacks ? { stacks } : {}), sync };
 }

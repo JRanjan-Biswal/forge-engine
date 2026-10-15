@@ -1,5 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createForgeServer } from "../src/mcp/server.js";
 import { brainstorm, isolate, tempDir } from "./helpers.js";
@@ -26,6 +28,23 @@ describe("MCP server", () => {
       expect(names).toContain(name);
     }
     expect(client.getInstructions()).toMatch(/Never fabricate evidence/);
+  });
+
+  it("lists, records and explains stack packs", async () => {
+    const root = tempDir();
+    const { call } = await connect(root);
+    await call("project_init", { name: "stack-app" });
+    mkdirSync(join(root, "api"), { recursive: true });
+    writeFileSync(join(root, "api", "requirements.txt"), "fastapi\npytest\n");
+    const list = JSON.parse((await call("stack_list")).text) as { packs: { id: string }[]; detected: { pack: string; dir: string; commands: { test?: string } }[] };
+    expect(list.packs.map((p) => p.id)).toContain("supabase");
+    expect(list.detected).toEqual([expect.objectContaining({ pack: "fastapi", dir: "api", commands: { test: expect.stringMatching(/-m pytest -q$/) } })]);
+    const used = JSON.parse((await call("stack_use")).text) as { set: { test?: string } };
+    expect(used.set.test).toMatch(/^cd api && .*-m pytest -q$/);
+    const info = JSON.parse((await call("stack_info", { pack: "node-hono", dir: "svc" })).text) as { scaffold: { command: string }; lens: string };
+    expect(info.scaffold.command).toMatch(/create-hono@latest svc --template nodejs/);
+    expect(info.lens).toMatch(/## Review lens/);
+    expect((await call("stack_info", { pack: "rails" })).isError).toBe(true);
   });
 
   it("serves the shipped playbooks through the guide tool, and only those", async () => {

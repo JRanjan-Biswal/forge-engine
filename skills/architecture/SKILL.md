@@ -9,7 +9,7 @@ description: Design the system for a validated PRD with forge — stack choice f
 
 ## Architect
 1. **Inputs:** `prd` (MVP stories, non-goals), `vision` principles, `screens`, product model (brownfield: respect what exists — extend, don't rewrite). `memory_query` for earlier decisions.
-2. **Stack:** choose the boring option that fits the team and platforms (`forge.config.yaml` platforms). One ADR per major choice (`.forge/adr/0001-<slug>.md`: context, options, decision, consequences) and a `ledger_add` with rejected options.
+2. **Stack:** choose the boring option that fits the team and platforms (`forge.config.yaml` platforms). Prefer a stack pack (`stack_list`: nextjs, expo, fastapi, node-hono, supabase) — packs bring conventions into every task brief, a review lens and gate commands. Existing repo: `stack_use` records what is detected. New app: run the official generator from `stack_info <pack>` (`forge stack scaffold <pack> --run`), then `stack_use`. Commands it reports as missing are tasks in the skeleton wave (add the test runner, e2e tool). One ADR per major choice (`.forge/adr/0001-<slug>.md`: context, options, decision, consequences) and a `ledger_add` with rejected options.
 3. **Contract first:** every endpoint the screens need, in OpenAPI — request/response schemas, error model, pagination, idempotency for writes, auth. Frontend, backend and mobile build in parallel against this contract.
 4. **Data model:** tables/collections, indexes, ownership and access rules (RLS / tenancy) for every entity in the stories.
 5. **Threat model:** STRIDE per boundary; abuse cases; where secrets live (env/secret store, never the repo).

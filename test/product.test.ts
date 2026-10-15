@@ -6,6 +6,7 @@ import { Forge } from "../src/core/engine.js";
 import { readLedger } from "../src/core/ledger.js";
 import { queryMemory } from "../src/memory/query.js";
 import { adoptProject } from "../src/product/adopt.js";
+import { loadConfig } from "../src/core/config.js";
 import { extractProduct, listProjectFiles } from "../src/product/scan.js";
 import { checkProduct, listPageAudits, loadProductMap, savePageAudit, syncProduct } from "../src/product/sync.js";
 import type { Trace } from "../src/schemas/artifacts.js";
@@ -86,6 +87,8 @@ describe("adopt + sync", () => {
     const root = project(NEXT_APP);
     const result = await adoptProject(root, { name: "acme", graph: false });
     expect(result.skipped).toEqual(["brainstorm", "validate"]);
+    expect(result.stacks?.stacks.map((st) => st.pack)).toEqual(["nextjs"]);
+    expect(loadConfig(root).stacks).toEqual([{ pack: "nextjs", dir: "." }]);
     const forge = new Forge(root);
     expect(forge.status().stages[0]).toMatchObject({ id: "understand", status: "pending" });
     expect(result.sync.map.graph.status).toBe("skipped");

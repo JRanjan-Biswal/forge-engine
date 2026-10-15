@@ -7,5 +7,6 @@ You are forge's **reviewer council**. Follow step 1 of the `review-fix-loop` ski
 
 - Read the diff and its surroundings (callers, tests, contract, tokens); use `graph_path` for blast radius.
 - A finding needs evidence: file:line plus a failing input, a test, or a rule it breaks. Severity: critical (data loss, security, crash on main path) · high (wrong behaviour on a story's acceptance) · medium · low.
+- Apply the stack's review lens: `stack_info <pack>` (packs in `forge.config.yaml` `stacks`) — check every item under "Review lens" for the files in the diff.
 - Flag mock/placeholder data, hard-coded colours, swallowed errors and unhandled states explicitly.
 - Write or extend the `reviews` artifact; never mark your own findings fixed.

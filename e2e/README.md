@@ -8,9 +8,11 @@ pnpm e2e                            # free, deterministic, ~1 min (one heavy job
 pnpm e2e:hosts                      # real agents: Claude Code, Codex, OpenCode (costs a little)
 node e2e/hosts.mjs claude           # just one host
 FORGE_E2E_OPENCODE_MODEL=xai/grok-4.7 node e2e/hosts.mjs opencode   # OpenCode on Grok
+node e2e/stacks.mjs                 # stack packs on the real generators (network, installs deps; one stack at a time)
+node e2e/stacks.mjs fastapi nextjs  # just some stacks; add --with-docker to run Supabase commands against a local stack
 ```
 
-Reports: `e2e/LATEST-local.md`, `e2e/LATEST-hosts.md`, plus a full run directory under `e2e/runs/<timestamp>-*/` (gitignored) containing every test project, so any failure can be inspected. Only the newest 6 run directories are kept.
+Reports: `e2e/LATEST-local.md`, `e2e/LATEST-hosts.md`, `e2e/LATEST-stacks.md`, plus a full run directory under `e2e/runs/<timestamp>-*/` (gitignored) containing every test project, so any failure can be inspected. Only the newest 6 run directories are kept.
 
 ## What `run.mjs` covers
 
@@ -21,6 +23,7 @@ Reports: `e2e/LATEST-local.md`, `e2e/LATEST-hosts.md`, plus a full run directory
 4. graphify — real code graph build, code questions routed to graphify, `explain`, `path`
 5. Robustness — root discovery, `FORGE_ROOT`, corrupt state/config/ledger, ordering, escalation, override, reopen, archive, blockers, strict autonomy, EPIPE, concurrent writers
 6. MCP over real stdio using the official SDK client, including that the server exits when the client disconnects
+6c. Stack packs — monorepo detection (Next.js in `web/`, FastAPI in `api/`), `stack use` writing per-directory gate commands idempotently, and the stack section of a task brief
 7. Process hygiene & RAM protection — a gate command that leaves a background process (forge stops it), the MCP server exiting on stdin close and when orphaned, `forge procs` / `procs init` / `doctor`, and a final check that the run leaves **no** processes behind
 8. Exported JSON Schemas validated with Ajv against the pipeline's real artifacts
 
@@ -34,3 +37,7 @@ The validate stage's fixture quotes are served by `fixtures/evidence-server.mjs`
 Each host must, using only forge's MCP tools: initialise a project, start `brainstorm`, write a valid artifact, pass the gate, and record a decision. Results are verified **on disk**, not from the agent's claims. Claude Code also checks plugin registration (MCP server, 25 tools, `/forge` command, conductor agent) and runs the `/forge status` command. The plugin is loaded with `--plugin-dir`, so your global Claude Code configuration is not changed.
 
 Fixture data (evidence URLs on example.com, competitors) is synthetic and exists only to exercise gate logic.
+
+## What `stacks.mjs` covers
+
+For each stack pack: `forge stack scaffold <pack> --run` with the official generator (`uv init`, `create-hono`, `create-next-app`, `create-expo-app`, `supabase init`), detection of the new directory, the commands forge can run straight away and the missing ones with the pack's fix, a first test like a builder would add (following the pack's own fix hint where a test runner is missing), `forge stack use`, then **every configured gate command is actually run**. Dependencies are deleted after each stack; the harness checks that no process from the run is left.

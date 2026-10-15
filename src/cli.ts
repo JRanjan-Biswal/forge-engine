@@ -15,6 +15,7 @@ import { auditContrast, auditDrift } from "./design/audit.js";
 import { buildDesign, loadTokens } from "./design/tokens.js";
 import { buildPrototype } from "./design/prototype.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./build/tasks.js";
+import { detectStacks, listPacks, loadPack, readLens, scaffoldPlan, scaffoldStack, stackCommands, useStacks } from "./build/stacks.js";
 import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "./build/workers.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
 import { scoreValidation, validationTemplate } from "./core/validation.js";
@@ -77,6 +78,15 @@ Build (Phase 4)
                                        run ready tasks headless, one git worktree each (default max 1)
   merge [<id> …]                       merge done task worktrees in wave order: tests in the worktree, then --no-ff
 
+Stacks
+  stack [list]                         stack packs, what this repo has, and what is configured
+  stack detect                         stacks found here and the gate commands each could run
+  stack use [<pack>] [--dir <d>] [--force]
+                                       record stacks in forge.config.yaml and fill empty gate commands
+  stack show <pack>                    a pack's manifest, conventions and review lens
+  stack scaffold <pack> [--dir <d>] [--pm pnpm|npm|yarn|bun] [--run]
+                                       the official generator command (runs it with --run, then "stack use")
+
 Design
   design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)
   design audit                         token validity, WCAG contrast pairs, hard-coded colour drift
@@ -138,6 +148,9 @@ const OPTIONS = {
   check: { type: "boolean" },
   hook: { type: "boolean" },
   quiet: { type: "boolean" },
+  dir: { type: "string" },
+  pm: { type: "string" },
+  run: { type: "boolean" },
 } as const;
 
 export interface CliIO {
@@ -534,6 +547,10 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
           io.out(`  ${pages} pages · ${map.surfaces.length - pages} endpoints · ${map.calls.length} client→endpoint calls · ${map.docs.length} docs`);
           io.out(`  code graph: ${map.graph.status}${map.graph.note ? ` (${map.graph.note})` : ""}`);
           if (result.skipped.length) io.out(`  skipped greenfield stages: ${result.skipped.join(", ")}`);
+          if (result.stacks) {
+            io.out(`  stacks: ${result.stacks.stacks.map((st) => `${st.pack} (${st.dir})`).join(", ")}`);
+            for (const [key, command] of Object.entries(result.stacks.set)) io.out(`    ✓ commands.${key.padEnd(6)} ${command}`);
+          }
           io.out("\nNext: /forge:understand (or follow guide skills/understand-product) to write the product model, then `forge complete understand`.");
         });
         return 0;
@@ -680,6 +697,85 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
           for (const r of results) io.out(`${r.status === "done" ? "✓" : "✗"} ${r.task} (${r.seconds}s${r.timedOut ? ", timed out" : ""}) → ${r.worktree}`);
         });
         return results.every((r) => r.status === "done") ? 0 : 1;
+      }
+
+      case "stack": {
+        const f = forge();
+        const root = f.root;
+        const view = args[0] ?? "list";
+        if (view === "list") {
+          const packs = listPacks(root);
+          const detected = detectStacks(root);
+          const configured = f.config().stacks;
+          print({ packs: packs.map((p) => ({ ...p.pack, source: p.source })), detected, configured }, () => {
+            for (const { pack, source } of packs) io.out(`${pack.id.padEnd(12)} ${pack.kind.padEnd(8)} ${pack.platforms.join("/").padEnd(16)} ${pack.name}${source === "project" ? " (project pack)" : ""}`);
+            io.out("");
+            io.out(`detected:   ${detected.map((d) => `${d.pack} (${d.dir})`).join(", ") || "none"}`);
+            io.out(`configured: ${configured.map((s) => `${s.pack} (${s.dir})`).join(", ") || "none — run `forge stack use`"}`);
+          });
+          return 0;
+        }
+        if (view === "detect") {
+          const results = detectStacks(root).map((d) => ({ ...d, ...stackCommands(root, d.pack, d.dir) }));
+          print(results, () => {
+            if (!results.length) io.out("No known stack found. `forge stack list` shows the packs; `forge stack scaffold <pack>` starts one.");
+            for (const r of results) {
+              io.out(`${r.pack} in ${r.dir} (${r.packageManager}) — ${r.evidence.join(", ")}`);
+              for (const [key, command] of Object.entries(r.commands)) io.out(`  ✓ ${key.padEnd(6)} ${command}`);
+              for (const m of r.missing) io.out(`  – ${m.key.padEnd(6)} ${m.why}${m.fix ? `\n           fix: ${m.fix}` : ""}`);
+            }
+          });
+          return 0;
+        }
+        if (view === "use") {
+          const result = useStacks(root, { pack: args[1], dir: opts.dir, force: opts.force });
+          print(result, () => {
+            io.out(`Stacks: ${result.stacks.map((s) => `${s.pack} (${s.dir})`).join(", ")}`);
+            for (const [key, command] of Object.entries(result.set)) io.out(`  ✓ commands.${key.padEnd(6)} ${command}`);
+            for (const [key, k] of Object.entries(result.kept)) io.out(`  = commands.${key.padEnd(6)} kept "${k.current}" (suggested "${k.suggested}"; --force replaces)`);
+            for (const s of result.stacks) for (const m of s.missing) io.out(`  – ${s.pack} ${m.key}: ${m.why}${m.fix ? ` — ${m.fix}` : ""}`);
+          });
+          return 0;
+        }
+        if (view === "show") {
+          const id = need(args[1], "pack id");
+          const { pack, dir, source } = loadPack(id, root);
+          const lens = readLens(id, root);
+          print({ ...pack, source, dir, lens }, () => {
+            io.out(`${pack.name} — ${pack.summary}`);
+            io.out(`kind ${pack.kind} · platforms ${pack.platforms.join(", ")} · depts ${pack.depts.join(", ")} · tokens ${pack.tokens}`);
+            io.out(`scaffold: ${pack.scaffold.command} (${pack.scaffold.docs})`);
+            io.out("");
+            io.out(lens || "(no review-lens.md)");
+          });
+          return 0;
+        }
+        if (view === "scaffold") {
+          const id = need(args[1], "pack id");
+          if (!opts.run) {
+            const plan = scaffoldPlan(root, id, { dir: opts.dir, pm: opts.pm });
+            print(plan, () => {
+              io.out(`# ${plan.pack} into ${plan.dir}/ (${plan.docs})`);
+              io.out(plan.command);
+              for (const step of plan.then) io.out(`(cd ${plan.dir} && ${step})`);
+              io.out("");
+              io.out("Re-run with --run to execute it (network + dependency install), then forge records the stack.");
+            });
+            return 0;
+          }
+          const result = await scaffoldStack(root, id, {
+            dir: opts.dir,
+            pm: opts.pm,
+            onWait: () => io.err("forge: waiting for a free command slot…"),
+          });
+          print(result, () => {
+            io.out(result.output.trim());
+            io.out(result.ok ? `\n✓ ${result.pack} scaffolded in ${result.dir}/ and recorded in forge.config.yaml` : `\n✗ failed at: ${result.failedStep}`);
+            if (result.use) for (const [key, command] of Object.entries(result.use.set)) io.out(`  ✓ commands.${key.padEnd(6)} ${command}`);
+          });
+          return result.ok ? 0 : 1;
+        }
+        throw new UsageError("Usage: forge stack [list|detect|use [<pack>]|show <pack>|scaffold <pack>]");
       }
 
       case "design": {

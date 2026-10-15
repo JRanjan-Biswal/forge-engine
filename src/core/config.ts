@@ -14,6 +14,10 @@ export const ForgeConfig = z.object({
   project: z.string().min(1).default("untitled"),
   platforms: z.array(z.enum(["web", "ios", "android", "desktop", "api"])).default(["web"]),
   packs: z.array(z.string()).default([]),
+  /** Stack packs in use and the directory each one lives in (`forge stack use`). */
+  stacks: z
+    .array(z.object({ pack: z.string().min(1), dir: z.string().min(1).default(".") }).strict())
+    .default([]),
   autonomy: z.enum(["auto", "checkpoint", "strict"]).default("checkpoint"),
   maxIterations: z.number().int().positive().default(3),
   commands: z
@@ -85,6 +89,7 @@ export function defaultConfigYaml(project: string): string {
 project: ${JSON.stringify(project)}
 platforms: [web]          # web | ios | android | desktop | api
 packs: []                 # optional departments, e.g. [motion, mobile, growth]
+stacks: []                # stack packs and their directories; \`forge stack use\` detects and fills these
 autonomy: checkpoint      # auto | checkpoint (human approves key stages) | strict (every stage)
 maxIterations: 3          # gate failures before forge escalates with a decision memo
 

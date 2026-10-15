@@ -98,6 +98,15 @@ forge workers run --max 1  # ready tasks run headless (Claude Code, Codex, Gemin
 forge merge                # done tasks merge back in wave order — only if their tests pass; conflicts abort cleanly
 ```
 
+**Stack packs** — `nextjs`, `expo`, `fastapi`, `node-hono`, `supabase` (add your own in `.forge/stack-packs/<id>/pack.yaml`). Each pack knows how to recognise its stack, which gate commands it can run (only when the scripts, dependencies and files exist — never guessed), the official generator, and a conventions + review lens that lands in every task brief and review.
+
+```bash
+forge stack detect                    # stacks in this repo (monorepos too) and the commands each could run
+forge stack use                       # record them in forge.config.yaml and fill empty build/test/e2e/lint
+forge stack scaffold nextjs --run     # official generator (create-next-app), then `stack use`
+forge stack show fastapi              # conventions and review lens
+```
+
 Workers are capped (`workers.maxConcurrent`, default 1), run in their own process groups with timeouts, and mark tasks done or blocked; review and merge follow. The verify stage runs a reviewer council → fixer (regression test first) → adversarial verifier loop, with a scientific debugger and a test strategist.
 
 ## Existing products (brownfield)
@@ -169,7 +178,7 @@ These are process rules, not an OS-enforced memory limit.
 
 - **v0.1 Validate** *(in progress)* — evidence engine with quote verification ✅, scorecard ✅, strategy/discovery/PM agents and skills ✅; next: forge-bench Validate track, landing-page smoke test
 - **v0.2 Design + Motion** *(in progress)* — DTCG token pipeline → CSS/Tailwind/TS ✅, contrast + drift audits ✅, design/motion agents and skills ✅; native exporters (Flutter, SwiftUI, Compose) ✅, prototype scaffold ✅; next: screenshot critique automation
-- **v0.5 Build & Verify** *(in progress)* — task waves + briefs ✅, worktrees + bounded headless workers ✅, architecture/build/review/debug/QA agents and skills ✅; merge queue ✅; next: stack packs (Next.js, Expo, FastAPI), forge-bench Build track
+- **v0.5 Build & Verify** *(in progress)* — task waves + briefs ✅, worktrees + bounded headless workers ✅, architecture/build/review/debug/QA agents and skills ✅; merge queue ✅; stack packs (Next.js, Expo, FastAPI, Hono, Supabase) ✅; next: forge-bench Build track
 - **v1.0 Everywhere** — mobile, adapters for every host, published forge-bench evals
 
 ## Development

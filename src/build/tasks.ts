@@ -5,6 +5,7 @@ import { appendLedger } from "../core/ledger.js";
 import { withLock } from "../core/lock.js";
 import { listLearnings } from "../memory/learnings.js";
 import { readLedger } from "../core/ledger.js";
+import { stackBrief } from "./stacks.js";
 import type { Motion, Prd, Screens, Task, Tasks } from "../schemas/artifacts.js";
 
 /**
@@ -117,6 +118,7 @@ export function taskBrief(root: string, id: string): string {
       : []),
     ...(contract ? ["", "## API contract (contracts/openapi.yaml)", "```yaml", contract.slice(0, 6_000), "```"] : []),
     ...(decisions.length ? ["", "## Related decisions", ...decisions.map((d) => `- ${d.id}: ${d.summary}${d.why ? ` — ${d.why}` : ""}`)] : []),
+    ...safe(() => stackBrief(root, task)) ?? [],
     ...((() => {
       const learnings = listLearnings(root).slice(-5);
       return learnings.length ? ["", "## Learnings", ...learnings.map((l) => l.text)] : [];

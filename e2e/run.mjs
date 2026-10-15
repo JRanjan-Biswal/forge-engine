@@ -76,6 +76,10 @@ await suite.guard("packaging", async () => {
     "skills/pro-page-complete/SKILL.md",
     "skills/design-system/SKILL.md",
     "agents/web-animation-developer.md",
+    "stack-packs/nextjs/pack.yaml",
+    "stack-packs/expo/review-lens.md",
+    "stack-packs/fastapi/pack.yaml",
+    "schemas/stack-pack.schema.json",
     "README.md",
     "LICENSE",
   ]) {
@@ -92,6 +96,9 @@ await suite.guard("packaging", async () => {
     const v = sh(join(prefix, "node_modules", ".bin", bin), ["--version"]);
     suite.check(`installed \`${bin}\` binary runs and reports ${VERSION}`, v.code === 0 && v.out.trim() === VERSION, v.all);
   }
+  const packs = sh(join(prefix, "node_modules", ".bin", "forge"), ["stack", "list", "--json"], { cwd: RUN });
+  const packIds = packs.code === 0 ? JSON.parse(packs.out).packs.map((p) => p.id) : [];
+  suite.check("installed package loads its 5 stack packs", ["expo", "fastapi", "nextjs", "node-hono", "supabase"].every((id) => packIds.includes(id)), packs.all.slice(0, 300));
 });
 
 // ── 2 ────────────────────────────────────────────────────────────────────────
@@ -683,7 +690,7 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 45 tools, each with an object input schema", tools.length === 45 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 48 tools, each with an object input schema", tools.length === 48 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
   let t = await call("guide", { name: "skills/validate-idea" });
   suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));
@@ -722,6 +729,8 @@ await suite.guard("MCP session", async () => {
   t = await call("process_snapshot");
   const snapshot = JSON.parse(t.text);
   suite.check("process_snapshot reports memory headroom and this project's processes", snapshot.memory?.totalGb > 0 && Array.isArray(snapshot.processes), t.text.slice(0, 200));
+  t = await call("stack_info", { pack: "fastapi" });
+  suite.check("stack_info returns a pack's scaffold command and review lens", !t.isError && /uv init/.test(JSON.parse(t.text).scaffold.command) && /## Review lens/.test(JSON.parse(t.text).lens), t.text.slice(0, 200));
   const serverPid = transport.pid;
   await client.close();
   await new Promise((resolve) => setTimeout(resolve, 1_500));
@@ -764,6 +773,35 @@ await suite.guard("adopt", async () => {
   suite.check("understand gate passes with every surface modelled and a fresh map", gate?.passed === true, JSON.stringify(gate?.checks.filter((c) => c.status === "fail")));
   const answer = json(forge(A, "memory", "query", "which file handles POST checkins?", "--no-graph", "--json"));
   suite.check("memory answers product questions from the product map", /endpoint POST \/checkins in src\/server\.js/.test(answer?.text ?? ""), answer?.text?.slice(0, 200));
+});
+
+// ── 6c ───────────────────────────────────────────────────────────────────────
+suite.begin("6c. Stack packs: detect, record gate commands, task briefs");
+await suite.guard("stacks", async () => {
+  const S = join(RUN, "stack-app");
+  mkdirSync(join(S, "web"), { recursive: true });
+  mkdirSync(join(S, "api", "app"), { recursive: true });
+  writeFileSync(join(S, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+  writeJson(join(S, "web", "package.json"), { scripts: { build: "next build", lint: "eslint" }, dependencies: { next: "16.0.0" }, devDependencies: { vitest: "3.0.0", "@playwright/test": "1.50.0" } });
+  writeFileSync(join(S, "api", "pyproject.toml"), '[project]\nname = "api"\ndependencies = ["fastapi[standard]"]\n[dependency-groups]\ndev = ["pytest", "ruff"]\n');
+  writeFileSync(join(S, "api", "uv.lock"), "version = 1\n");
+  writeFileSync(join(S, "api", "app", "main.py"), "from fastapi import FastAPI\napp = FastAPI()\n");
+  forge(S, "init", "--name", "stack-app");
+  const detected = json(forge(S, "stack", "detect", "--json")) ?? [];
+  suite.check("detects Next.js in web/ and FastAPI in api/", sameSet(detected.map((d) => `${d.pack}@${d.dir}`), ["nextjs@web", "fastapi@api"]), JSON.stringify(detected.map((d) => d.pack)));
+  const used = json(forge(S, "stack", "use", "--json"));
+  const config = readFileSync(join(S, "forge.config.yaml"), "utf8");
+  suite.check(
+    "stack use writes stacks and per-directory gate commands",
+    /pack: nextjs/.test(config) && used?.set.build === '(cd api && uv run python -c "import app.main") && (cd web && pnpm build)' && used?.set.e2e === "cd web && pnpm exec playwright test",
+    JSON.stringify(used?.set),
+  );
+  const again = json(forge(S, "stack", "use", "--json"));
+  suite.check("a second stack use changes nothing and keeps the config valid", again && Object.keys(again.set).length === 0 && forge(S, "status").code === 0, JSON.stringify(again?.set));
+  writeTmp("stack-tasks.json", JSON.stringify({ tasks: [{ id: "T-1", title: "Check-in route", dept: "backend", storyIds: [], files: ["api/app/routers/checkins.py"] }] }));
+  forge(S, "artifact", "write", "tasks", "--file", join(TMP, "stack-tasks.json"));
+  const brief = forge(S, "tasks", "brief", "T-1");
+  suite.check("task brief carries the FastAPI conventions and commands", /## Stack: FastAPI/.test(brief.out) && /uv run python -m pytest -q/.test(brief.out) && /Contract first/.test(brief.out), brief.out.slice(0, 300));
 });
 
 // ── 7 ────────────────────────────────────────────────────────────────────────

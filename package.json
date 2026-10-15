@@ -21,6 +21,7 @@
     "rubrics",
     "hooks",
     "rules",
+    "stack-packs",
     "schemas",
     ".claude-plugin",
     ".mcp.json"

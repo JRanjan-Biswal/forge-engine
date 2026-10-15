@@ -1,0 +1,48 @@
+# FastAPI — Python HTTP API with pydantic models and dependency injection.
+id: fastapi
+name: FastAPI (Python)
+summary: Async Python API on FastAPI with pydantic v2 models, Depends()-based injection and generated OpenAPI.
+kind: service
+platforms: [api]
+depts: [backend, api, data]
+language: python
+detect:
+  pythonDeps: [fastapi]
+commands:
+  build:
+    # "Builds" = the app imports and constructs (catches syntax, import and wiring errors).
+    - run: '{python} -c "import app.main"'
+      requires: { file: app/main.py }
+    - run: '{python} -c "import main"'
+      requires: { file: main.py }
+  test:
+    - run: "{python} -m pytest -q"
+      requires: { dep: pytest }
+  lint:
+    - run: "{python} -m ruff check ."
+      requires: { dep: ruff }
+    - run: "{python} -m mypy ."
+      requires: { dep: mypy }
+fixes:
+  build: "put the FastAPI app in app/main.py (`app = FastAPI()`)"
+  test: "uv add --dev pytest (TestClient needs httpx, which fastapi[standard] includes) and add tests/ (https://fastapi.tiangolo.com/tutorial/testing/)"
+  lint: "uv add --dev ruff"
+scaffold:
+  command: "uv init --app --no-workspace --vcs none {dir}"
+  docs: https://fastapi.tiangolo.com/tutorial/
+  then:
+    - 'uv add "fastapi[standard]"'
+    - "uv add --dev pytest ruff"
+tokens: none
+qa: pytest with FastAPI's TestClient per endpoint (contract status codes and error shapes); schemathesis against the OpenAPI document for fuzzing.
+layout:
+  app entry: app/main.py (FastAPI() + routers)
+  routers: app/routers/<resource>.py (APIRouter per resource)
+  models: app/schemas.py (pydantic) and app/models.py (ORM)
+  dependencies: app/deps.py (Depends providers — DB session, current user)
+  settings: app/settings.py (pydantic-settings)
+  tests: tests/test_<resource>.py
+docs:
+  - https://fastapi.tiangolo.com/
+  - https://fastapi.tiangolo.com/tutorial/testing/
+  - https://docs.astral.sh/uv/

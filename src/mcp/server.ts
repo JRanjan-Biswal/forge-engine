@@ -13,6 +13,7 @@ import { buildDesign, loadTokens } from "../design/tokens.js";
 import { buildPrototype } from "../design/prototype.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "../build/tasks.js";
 import { mergeTasks } from "../build/workers.js";
+import { detectStacks, listPacks, loadPack, readLens, scaffoldPlan, stackCommands, useStacks } from "../build/stacks.js";
 import { checkProduct, listPageAudits, loadProductMap, savePageAudit, syncProduct, type SyncResult } from "../product/sync.js";
 import { scoreValidation, validationTemplate } from "../core/validation.js";
 import { SOURCES, searchEvidence } from "../evidence/connectors.js";
@@ -38,7 +39,8 @@ Protocol:
 5. Memory: call memory_query before re-deriving past decisions. Record decisions with ledger_add (include why and rejected alternatives). Save memory_save_episode before the session ends.
 6. Never fabricate evidence, data, keys or results. Research with evidence_search (or your own web search), then save every quote you will cite with evidence_save — forge checks the quote against the source and rejects mismatches. Cite only saved evidence. Unknown research answers stay "unknown"; missing credentials become blockers (blocker_add). Start validation from validation_template and compute the score with validation_score.
 7. Existing products (brownfield): product_adopt once, then product_sync after code changes — the understand gate fails on a stale map. Read product_map and the product model before changing anything; audit pages with skills/pro-page-complete and record them with page_audit_write.
-8. Protect the machine's RAM: call process_snapshot before starting any server, watcher, test runner or browser and reuse what is already running; prefer one-shot commands to watch mode; run one heavy job at a time; stop every process you start (and its children) as soon as it is no longer needed, and verify it exited before you finish. Never kill processes you did not start.`;
+8. Protect the machine's RAM: call process_snapshot before starting any server, watcher, test runner or browser and reuse what is already running; prefer one-shot commands to watch mode; run one heavy job at a time; stop every process you start (and its children) as soon as it is no longer needed, and verify it exited before you finish. Never kill processes you did not start.
+9. Stacks: in the architect stage call stack_list, then stack_use to record the stacks and their gate commands (only commands the repo can actually run are filled). Builders follow the stack's Conventions (included in task_brief); reviewers check the stack's Review lens from stack_info.`;
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -497,6 +499,48 @@ export function createForgeServer(root?: string): McpServer {
       inputSchema: { ids: z.array(z.string()).optional() },
     },
     guarded(({ ids }: { ids?: string[] }) => mergeTasks(forge().root, forge().config(), ids)),
+  );
+
+  server.registerTool(
+    "stack_list",
+    {
+      description: "Stack packs (nextjs, expo, fastapi, node-hono, supabase, plus project packs in .forge/stack-packs), the stacks detected in this repo with the gate commands each could run (and how to enable the missing ones), and the stacks configured in forge.config.yaml.",
+      inputSchema: {},
+    },
+    guarded(() => {
+      const f = forge();
+      return {
+        packs: listPacks(f.root).map(({ pack, source }) => ({ id: pack.id, name: pack.name, kind: pack.kind, platforms: pack.platforms, depts: pack.depts, source })),
+        detected: detectStacks(f.root).map((d) => ({ ...d, ...stackCommands(f.root, d.pack, d.dir) })),
+        configured: f.config().stacks,
+      };
+    }),
+  );
+
+  server.registerTool(
+    "stack_use",
+    {
+      description: "Record the project's stacks in forge.config.yaml (detected ones, or the named pack in dir) and fill empty build/test/e2e/lint gate commands — only with commands whose scripts/dependencies/files exist. Existing commands are kept unless force. Recorded as a decision in the ledger. Use in the architect stage, and again after scaffolding or adding test tooling.",
+      inputSchema: {
+        pack: z.string().optional().describe("Pack id; omit to use every detected stack"),
+        dir: z.string().optional().describe("Directory of that stack, relative to the project root"),
+        force: z.boolean().optional().describe("Replace commands that are already configured"),
+      },
+    },
+    guarded(({ pack, dir, force }: { pack?: string; dir?: string; force?: boolean }) => useStacks(forge().root, { pack, dir, force })),
+  );
+
+  server.registerTool(
+    "stack_info",
+    {
+      description: "One stack pack: manifest (layout, QA tool, token output), the official scaffold command for this project (run it with your shell, then call stack_use), and the conventions + review lens markdown. Builders follow the Conventions; reviewers check every Review lens item.",
+      inputSchema: { pack: z.string(), dir: z.string().optional().describe("Target directory for the scaffold command") },
+    },
+    guarded(({ pack, dir }: { pack: string; dir?: string }) => {
+      const root = forge().root;
+      const loaded = loadPack(pack, root);
+      return { ...loaded.pack, source: loaded.source, scaffold: scaffoldPlan(root, pack, { dir }), lens: readLens(pack, root) };
+    }),
   );
 
   server.registerTool(
