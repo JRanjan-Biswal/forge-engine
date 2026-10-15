@@ -10,6 +10,7 @@ import { listProjectProcesses, memorySnapshot } from "../core/procs.js";
 import { adoptProject } from "../product/adopt.js";
 import { auditContrast, auditDrift } from "../design/audit.js";
 import { buildDesign, loadTokens } from "../design/tokens.js";
+import { buildPrototype } from "../design/prototype.js";
 import { checkProduct, listPageAudits, loadProductMap, savePageAudit, syncProduct, type SyncResult } from "../product/sync.js";
 import { scoreValidation, validationTemplate } from "../core/validation.js";
 import { SOURCES, searchEvidence } from "../evidence/connectors.js";
@@ -460,10 +461,19 @@ export function createForgeServer(root?: string): McpServer {
   server.registerTool(
     "design_build",
     {
-      description: "Build design/tokens (W3C DTCG, themes via *.<theme>.tokens.json) into design/dist: tokens.css (light/dark + prefers-color-scheme), tailwind.css (@theme), theme.ts (typed, incl. springs), tokens.json. Fails on unresolved aliases or invalid types.",
+      description: "Build design/tokens (W3C DTCG, themes via *.<theme>.tokens.json) into design/dist: tokens.css (light/dark + prefers-color-scheme), tailwind.css (@theme), theme.ts (typed, incl. springs), tokens.json, tokens.dart (Flutter), ForgeTokens.swift (SwiftUI), ForgeTokens.kt (Compose). Fails on unresolved aliases or invalid types.",
       inputSchema: {},
     },
     guarded(() => buildDesign(forge().root)),
+  );
+
+  server.registerTool(
+    "design_prototype",
+    {
+      description: "Generate design/prototype/index.html from the screens artifact: one dependency-free page per screen with an empty/loading/error/success state switcher, styled by the generated tokens. Fill each state; screenshot ?screen=<id>&state=<state> for critique.",
+      inputSchema: {},
+    },
+    guarded(() => buildPrototype(forge().root)),
   );
 
   server.registerTool(

@@ -13,6 +13,7 @@ import { listProjectProcesses, memorySnapshot, registryTemplate } from "./core/p
 import { adoptProject } from "./product/adopt.js";
 import { auditContrast, auditDrift } from "./design/audit.js";
 import { buildDesign, loadTokens } from "./design/tokens.js";
+import { buildPrototype } from "./design/prototype.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
 import { scoreValidation, validationTemplate } from "./core/validation.js";
 import { searchEvidence } from "./evidence/connectors.js";
@@ -66,8 +67,9 @@ Existing products (brownfield)
   hooks install                        git hooks that run "forge sync" after commit / merge / checkout
 
 Design
-  design build                         design/tokens → design/dist (tokens.css, tailwind.css, theme.ts, tokens.json)
+  design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)
   design audit                         token validity, WCAG contrast pairs, hard-coded colour drift
+  design prototype                     single-file prototype scaffold: every screen × state, on the tokens
 
 Evidence & validation
   evidence search <source> "<query>" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit
@@ -620,7 +622,12 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
           });
           return ok ? 0 : 1;
         }
-        throw new UsageError("Usage: forge design build | audit");
+        if (args[0] === "prototype") {
+          const result = buildPrototype(root);
+          print(result, () => io.out(`Wrote ${result.path} (${result.screens} screens · ?screen=<id>&state=empty|loading|error|success)`));
+          return 0;
+        }
+        throw new UsageError("Usage: forge design build | audit | prototype");
       }
 
       case "procs": {

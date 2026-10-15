@@ -82,6 +82,37 @@ describe("design tokens", () => {
     expect(ts).toContain("export const themes");
   });
 
+  it("exports Flutter, SwiftUI and Compose tokens with dark overrides", () => {
+    const root = project(TOKENS);
+    buildDesign(root);
+    const dart = readFileSync(join(root, "design/dist/tokens.dart"), "utf8");
+    expect(dart).toContain("static const colorAccentDefault = Color(0xFF5B5BD6);");
+    expect(dart).toContain("static const double space4 = 16.0;");
+    expect(dart).toContain("static const springSnappy = SpringDescription(mass: 1.0, stiffness: 400.0, damping: 30.0);");
+    expect(dart).toMatch(/class ForgeTokensDark \{[\s\S]*colorTextDefault = Color\(0xFFFFFFFF\)/);
+    const swift = readFileSync(join(root, "design/dist/ForgeTokens.swift"), "utf8");
+    expect(swift).toContain("static let easingStandard = Animation.timingCurve(0.2, 0, 0, 1)");
+    expect(swift).toContain("static let space4: CGFloat = 16");
+    const kotlin = readFileSync(join(root, "design/dist/ForgeTokens.kt"), "utf8");
+    expect(kotlin).toContain("val ColorAccentDefault = Color(0xFF5B5BD6)");
+    expect(kotlin).toContain("val SpringSnappy = spring<Float>(dampingRatio = 0.75f, stiffness = 400f)");
+    expect(kotlin).toContain("val Space4 = 16.dp");
+  });
+
+  it("scaffolds a prototype with every screen × state on the tokens", async () => {
+    const root = project(TOKENS);
+    const { Forge } = await import("../src/core/engine.js");
+    Forge.init(root, { name: "proto" });
+    const { writeArtifact } = await import("../src/core/artifacts.js");
+    writeArtifact(root, "screens", { screens: [{ id: "checkin", storyIds: ["S-1"], route: "/checkin", platform: "web", states: ["empty", "loading", "error", "success"] }] });
+    buildDesign(root);
+    const { buildPrototype } = await import("../src/design/prototype.js");
+    expect(buildPrototype(root)).toEqual({ path: "design/prototype/index.html", screens: 1 });
+    const html = readFileSync(join(root, "design/prototype/index.html"), "utf8");
+    expect(html).toContain('href="../dist/tokens.css"');
+    expect(html.match(/data-state="(empty|loading|error|success)"/g)).toHaveLength(4);
+  });
+
   it("refuses to build invalid tokens", () => {
     const result = buildDesign(project({ "design/tokens/x.tokens.json": { color: { $type: "color", a: { $value: "{nope}" } } } }));
     expect(result.files).toEqual([]);

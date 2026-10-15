@@ -27,3 +27,5 @@ export { syncProduct, checkProduct, loadProductMap, savePageAudit, listPageAudit
 export { extractProduct, listProjectFiles, fingerprint } from "./product/scan.js";
 export { loadTokens, buildDesign, type Token, type TokenSet } from "./design/tokens.js";
 export { auditContrast, auditDrift, contrastRatio } from "./design/audit.js";
+export { exportNative } from "./design/native.js";
+export { buildPrototype } from "./design/prototype.js";

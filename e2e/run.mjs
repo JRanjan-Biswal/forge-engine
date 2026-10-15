@@ -274,7 +274,7 @@ await stage("design", {
     });
     writeJson(join(P, "design/contrast.json"), { pairs: [{ fg: "color.text.default", bg: "color.bg.default" }, { fg: "color.accent.default", bg: "color.bg.default", min: 3 }] });
     const built = forge(P, "design", "build");
-    suite.check("design: forge design build exports CSS, Tailwind, TS theme and JSON", built.code === 0 && existsSync(join(P, "design/dist/tokens.css")) && existsSync(join(P, "design/dist/tailwind.css")), built.all);
+    suite.check("design: forge design build exports CSS, Tailwind, TS theme and JSON", built.code === 0 && ["tokens.css", "tailwind.css", "theme.ts", "tokens.dart", "ForgeTokens.swift", "ForgeTokens.kt"].every((f) => existsSync(join(P, "design/dist", f))), built.all);
     const audit = json(forge(P, "design", "audit", "--json"));
     suite.check("design: contrast pairs pass and no drift in the app", audit?.contrast?.results?.every((r) => r.pass) && audit.drift.length === 0, JSON.stringify(audit?.contrast?.results));
     const all = ["empty", "loading", "error", "success"];
@@ -294,6 +294,8 @@ await stage("design", {
     rubric(8);
     expectFail("design", ["design-states", "design-critique"], "missing empty/error states + rubric 8/10");
     put("screens", screensDoc(all));
+    const proto = forge(P, "design", "prototype");
+    suite.check("design: prototype scaffold covers every screen × state", proto.code === 0 && (readFileSync(join(P, "design/prototype/index.html"), "utf8").match(/data-state=/g) ?? []).length === 8, proto.all);
     rubric(9);
   },
 });
@@ -677,7 +679,7 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 39 tools, each with an object input schema", tools.length === 39 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 40 tools, each with an object input schema", tools.length === 40 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
   let t = await call("guide", { name: "skills/validate-idea" });
   suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));

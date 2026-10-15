@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { exportNative } from "./native.js";
 
 /**
  * Design-token pipeline (W3C DTCG): load design/tokens/*.tokens.json, apply theme
@@ -262,12 +263,22 @@ export function buildDesign(root: string, outDir = join(root, "design", "dist"))
     2,
   );
 
+  const nativeThemes = Object.fromEntries(
+    Object.keys(set.themes).map((theme) => {
+      const changed = changedIn(theme);
+      return [theme, new Map([...(set.themes[theme] ?? new Map()).entries()].filter(([path]) => changed.has(path)))];
+    }),
+  );
+  const native = exportNative(set.base, nativeThemes);
   const written: string[] = [];
   for (const [name, content] of [
     ["tokens.css", css],
     ["tailwind.css", tailwind],
     ["theme.ts", ts],
     ["tokens.json", `${json}\n`],
+    ["tokens.dart", native.dart],
+    ["ForgeTokens.swift", native.swift],
+    ["ForgeTokens.kt", native.kotlin],
   ] as const) {
     writeFileSync(join(outDir, name), content);
     written.push(`design/dist/${name}`);
