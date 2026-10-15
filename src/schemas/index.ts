@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import * as artifacts from "./artifacts.js";
 import * as runtime from "./runtime.js";
+import { EvidenceStore } from "../evidence/store.js";
 
 export * from "./common.js";
 export * from "./artifacts.js";
@@ -25,4 +26,5 @@ export const PUBLISHED_SCHEMAS: Record<string, z.ZodType> = {
   "gate-check": runtime.GateCheck,
   "gate-result": runtime.GateResult,
   "ledger-entry": runtime.LedgerEntry,
+  "evidence-store": EvidenceStore,
 };

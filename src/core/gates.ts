@@ -14,6 +14,7 @@ import {
   type Validation,
 } from "../schemas/artifacts.js";
 import type { CheckResult, GateCheck, GateResult, NumberOrConfig, State } from "../schemas/runtime.js";
+import { findEvidence, loadEvidence } from "../evidence/store.js";
 import { listEpisodes } from "../memory/episodes.js";
 import { redactSecrets } from "../memory/secrets.js";
 import { computeGaps, scanPlaceholders } from "../trace/trace.js";
@@ -264,6 +265,19 @@ function hasCycle(tasks: Tasks["tasks"]): string | null {
 
 type Builtin = (ctx: GateContext) => Outcome;
 
+/** Every (url, quote) pair cited by the validation scorecard and the competitor teardown. */
+function citedEvidence(ctx: GateContext): { url: string; quote: string; where: string }[] {
+  const validation = need<Validation>(ctx, "validation");
+  const competitors = loadArtifact<Competitors>(ctx.root, "competitors");
+  return [
+    ...validation.criteria.flatMap((c) => c.evidence.map((e) => ({ url: e.url, quote: e.quote, where: c.id }))),
+    ...(competitors?.competitors ?? []).flatMap((c) => [
+      ...c.evidence.map((e) => ({ url: e.url, quote: e.quote, where: c.name })),
+      ...c.reviewComplaints.map((r) => ({ url: r.source, quote: r.quote, where: `${c.name} review` })),
+    ]),
+  ];
+}
+
 export const BUILTINS: Record<string, Builtin> = {
   "brainstorm.chosen": (ctx) => {
     const brainstorm = need<Brainstorm>(ctx, "brainstorm");
@@ -300,6 +314,29 @@ export const BUILTINS: Record<string, Builtin> = {
     return urls.size >= min
       ? pass(`${urls.size} distinct evidence sources`)
       : fail(`${urls.size} distinct evidence sources, need ${min}`);
+  },
+
+  "evidence.registered": (ctx) => {
+    if (!ctx.config.gates.validate.requireEvidenceStore) return skip("gates.validate.requireEvidenceStore is off");
+    const items = loadEvidence(ctx.root);
+    const missing = citedEvidence(ctx).filter((cited) => !findEvidence(items, cited.url, cited.quote));
+    const shown = missing.slice(0, 8).map((m) => `${m.where} → ${m.url}`);
+    if (missing.length > 8) shown.push(`…and ${missing.length - 8} more`);
+    return listOrPass(shown, "every cited quote was saved and checked through the evidence store", "cited quotes never saved via evidence_save (unchecked)");
+  },
+
+  "evidence.verifiedShare": (ctx) => {
+    if (!ctx.config.gates.validate.requireEvidenceStore) return skip("gates.validate.requireEvidenceStore is off");
+    const items = loadEvidence(ctx.root);
+    const cited = citedEvidence(ctx);
+    if (!cited.length) return fail("no evidence is cited");
+    const verified = cited.filter((c) => findEvidence(items, c.url, c.quote)?.verification.status === "verified").length;
+    const share = verified / cited.length;
+    const min = ctx.config.gates.validate.minVerifiedShare;
+    const pct = (value: number) => `${Math.round(value * 100)}%`;
+    return share >= min
+      ? pass(`${verified}/${cited.length} cited quotes verified against their source (${pct(share)})`)
+      : fail(`only ${verified}/${cited.length} cited quotes verified (${pct(share)}), needs ${pct(min)} — prefer sources whose pages can be fetched`);
   },
 
   "validation.verdictGo": (ctx) => {

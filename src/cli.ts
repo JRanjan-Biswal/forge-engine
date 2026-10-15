@@ -4,12 +4,16 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { z } from "zod";
-import { ARTIFACTS, checkArtifact, listArtifacts, readArtifactText, writeArtifact } from "./core/artifacts.js";
+import { ARTIFACTS, checkArtifact, listArtifacts, loadArtifact, readArtifactText, writeArtifact } from "./core/artifacts.js";
 import { Forge } from "./core/engine.js";
 import { gateChecks } from "./core/gates.js";
 import { appendLedger, readLedger } from "./core/ledger.js";
 import { findRoot } from "./core/paths.js";
 import { listProjectProcesses, memorySnapshot, registryTemplate } from "./core/procs.js";
+import { scoreValidation, validationTemplate } from "./core/validation.js";
+import { searchEvidence } from "./evidence/connectors.js";
+import { loadEvidence, saveEvidence } from "./evidence/store.js";
+import { Validation } from "./schemas/artifacts.js";
 import { errorMessage } from "./core/util.js";
 import { saveEpisode, type EpisodeInput } from "./memory/episodes.js";
 import { findGraphify, graphExplain, graphPathBetween, graphQuery, graphStatus, graphUpdate, GRAPHIFY_INSTALL_HINT } from "./memory/graphify.js";
@@ -48,6 +52,13 @@ Artifacts
   artifact read <name>
   artifact write <name> [--file <path>]   (reads stdin when --file is omitted)
   artifact validate <name>
+
+Evidence & validation
+  evidence search <source> "<query>" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit
+  evidence save --url <url> --quote "<exact words>" [--source <s>]   checked against the source
+  evidence list
+  validate template "<idea>"           standard 12-criteria scorecard (JSON)
+  validate score [--file <json>]       weighted score + suggested verdict (default: the validation artifact)
 
 Memory
   ledger list [--limit <n>]
@@ -88,6 +99,9 @@ const OPTIONS = {
   source: { type: "string" },
   out: { type: "string" },
   root: { type: "string" },
+  url: { type: "string" },
+  quote: { type: "string" },
+  fresh: { type: "boolean" },
 } as const;
 
 export interface CliIO {
@@ -407,6 +421,71 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
         if (!result) throw new UsageError(`Unknown graph subcommand "${sub}"`);
         print(result, () => io.out(result.ok ? result.output : `graphify: ${result.error}`));
         return result.ok ? 0 : 1;
+      }
+
+      case "evidence": {
+        const sub = need(args[0], "evidence subcommand (search | save | list)");
+        const root = forge().root;
+        if (sub === "search") {
+          const response = await searchEvidence(root, need(args[1], "source"), need(args[2], "query"), {
+            limit: opts.limit ? toInt(opts.limit, 10) : undefined,
+            fresh: opts.fresh,
+          });
+          print(response, () => {
+            io.out(`${response.source} · "${response.query}" · ${response.results.length} results${response.cached ? " (cached)" : ""}`);
+            for (const result of response.results) {
+              const metrics = Object.entries(result.metrics).map(([key, value]) => `${key}=${value}`).join(" ");
+              io.out(`\n• ${result.title}\n  ${result.url}\n  ${metrics}\n  ${result.text.slice(0, 200)}`);
+            }
+          });
+          return 0;
+        }
+        if (sub === "save") {
+          const item = await saveEvidence(root, {
+            url: need(opts.url, "--url"),
+            quote: need(opts.quote, "--quote"),
+            source: opts.source,
+            savedBy: process.env.USER ?? "human",
+          });
+          print(item, () =>
+            io.out(`Saved ${item.id} (${item.verification.status} via ${item.verification.method}${item.verification.note ? `: ${item.verification.note}` : ""})`),
+          );
+          return 0;
+        }
+        if (sub === "list") {
+          const items = loadEvidence(root);
+          print(items, () => {
+            for (const item of items) io.out(`${item.id.padEnd(6)} ${item.verification.status.padEnd(12)} ${item.url}\n       "${item.quote.slice(0, 120)}"`);
+            const verified = items.filter((i) => i.verification.status === "verified").length;
+            io.out(`${items.length} item(s), ${verified} verified`);
+          });
+          return 0;
+        }
+        throw new UsageError(`Unknown evidence subcommand "${sub}"`);
+      }
+
+      case "validate": {
+        const sub = need(args[0], "validate subcommand (template | score)");
+        if (sub === "template") {
+          io.out(JSON.stringify(validationTemplate(need(args[1], "idea")), null, 2));
+          return 0;
+        }
+        if (sub === "score") {
+          const f = forge();
+          const criteria = opts.file
+            ? Validation.parse(JSON.parse(await readInput(opts.file, io))).criteria
+            : (loadArtifact<Validation>(f.root, "validation")?.criteria ?? (() => {
+                throw new Error("No validation artifact yet — pass --file");
+              })());
+          const report = scoreValidation(criteria, f.config().gates.validate.minScore);
+          print(report, () => {
+            io.out(`score ${report.score} · suggested verdict: ${report.suggestedVerdict} (${report.reason})`);
+            io.out(`yes ${report.yes.length} · no ${report.no.length} · unknown ${report.unknown.length}`);
+            if (report.unsupportedYes.length) io.out(`'yes' without evidence: ${report.unsupportedYes.join(", ")}`);
+          });
+          return 0;
+        }
+        throw new UsageError(`Unknown validate subcommand "${sub}"`);
       }
 
       case "procs": {

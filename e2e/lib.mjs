@@ -78,6 +78,26 @@ export function shAsync(command, args, options = {}) {
   });
 }
 
+/** Start the fixture evidence server as a separate, tracked process. Always call stop(). */
+export async function startEvidenceServer() {
+  const child = spawn(process.execPath, [join(E2E, "fixtures", "evidence-server.mjs")], { stdio: ["pipe", "pipe", "inherit"] });
+  const port = await new Promise((resolvePort, reject) => {
+    const timer = setTimeout(() => reject(new Error("evidence server did not start")), 10_000);
+    child.stdout.once("data", (chunk) => {
+      clearTimeout(timer);
+      resolvePort(JSON.parse(String(chunk)).port);
+    });
+  });
+  const stop = () =>
+    new Promise((resolveStop) => {
+      if (child.exitCode !== null) return resolveStop(child.exitCode);
+      child.once("exit", resolveStop);
+      child.stdin.end();
+      setTimeout(() => child.kill("SIGTERM"), 2_000).unref();
+    });
+  return { base: `http://127.0.0.1:${port}`, pid: child.pid, stop };
+}
+
 export function forgeCli(env) {
   return (cwd, ...args) => sh(process.execPath, [CLI, ...args], { cwd, env: { ...process.env, ...env } });
 }

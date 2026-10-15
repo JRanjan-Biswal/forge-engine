@@ -31,6 +31,10 @@ export const ForgeConfig = z.object({
           minScore: z.number().min(0).max(100).default(65),
           minEvidence: z.number().int().min(0).default(10),
           minCompetitors: z.number().int().min(0).default(5),
+          /** Every cited quote must have been saved (and checked) through the evidence store. */
+          requireEvidenceStore: z.boolean().default(true),
+          /** Share of cited quotes that must be verified against their source page/result. */
+          minVerifiedShare: z.number().min(0).max(1).default(0.6),
         })
         .prefault({}),
       design: z
@@ -86,6 +90,8 @@ gates:
     minScore: 65          # weighted share of "yes" answers, 0-100
     minEvidence: 10       # distinct cited sources across criteria and competitors
     minCompetitors: 5
+    requireEvidenceStore: true  # cited quotes must go through evidence_save (checked against the source)
+    minVerifiedShare: 0.6       # share of cited quotes verified against their page or search result
   design:
     rubricMinPass: 0.9    # share of design-critic rubric criteria that must pass
   gap:

@@ -53,6 +53,9 @@ forge status                # what's next
 forge start brainstorm
 forge artifact write brainstorm --file ideas.json
 forge complete brainstorm   # runs the gate; exit code 1 if it fails
+forge evidence search hackernews "habit tracker"
+forge evidence save --url <url> --quote "<the source's exact words>"
+forge validate score               # weighted score + suggested verdict
 forge memory query "why did we choose Supabase?"
 forge gaps                  # stories missing design / code / test links
 ```
@@ -86,6 +89,17 @@ Gemini CLI / Cursor (`settings.json` / `mcp.json`):
 
 Check your host's MCP documentation for the exact file. The server's instructions teach the agent the protocol: status → start → write artifacts → complete → record decisions → save an episode.
 
+## Evidence engine (validate stage)
+
+Validation is only as good as its sources, so forge **checks quotes instead of trusting them**:
+
+- `evidence_search` / `forge evidence search <source> "<query>"` — Hacker News, GitHub, npm and the App Store (Reddit when it allows unauthenticated access); results cached 24h, with traction metrics.
+- `evidence_save` / `forge evidence save --url … --quote "…"` — forge confirms the quote appears in the search result or on the fetched page (`…` skips text between fragments). **Misquotes are rejected.** Pages it cannot fetch are stored as `unverifiable`, with the reason.
+- The validate gate fails if any quote cited in the scorecard or competitor teardown was never saved through the store, or if fewer than `gates.validate.minVerifiedShare` (default 60%) of cited quotes are verified.
+- `validation_template` gives the standard 12-criteria binary scorecard; `validation_score` computes the weighted score and suggests go / pivot / kill / needs-experiment.
+
+The discovery team that uses it — `validation-scorer` leading `problem-miner`, `market-researcher`, `competitor-scout`, `competitor-teardown`, `devils-advocate` and `pivot-advisor` — plus `brainstorm-facilitator`, `product-visionary` and `pm-lead`, ship as Claude Code subagents. Their playbooks ship as portable skills that any MCP host can read with the `guide` tool.
+
 ## Memory
 
 | Layer | Where | Ask it |
@@ -113,7 +127,7 @@ These are process rules, not an OS-enforced memory limit.
 
 ## Roadmap
 
-- **v0.1 Validate** — brainstorm, vision, evidence collectors, competitor teardown, validation scorer, PRD team
+- **v0.1 Validate** *(in progress)* — evidence engine with quote verification ✅, scorecard ✅, strategy/discovery/PM agents and skills ✅; next: forge-bench Validate track, landing-page smoke test
 - **v0.2 Design + Motion** — design-system engine (DTCG tokens → web/RN/Flutter/SwiftUI/Compose), screen generator, critique loop, motion system
 - **v0.5 Build & Verify** — architecture, frontend/backend/web teams, task DAG + worktrees + headless workers, review/debug/fix, QA, gap
 - **v1.0 Everywhere** — mobile, adapters for every host, published forge-bench evals

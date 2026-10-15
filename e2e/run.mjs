@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { CLI, E2E, FORGE, Suite, forgeCli, makeRunDir, pidAlive, pruneRuns, readJson, sh, shAsync, tail, writeJson, writeText } from "./lib.mjs";
+import { CLI, E2E, FORGE, Suite, forgeCli, makeRunDir, pidAlive, pruneRuns, startEvidenceServer, readJson, sh, shAsync, tail, writeJson, writeText } from "./lib.mjs";
 
 const suite = new Suite("local acceptance — CLI · 14-stage pipeline · memory · graphify · robustness · MCP · schemas · packaging · process hygiene");
 pruneRuns(6);
@@ -33,7 +33,12 @@ const writeTmp = (name, text) => {
 
 // Synthetic fixture evidence — exercises the gate logic, not real market research.
 const AT = "2026-10-14T00:00:00.000Z";
-const ev = (i) => ({ url: `https://example.com/e2e-source-${i}`, quote: `synthetic fixture quote ${i}`, source: "e2e fixture", retrievedAt: AT });
+// A local server plays "the web": fixture pages contain the quotes, so evidence is really
+// verified through forge's evidence store — offline. Closed before the report is written.
+const evidenceServer = await startEvidenceServer();
+const EV_BASE = evidenceServer.base;
+const ev = (i) => ({ url: `${EV_BASE}/e2e-source-${i}`, quote: `synthetic fixture quote ${i}`, source: "e2e fixture", retrievedAt: AT });
+const review = (i) => ({ source: `${EV_BASE}/e2e-review-${i}`, quote: "too many notifications" });
 
 // ── 0 ────────────────────────────────────────────────────────────────────────
 suite.begin("0. Build & unit tests");
@@ -62,6 +67,11 @@ await suite.guard("packaging", async () => {
     ".claude-plugin/plugin.json",
     ".mcp.json",
     "schemas/validation.schema.json",
+    "schemas/evidence-store.schema.json",
+    "skills/validate-idea/SKILL.md",
+    "rubrics/validation.md",
+    "agents/validation-scorer.md",
+    "commands/validate.md",
     "README.md",
     "LICENSE",
   ]) {
@@ -185,12 +195,23 @@ await stage("validate", {
   checkpoint: true,
   initial: ["validation-valid", "competitors-valid"],
   produce: () => {
+    const cited = [
+      ...Array.from({ length: 11 }, (_, i) => ev(i + 1)),
+      ...Array.from({ length: 5 }, (_, i) => ev(20 + i)),
+      ...Array.from({ length: 5 }, (_, i) => ({ url: review(i).source, quote: review(i).quote })),
+    ];
+    for (const item of cited) {
+      const saved = forge(P, "evidence", "save", "--url", item.url, "--quote", item.quote);
+      if (saved.code !== 0) throw new Error(saved.all);
+    }
+    const stored = json(forge(P, "evidence", "list", "--json")) ?? [];
+    suite.check("validate: 21 cited quotes saved and verified against their pages", stored.length === 21 && stored.every((e) => e.verification.status === "verified"), JSON.stringify(stored.map((e) => e.verification.status)));
     put("competitors", {
       competitors: Array.from({ length: 5 }, (_, i) => ({
         name: `Fixture competitor ${i + 1}`,
         segment: i < 3 ? "direct" : "indirect",
         features: ["streaks"],
-        reviewComplaints: [{ source: `https://example.com/e2e-review-${i}`, quote: "too many notifications" }],
+        reviewComplaints: [review(i)],
         gapOpportunities: ["gentle reminders"],
         evidence: [ev(20 + i)],
       })),
@@ -499,6 +520,14 @@ suite.check(
 );
 refused = forge(P, "artifact", "write", "launch", "--file", writeTmp("launch-secret.md", `token sk-ant-${"x".repeat(30)}`));
 suite.check("artifact write refuses content containing an API key", refused.code === 1 && /secret/.test(refused.err), refused.err);
+refused = forge(P, "evidence", "save", "--url", `${EV_BASE}/e2e-source-3`, "--quote", "this sentence is not on the page at all");
+suite.check("evidence save rejects a quote that is not on the page", refused.code === 1 && /does not appear/.test(refused.err), refused.err);
+const blocked = json(forge(P, "evidence", "save", "--url", `${EV_BASE}/blocked`, "--quote", "a quote we cannot check", "--json"));
+suite.check("a blocked page is stored as unverifiable, with the reason", blocked?.verification?.status === "unverifiable" && blocked.verification.note === "HTTP 403", JSON.stringify(blocked));
+const scored = json(forge(P, "validate", "score", "--json"));
+suite.check("validate score recomputes the saved scorecard (91, go)", scored?.score === 91 && scored.suggestedVerdict === "go", JSON.stringify(scored));
+const template = JSON.parse(forge(P, "validate", "template", "Habit coach").out);
+suite.check("validate template emits the 12-criteria scorecard", template.criteria.length === 12 && template.criteria.every((c) => c.answer === "unknown"));
 
 // ── 4 ────────────────────────────────────────────────────────────────────────
 suite.begin("4. graphify code-graph memory (real graphify)");
@@ -639,9 +668,11 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 26 tools, each with an object input schema", tools.length === 26 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 32 tools, each with an object input schema", tools.length === 32 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
-  let t = await call("forge_status");
+  let t = await call("guide", { name: "skills/validate-idea" });
+  suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));
+  t = await call("forge_status");
   suite.check("before init: a tool error, not a crash", t.isError && /forge init/.test(t.text), t.text);
   t = await call("project_init", { name: "mcp-app" });
   suite.check("project_init", !t.isError && existsSync(join(M, ".forge/state.json")), t.text);
@@ -777,6 +808,7 @@ await suite.guard("Ajv validation", async () => {
     trace: ".forge/graph/trace.json",
     release: ".forge/releases/latest.json",
     rubric: ".forge/gates/design.rubric.json",
+    "evidence-store": ".forge/evidence/evidence.json",
     state: ".forge/state.json",
   };
   for (const [name, rel] of Object.entries(files)) {
@@ -791,6 +823,8 @@ await suite.guard("Ajv validation", async () => {
 });
 
 // ── report ───────────────────────────────────────────────────────────────────
+await evidenceServer.stop();
+suite.check("the fixture evidence server process has exited", !pidAlive(evidenceServer.pid), `pid ${evidenceServer.pid}`);
 const report = suite.report({ forge: VERSION, node: process.version, "Run directory": RUN.replace(`${E2E}/`, "e2e/") });
 writeText(join(RUN, "REPORT.md"), report);
 writeText(join(E2E, "LATEST-local.md"), report);

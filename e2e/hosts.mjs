@@ -4,12 +4,12 @@
 // Writes e2e/runs/<timestamp>-hosts/REPORT.md and e2e/LATEST-hosts.md.
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CLI, E2E, FORGE, Suite, makeRunDir, readJson, shAsync, tail, writeJson, writeText } from "./lib.mjs";
+import { CLI, E2E, FORGE, Suite, makeRunDir, readJson, sh, shAsync, tail, writeJson, writeText } from "./lib.mjs";
 
 const suite = new Suite("agent hosts — Claude Code plugin · Codex MCP · OpenCode MCP");
 const RUN = makeRunDir("hosts");
 const wanted = process.argv.slice(2);
-const enabled = (host) => !wanted.length || wanted.includes(host);
+const enabled = (host) => (!wanted.length && host !== "claude-validate") || wanted.includes(host);
 const FORGE_HOME = join(RUN, "forge-home");
 
 const TASK = `You are testing the forge MCP server. Use ONLY the forge MCP tools — no shell commands and no file edits.
@@ -61,7 +61,7 @@ if (enabled("claude")) {
     const server = (init?.mcp_servers ?? []).find((s) => /forge/.test(s.name));
     suite.check("forge MCP server connects", server?.status === "connected", JSON.stringify(init?.mcp_servers));
     const tools = (init?.tools ?? []).filter((t) => t.startsWith("mcp__") && /forge/.test(t));
-    suite.check("all 26 forge tools are exposed to the model", tools.length === 26, `${tools.length}: ${tools.slice(0, 3).join(", ")}`);
+    suite.check("all 32 forge tools are exposed to the model", tools.length === 32, `${tools.length}: ${tools.slice(0, 3).join(", ")}`);
     const slash = (init?.slash_commands ?? []).filter((c) => /forge/.test(c));
     suite.check("/forge slash command is registered", slash.length > 0, JSON.stringify(slash));
     const agents = (init?.agents ?? []).filter((a) => /conductor/.test(a));
@@ -80,6 +80,70 @@ if (enabled("claude")) {
       writeText(join(dir, "slash-status.txt"), out);
       suite.check(`/${slash[0]} status reports brainstorm passed and vision next`, /brainstorm/i.test(out) && /vision/i.test(out), tail(out, 12));
     }
+  });
+}
+
+// ── Claude Code: a real validation (opt-in: real research, costs ~$1–4) ──────
+if (wanted.includes("claude-validate")) {
+  suite.begin("Claude Code — real /forge:validate run (research, subagents, evidence store, gate)");
+  await suite.guard("claude-validate", async () => {
+    const dir = join(RUN, "claude-validate");
+    mkdirSync(dir, { recursive: true });
+    const env = { ...process.env, FORGE_HOME, FORGE_ROOT: dir };
+    const forge = (...args) => sh(process.execPath, [CLI, ...args], { cwd: dir, env });
+    forge("init", "--name", "ram-guard");
+    forge("skip", "brainstorm", "--reason", "e2e: idea supplied by the user");
+    forge("skip", "vision", "--reason", "e2e: validate-only scenario");
+    const idea =
+      process.env.FORGE_E2E_IDEA ??
+      "A CLI that finds and safely stops orphaned dev servers, file watchers and MCP server processes that eat RAM on developer laptops";
+    const budget = process.env.FORGE_E2E_BUDGET ?? "4";
+    suite.note("idea", idea);
+    const r = await shAsync(
+      "claude",
+      [
+        "-p", `/forge:validate ${idea}`,
+        "--plugin-dir", FORGE,
+        "--model", "sonnet",
+        "--max-budget-usd", budget,
+        "--allowedTools", "mcp__plugin_forge_forge,WebSearch,WebFetch,Task,Agent",
+        "--output-format", "json",
+      ],
+      { cwd: dir, env, timeoutMs: 1_500_000 },
+    );
+    writeText(join(dir, "task-output.json"), r.all);
+    const result = parse(r.out);
+    suite.note("cost / turns", result ? `$${result.total_cost_usd?.toFixed(2)} · ${result.num_turns} turns · ${Math.round((result.duration_ms ?? 0) / 1000)}s` : r.all.slice(0, 300));
+
+    const state = readJson(join(dir, ".forge/state.json"));
+    const gateRuns = state.stages.validate?.gateRuns ?? 0;
+    suite.check("agent ran the validate gate at least once", gateRuns > 0, JSON.stringify(state.stages.validate));
+    const lastGate = gateRuns ? readJson(join(dir, `.forge/gates/validate-${gateRuns}.json`)) : null;
+    const failing = (lastGate?.checks ?? []).filter((c) => c.status === "fail").map((c) => c.id);
+    suite.note("final gate", `run ${gateRuns}: failing = [${failing.join(", ")}]`);
+    // An honest non-go verdict (pivot / kill / needs-experiment) is a correct outcome: the gate
+    // must then stop at validation-verdictGo. Everything else — evidence, schema, scoring — must pass.
+    const decisionOnly = new Set(["human-approval", "validation-verdictGo"]);
+    suite.check(
+      "agent satisfied every evidence, schema and scoring check (only the verdict decision / human approval remain)",
+      failing.every((id) => decisionOnly.has(id)),
+      (lastGate?.checks ?? []).filter((c) => c.status === "fail").map((c) => `${c.id}: ${c.message.split("\n")[0]}`).join(" | "),
+    );
+    for (const name of ["validation", "competitors"]) {
+      const v = forge("artifact", "validate", name);
+      suite.check(`${name} artifact is schema-valid`, v.code === 0, v.all);
+    }
+    const evidence = existsSync(join(dir, ".forge/evidence/evidence.json")) ? readJson(join(dir, ".forge/evidence/evidence.json")).items : [];
+    const verified = evidence.filter((e) => e.verification.status === "verified").length;
+    suite.note("evidence store", `${evidence.length} items, ${verified} verified (${evidence.length ? Math.round((100 * verified) / evidence.length) : 0}%)`);
+    suite.check("agent saved real evidence through the store", evidence.length >= 5, String(evidence.length));
+    const validation = existsSync(join(dir, ".forge/artifacts/validation.json")) ? readJson(join(dir, ".forge/artifacts/validation.json")) : null;
+    if (validation) {
+      const answers = validation.criteria.reduce((acc, c) => ({ ...acc, [c.answer]: (acc[c.answer] ?? 0) + 1 }), {});
+      suite.note("verdict", `${validation.verdict} · score ${validation.score} · answers ${JSON.stringify(answers)}`);
+    }
+    const competitors = existsSync(join(dir, ".forge/artifacts/competitors.json")) ? readJson(join(dir, ".forge/artifacts/competitors.json")).competitors : [];
+    suite.note("competitors", competitors.map((c) => `${c.name} (${c.segment})`).join(", "));
   });
 }
 

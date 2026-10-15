@@ -28,6 +28,16 @@ describe("MCP server", () => {
     expect(client.getInstructions()).toMatch(/Never fabricate evidence/);
   });
 
+  it("serves the shipped playbooks through the guide tool, and only those", async () => {
+    const { call } = await connect(tempDir());
+    const list = JSON.parse((await call("guide")).text) as string[];
+    expect(list).toEqual(expect.arrayContaining(["skills/validate-idea", "rubrics/validation", "rules/process-lifecycle"]));
+    expect((await call("guide", { name: "skills/validate-idea" })).text).toMatch(/evidence_save/);
+    expect((await call("guide", { name: "rubrics/prd.md" })).text).toMatch(/Rubric — PRD/);
+    const traversal = await call("guide", { name: "../../package" });
+    expect(traversal.isError).toBe(true);
+  });
+
   it("drives a stage end to end and returns tool errors instead of throwing", async () => {
     const root = tempDir();
     const { call } = await connect(root);

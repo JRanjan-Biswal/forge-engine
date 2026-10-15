@@ -121,7 +121,8 @@ const TEST_FILE = /\.(test|spec|stories)\.[a-z]+$/i;
 // Written with character classes / \s+ so this file never matches its own patterns.
 const PLACEHOLDER_PATTERNS: RegExp[] = [
   /lorem\s+ipsum/i,
-  /\b(?:fake|dummy|mock|placeholder|sample)[_-]?(?:data|users?|items?|products?|orders?|posts?|records?|responses?)\b/i,
+  // camelCase / snake_case identifiers only — hyphenated names are file names or CSS classes.
+  /\b(?:fake|dummy|mock|placeholder|sample)_?(?:data|users?|items?|products?|orders?|posts?|records?|responses?)\b/i,
   /(?:\/\/|#|\/\*|^\s*\*).*\b(?:fake|dummy|mock|placeholder|hard-?coded)\s+(?:data|values?|users?|response)\b/i,
   /\bnot\s+implemented\b/i,
   /\b(?:TO[D]O|FIX[M]E)\b.*\b(?:replace|implement|fake|mock|placeholder|hardcode)/i,

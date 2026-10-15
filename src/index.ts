@@ -18,3 +18,7 @@ export { VERSION } from "./version.js";
 export { runCommand, withCommandSlot, groupMembers, type CommandResult } from "./core/proc.js";
 export { listProjectProcesses, memorySnapshot, registryTemplate, type ProcessInfo } from "./core/procs.js";
 export { withLock, withLockAt, isStale } from "./core/lock.js";
+export { STANDARD_CRITERIA, scoreValidation, validationTemplate } from "./core/validation.js";
+export { SOURCES, searchEvidence, cachedResults, type SearchResult } from "./evidence/connectors.js";
+export { saveEvidence, loadEvidence, findEvidence, EvidenceItem, EvidenceMismatchError } from "./evidence/store.js";
+export { quoteAppears, normalizeText, htmlToText } from "./evidence/text.js";

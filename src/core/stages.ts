@@ -93,6 +93,8 @@ const STAGE_INPUTS: StageInput[] = [
         value: { config: "gates.validate.minScore" },
       },
       builtin("validation.minEvidence", "Enough distinct cited sources (gates.validate.minEvidence)"),
+      builtin("evidence.registered", "Every cited quote was saved — and checked — through the evidence store"),
+      builtin("evidence.verifiedShare", "Enough cited quotes verified against their source (gates.validate.minVerifiedShare)"),
       {
         type: "metric",
         id: "min-competitors",

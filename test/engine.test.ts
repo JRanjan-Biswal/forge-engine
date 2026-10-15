@@ -46,7 +46,9 @@ describe("pipeline", () => {
     forge.approve("vision", "tester");
     expect((await forge.complete("vision")).passed).toBe(true);
 
-    // Stage 3: validation with evidence + competitors.
+    // Stage 3: validation with evidence + competitors. The fixture evidence is not saved
+    // through the evidence store here (that path is covered in evidence.test.ts).
+    editConfig(root, (text) => text.replace("requireEvidenceStore: true", "requireEvidenceStore: false"));
     forge = new Forge(root);
     forge.start("validate");
     writeArtifact(root, "validation", validation());
