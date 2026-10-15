@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "fingerprint": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "hash": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "files",
+        "hash"
+      ]
+    },
+    "frameworks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "endpoint"
+            ]
+          },
+          "route": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "framework": {
+            "type": "string",
+            "minLength": 1
+          },
+          "graphifyNode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "route",
+          "file",
+          "framework"
+        ]
+      }
+    },
+    "calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "literal": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "literal"
+        ]
+      }
+    },
+    "docs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "path",
+          "title",
+          "bytes"
+        ]
+      }
+    },
+    "graph": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "updated",
+            "unchanged",
+            "skipped",
+            "unavailable",
+            "failed"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ]
+    }
+  },
+  "required": [
+    "version",
+    "generatedAt",
+    "fingerprint",
+    "frameworks",
+    "surfaces",
+    "calls",
+    "docs",
+    "graph"
+  ]
+}

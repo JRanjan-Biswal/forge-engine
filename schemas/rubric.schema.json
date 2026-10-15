@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "judge": {
+      "type": "string"
+    },
+    "producer": {
+      "type": "string"
+    },
+    "criteria": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pass": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "pass"
+        ]
+      }
+    }
+  },
+  "required": [
+    "criteria"
+  ]
+}

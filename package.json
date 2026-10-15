@@ -1,0 +1,83 @@
+{
+  "name": "forge-engine",
+  "version": "0.1.2",
+  "description": "forge — idea → validated → designed → built → verified → shipped. A gated, memory-backed product pipeline for Claude Code, Codex, Gemini, Cursor and any MCP agent.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "forge": "dist/cli.js",
+    "forge-engine": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "agents",
+    "commands",
+    "skills",
+    "rubrics",
+    "hooks",
+    "rules",
+    "stack-packs",
+    "schemas",
+    ".claude-plugin",
+    ".mcp.json",
+    "scripts/mcp.mjs",
+    ".codex-plugin",
+    ".codex-mcp.json",
+    ".agents",
+    "INSTALL.md",
+    "assets"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@12.9.1",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "schemas": "node dist/cli.js schemas export --out schemas",
+    "e2e": "node e2e/run.mjs",
+    "e2e:hosts": "node e2e/hosts.mjs",
+    "release:plugin": "node scripts/release-plugin.mjs"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "mcp",
+    "agents",
+    "multi-agent",
+    "idea-validation",
+    "design-system",
+    "graphify"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JRanjan-Biswal/forge-engine.git"
+  },
+  "homepage": "https://github.com/JRanjan-Biswal/forge-engine#readme",
+  "bugs": {
+    "url": "https://github.com/JRanjan-Biswal/forge-engine/issues"
+  },
+  "author": "JRanjan-Biswal",
+  "publishConfig": {
+    "access": "public"
+  }
+}

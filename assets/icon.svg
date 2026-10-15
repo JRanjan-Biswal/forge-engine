@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="forge-engine">
+  <defs>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD84D"/>
+      <stop offset="0.45" stop-color="#FF8A1F"/>
+      <stop offset="1" stop-color="#E5392A"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF6C2"/>
+      <stop offset="1" stop-color="#FFC233"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4A5163"/>
+      <stop offset="1" stop-color="#232733"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FF8A1F" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#FF8A1F" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- heat glow -->
+  <ellipse cx="256" cy="232" rx="170" ry="150" fill="url(#glow)"/>
+
+  <!-- flame -->
+  <path fill="url(#flame)" d="M256 70 C 306 128, 352 170, 344 232 C 338 280, 302 304, 256 304 C 210 304, 174 280, 168 232 C 162 186, 196 158, 214 116 C 222 152, 238 166, 250 158 C 264 148, 250 108, 256 70 Z"/>
+  <path fill="url(#core)" d="M258 160 C 288 196, 306 218, 300 252 C 296 282, 278 296, 256 296 C 234 296, 216 282, 212 254 C 208 226, 226 208, 236 188 C 241 208, 250 214, 257 208 C 266 200, 255 182, 258 160 Z"/>
+
+  <!-- sparks -->
+  <g fill="#FFC233">
+    <path d="M128 176 l7 15 15 7 -15 7 -7 15 -7 -15 -15 -7 15 -7 Z"/>
+    <path d="M384 148 l6 12 12 6 -12 6 -6 12 -6 -12 -12 -6 12 -6 Z"/>
+    <path d="M398 238 l5 10 10 5 -10 5 -5 10 -5 -10 -10 -5 10 -5 Z"/>
+    <path d="M110 262 l4 9 9 4 -9 4 -4 9 -4 -9 -9 -4 9 -4 Z"/>
+  </g>
+
+  <!-- anvil -->
+  <path fill="url(#steel)" d="M118 312 H398 Q412 312 412 326 V344 Q412 358 398 358 H334 Q304 364 300 392 H212 Q208 364 178 358 H138 Q90 356 54 334 Q44 327 54 322 Q86 312 118 312 Z"/>
+  <path fill="#5B6377" d="M118 312 H398 Q412 312 412 326 V330 H70 Q90 318 118 312 Z" opacity="0.9"/>
+  <path fill="url(#steel)" d="M212 392 H300 L306 414 H206 Z"/>
+  <path fill="url(#steel)" d="M170 414 H342 Q358 414 362 428 L368 446 H144 L150 428 Q154 414 170 414 Z"/>
+</svg>

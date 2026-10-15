@@ -1,0 +1,65 @@
+# Next.js (App Router) — web app, server components, route handlers.
+id: nextjs
+name: Next.js (App Router)
+summary: React web app on the Next.js App Router — server components by default, server actions and route handlers for writes.
+kind: app
+platforms: [web]
+depts: [frontend, web, fullstack]
+language: typescript
+detect:
+  packageDeps: [next]
+commands:
+  build:
+    - run: "{run} build"
+      requires: { script: build }
+  test:
+    # One-shot runners first: a `test` script is often a watch mode.
+    - run: "{exec} vitest run"
+      requires: { dep: vitest }
+    - run: "{exec} jest --ci"
+      requires: { dep: jest }
+    - run: "{run} test"
+      requires: { script: test }
+  e2e:
+    - run: "{exec} playwright test"
+      requires: { dep: "@playwright/test" }
+  lint:
+    - run: "{run} lint"
+      requires: { script: lint }
+    - run: "{exec} tsc --noEmit"
+      requires: { dep: typescript }
+  audit:
+    - run: "{audit}"
+      requires: { file: package.json }
+fixes:
+  build: 'add "build": "next build" to package.json scripts'
+  test: "{pm} add -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom vite-tsconfig-paths, then add vitest.config.mts (https://nextjs.org/docs/app/guides/testing/vitest)"
+  e2e: "{dlx} create-playwright@latest --quiet --lang=ts and set webServer in playwright.config.ts (https://nextjs.org/docs/app/guides/testing/playwright)"
+  lint: 'add "lint": "eslint" to package.json scripts'
+scaffold:
+  command: "{dlx} create-next-app@latest {dir} --ts --app --eslint --tailwind --src-dir --import-alias '@/*' --use-{pm} --yes --disable-git"
+  docs: https://nextjs.org/docs/app/api-reference/cli/create-next-app
+  then: []
+tokens: tailwind
+qa: Playwright (`@playwright/test`) against `next build && next start`; one spec per story, every screen state reachable.
+layout:
+  routes: src/app
+  components: src/components
+  server code: src/server (or src/lib/server, imported only from server components/actions)
+  route handlers: src/app/api/<name>/route.ts
+  tests: next to the code (*.test.tsx) and e2e/ for Playwright
+docs:
+  - https://nextjs.org/docs/app
+  - https://nextjs.org/docs/app/guides/testing
+deploy:
+  - id: vercel
+    name: Vercel
+    bin: vercel
+    auth: vercel whoami
+    login: vercel login
+    preview: vercel deploy --yes
+    production: vercel deploy --prod --yes
+    url: "https://[a-z0-9.-]+\\.vercel\\.app"
+    bypass: { header: x-vercel-protection-bypass, env: VERCEL_AUTOMATION_BYPASS_SECRET }
+    rollback: "vercel rollback (production) — or promote the previous deployment in the dashboard"
+    docs: https://vercel.com/docs/cli/deploy

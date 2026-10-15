@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goals": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "nonGoals": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "stories": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "as": {
+            "type": "string",
+            "minLength": 1
+          },
+          "iWant": {
+            "type": "string",
+            "minLength": 1
+          },
+          "soThat": {
+            "type": "string",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "must",
+              "should",
+              "could",
+              "wont"
+            ]
+          },
+          "mvp": {
+            "default": false,
+            "type": "boolean"
+          },
+          "acceptance": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "given": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "when": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "then": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "given",
+                "when",
+                "then"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "as",
+          "iWant",
+          "soThat",
+          "priority"
+        ]
+      }
+    },
+    "metrics": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "definition": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "definition"
+        ]
+      }
+    },
+    "openQuestions": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "title",
+    "goals",
+    "stories"
+  ]
+}

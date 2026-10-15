@@ -1,0 +1,52 @@
+# Supabase — Postgres with RLS, auth, storage, edge functions.
+id: supabase
+name: Supabase (Postgres + Auth)
+summary: Postgres database with row-level security, auth, storage and edge functions, managed through local migrations and the Supabase CLI.
+kind: data
+platforms: [api]
+depts: [backend, data, database]
+language: sql
+detect:
+  files: [supabase/config.toml]
+commands:
+  test:
+    # pgTAP tests; needs the local stack running (`supabase start`, Docker).
+    - run: "{exec} supabase test db"
+      requires: { file: supabase/tests, dep: supabase }
+    - run: "supabase test db"
+      requires: { file: supabase/tests, bin: supabase }
+  lint:
+    - run: "{exec} supabase db lint --fail-on error"
+      requires: { dep: supabase }
+    - run: "supabase db lint --fail-on error"
+      requires: { bin: supabase }
+fixes:
+  test: "add pgTAP tests in supabase/tests/*.sql (RLS: one test per policy, as each role) — https://supabase.com/docs/guides/database/testing"
+  lint: "{pm} add -D supabase (or install the Supabase CLI) — lint needs the local stack (`supabase start`)"
+scaffold:
+  command: "{dlx} supabase init --workdir {dir}"
+  docs: https://supabase.com/docs/guides/local-development/cli/getting-started
+  then: []
+tokens: none
+qa: pgTAP tests for every RLS policy (as anon, as owner, as another user) with `supabase test db`; app-level e2e through the app stack.
+layout:
+  migrations: supabase/migrations/<timestamp>_<name>.sql (`supabase migration new <name>`)
+  seed (local dev only): supabase/seed.sql
+  database tests: supabase/tests/*.sql (pgTAP)
+  edge functions: supabase/functions/<name>/index.ts
+  generated types: src/types/database.ts (`supabase gen types typescript --local`)
+docs:
+  - https://supabase.com/docs/guides/database/postgres/row-level-security
+  - https://supabase.com/docs/guides/deployment/database-migrations
+  - https://supabase.com/docs/guides/database/testing
+deploy:
+  - id: supabase
+    name: Supabase (database migrations)
+    bin: supabase
+    auth: supabase projects list
+    login: supabase login
+    requires:
+      - { file: supabase/.temp/project-ref, create: "supabase link --project-ref <your project ref>" }
+    production: supabase db push
+    rollback: "migrations are append-only: push a forward migration that reverts the change; restore a backup (PITR) for data loss"
+    docs: https://supabase.com/docs/reference/cli/supabase-db-push

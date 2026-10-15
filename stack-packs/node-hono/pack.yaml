@@ -1,0 +1,63 @@
+# Hono on Node.js (also Bun / Workers) — small typed HTTP API.
+id: node-hono
+name: Hono (Node.js)
+summary: Lightweight typed HTTP API on Hono with zod validation, running on Node.js (portable to Bun, Deno and Workers).
+kind: service
+platforms: [api]
+depts: [backend, api]
+language: typescript
+detect:
+  packageDeps: [hono]
+  # Hono inside a Next.js or Expo app is that app's route layer, not a separate service.
+  unlessDeps: [next, expo]
+commands:
+  build:
+    - run: "{run} build"
+      requires: { script: build }
+    - run: "{exec} tsc --noEmit"
+      requires: { dep: typescript }
+  test:
+    - run: "{exec} vitest run"
+      requires: { dep: vitest }
+    - run: "{run} test"
+      requires: { script: test }
+  lint:
+    - run: "{run} lint"
+      requires: { script: lint }
+  audit:
+    - run: "{audit}"
+      requires: { file: package.json }
+fixes:
+  build: "{pm} add -D typescript and add a tsconfig.json"
+  test: "{pm} add -D vitest and test routes with app.request() (https://hono.dev/docs/guides/testing)"
+  lint: "{pm} add -D eslint typescript-eslint (or biome) and a lint script"
+scaffold:
+  command: "{dlx} create-hono@latest {dir} --template nodejs --pm {pm} --install"
+  docs: https://hono.dev/docs/getting-started/nodejs
+  then:
+    - "{pm} add zod @hono/zod-validator"
+    - "{pm} add -D vitest"
+tokens: none
+qa: Vitest with `app.request()` per route (status codes and error shapes from the contract); `testClient` for typed calls.
+layout:
+  app entry: src/index.ts (serve() from @hono/node-server)
+  app: src/app.ts (export the Hono app so tests import it without starting a server)
+  routes: src/routes/<resource>.ts (one Hono instance per resource, mounted with app.route())
+  validation: zod schemas next to routes, applied with zValidator
+  tests: src/**/*.test.ts
+docs:
+  - https://hono.dev/docs/
+  - https://hono.dev/docs/guides/validation
+  - https://hono.dev/docs/guides/testing
+deploy:
+  - id: fly
+    name: Fly.io
+    bin: fly
+    auth: fly auth whoami
+    login: fly auth login
+    requires:
+      - { file: fly.toml, create: "fly launch --no-deploy (generates fly.toml and a Dockerfile; review both)" }
+    production: fly deploy --remote-only
+    url: "https://[a-z0-9-]+\\.fly\\.dev"
+    rollback: "fly releases --image, then fly deploy --image <previous image>"
+    docs: https://fly.io/docs/flyctl/deploy/

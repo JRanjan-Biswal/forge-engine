@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "tasks": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "storyIds": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          "dept": {
+            "type": "string",
+            "minLength": 1
+          },
+          "agent": {
+            "type": "string"
+          },
+          "deps": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          "files": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptance": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "estimate": {
+            "type": "string"
+          },
+          "status": {
+            "default": "todo",
+            "type": "string",
+            "enum": [
+              "todo",
+              "doing",
+              "done",
+              "blocked"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "dept"
+        ]
+      }
+    }
+  },
+  "required": [
+    "tasks"
+  ]
+}

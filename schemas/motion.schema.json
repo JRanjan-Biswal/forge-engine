@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "specs": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "storyIds": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targets": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transition",
+              "spring",
+              "keyframes",
+              "route",
+              "shared-element",
+              "scroll",
+              "lottie",
+              "rive"
+            ]
+          },
+          "durationToken": {
+            "type": "string"
+          },
+          "easingToken": {
+            "type": "string"
+          },
+          "springToken": {
+            "type": "string"
+          },
+          "keyframes": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              }
+            }
+          },
+          "reducedMotion": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "fade",
+                  "instant"
+                ]
+              },
+              "durationToken": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "platforms": {
+            "default": [
+              "web"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "web",
+                "ios",
+                "android"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "trigger",
+          "targets",
+          "kind"
+        ]
+      }
+    }
+  },
+  "required": [
+    "specs"
+  ]
+}
