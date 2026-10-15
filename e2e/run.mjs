@@ -72,6 +72,8 @@ await suite.guard("packaging", async () => {
     "rubrics/validation.md",
     "agents/validation-scorer.md",
     "commands/validate.md",
+    "hooks/hooks.json",
+    "skills/pro-page-complete/SKILL.md",
     "README.md",
     "LICENSE",
   ]) {
@@ -668,7 +670,7 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 32 tools, each with an object input schema", tools.length === 32 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 37 tools, each with an object input schema", tools.length === 37 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
   let t = await call("guide", { name: "skills/validate-idea" });
   suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));
@@ -699,7 +701,7 @@ await suite.guard("MCP session", async () => {
   t = await call("trace_gaps");
   suite.check("trace_gaps explains that there is no PRD yet", /no PRD/.test(t.text), t.text);
   t = await call("artifact_list");
-  suite.check("artifact_list reports all 15 artifacts", JSON.parse(t.text).length === 15, t.text.slice(0, 120));
+  suite.check("artifact_list reports all 16 artifacts", JSON.parse(t.text).length === 16, t.text.slice(0, 120));
   t = await call("stage_approve", { stage: "vision", note: "user said yes" });
   suite.check("stage_approve records an approval", !t.isError && readJson(join(M, ".forge/state.json")).approvals.vision?.note === "user said yes", t.text);
   t = await call("graph_status");
@@ -711,6 +713,44 @@ await suite.guard("MCP session", async () => {
   await client.close();
   await new Promise((resolve) => setTimeout(resolve, 1_500));
   suite.check("the MCP server process exits when the client disconnects", serverPid !== null && !pidAlive(serverPid), `pid ${serverPid}`);
+});
+
+// ── 6b ───────────────────────────────────────────────────────────────────────
+suite.begin("6b. Existing product: adopt, sync, understand gate, git-hook sync");
+await suite.guard("adopt", async () => {
+  const A = join(RUN, "adopt-app");
+  cpSync(join(E2E, "fixtures", "app"), A, { recursive: true });
+  cpSync(join(E2E, "fixtures", "fixes", "store.js"), join(A, "src", "store.js"));
+  const git = (...args) => sh("git", ["-c", "user.email=e2e@forge.local", "-c", "user.name=forge-e2e", ...args], { cwd: A });
+  git("init", "-q");
+  git("add", "-A");
+  git("commit", "-q", "-m", "initial");
+  const adopted = json(forge(A, "adopt", "--name", "habit-api", "--json"));
+  const ids = adopted?.sync.map.surfaces.map((s) => s.id) ?? [];
+  suite.check("adopt detects the app's 3 raw node:http endpoints", ["endpoint:GET /health", "endpoint:GET /streaks", "endpoint:POST /checkins"].every((id) => ids.includes(id)), ids.join(", "));
+  suite.check("adopt skips greenfield stages and enables the understand stage", JSON.stringify(adopted?.skipped) === '["brainstorm","validate"]' && json(forge(A, "status", "--json"))?.next === "understand", JSON.stringify(adopted?.skipped));
+  suite.note("code graph on adopt", `${adopted?.sync.map.graph.status}${adopted?.sync.map.graph.note ? ` — ${adopted.sync.map.graph.note}` : ""}`);
+  suite.check("a fresh map passes sync --check", forge(A, "sync", "--check").code === 0);
+  writeFileSync(join(A, "src", "copy.js"), `${readFileSync(join(A, "src", "copy.js"), "utf8")}export const extra = "new";\n`);
+  suite.check("a code change makes the map stale (sync --check exits 1)", forge(A, "sync", "--check").code === 1);
+  const hooks = json(forge(A, "hooks", "install", "--json"));
+  suite.check("forge hooks install adds post-commit/post-merge/post-checkout hooks", hooks?.length === 3, JSON.stringify(hooks));
+  git("commit", "-qam", "change copy");
+  suite.check("the post-commit hook re-synced the product map automatically", forge(A, "sync", "--check").code === 0, forge(A, "sync", "--check").all);
+  forge(A, "start", "understand");
+  const model = {
+    summary: "Habit-coach API: check in to habits and read streaks.",
+    stage: "validation",
+    personas: [{ id: "P-1", name: "Busy professional", jobs: ["keep a daily habit streak"] }],
+    features: [{ id: "F-1", name: "Check-ins and streaks", description: "Record a check-in and list streaks", surfaces: ["endpoint:POST /checkins", "endpoint:GET /streaks"], files: ["src/server.js", "src/store.js"], status: "live", evidence: ["src/server.js", "test/checkin.test.js"] }],
+    ignoredSurfaces: [{ surface: "endpoint:GET /health", reason: "infrastructure health check" }],
+  };
+  const file = writeTmp("product-model.json", JSON.stringify(model));
+  forge(A, "artifact", "write", "product", "--file", file);
+  const gate = json(forge(A, "complete", "understand", "--json"));
+  suite.check("understand gate passes with every surface modelled and a fresh map", gate?.passed === true, JSON.stringify(gate?.checks.filter((c) => c.status === "fail")));
+  const answer = json(forge(A, "memory", "query", "which file handles POST checkins?", "--no-graph", "--json"));
+  suite.check("memory answers product questions from the product map", /endpoint POST \/checkins in src\/server\.js/.test(answer?.text ?? ""), answer?.text?.slice(0, 200));
 });
 
 // ── 7 ────────────────────────────────────────────────────────────────────────

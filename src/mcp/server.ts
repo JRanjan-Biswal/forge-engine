@@ -7,6 +7,8 @@ import { z } from "zod";
 import { ARTIFACTS, listArtifacts, loadArtifact, readArtifactText, writeArtifact } from "../core/artifacts.js";
 import { Forge } from "../core/engine.js";
 import { listProjectProcesses, memorySnapshot } from "../core/procs.js";
+import { adoptProject } from "../product/adopt.js";
+import { checkProduct, listPageAudits, loadProductMap, savePageAudit, syncProduct, type SyncResult } from "../product/sync.js";
 import { scoreValidation, validationTemplate } from "../core/validation.js";
 import { SOURCES, searchEvidence } from "../evidence/connectors.js";
 import { loadEvidence, saveEvidence } from "../evidence/store.js";
@@ -30,7 +32,8 @@ Protocol:
 4. Human checkpoints: when a gate waits for approval, show the user a short decision memo and let them run \`forge approve <stage>\` (or call stage_approve only after the user explicitly approves).
 5. Memory: call memory_query before re-deriving past decisions. Record decisions with ledger_add (include why and rejected alternatives). Save memory_save_episode before the session ends.
 6. Never fabricate evidence, data, keys or results. Research with evidence_search (or your own web search), then save every quote you will cite with evidence_save — forge checks the quote against the source and rejects mismatches. Cite only saved evidence. Unknown research answers stay "unknown"; missing credentials become blockers (blocker_add). Start validation from validation_template and compute the score with validation_score.
-7. Protect the machine's RAM: call process_snapshot before starting any server, watcher, test runner or browser and reuse what is already running; prefer one-shot commands to watch mode; run one heavy job at a time; stop every process you start (and its children) as soon as it is no longer needed, and verify it exited before you finish. Never kill processes you did not start.`;
+7. Existing products (brownfield): product_adopt once, then product_sync after code changes — the understand gate fails on a stale map. Read product_map and the product model before changing anything; audit pages with skills/pro-page-complete and record them with page_audit_write.
+8. Protect the machine's RAM: call process_snapshot before starting any server, watcher, test runner or browser and reuse what is already running; prefer one-shot commands to watch mode; run one heavy job at a time; stop every process you start (and its children) as soon as it is no longer needed, and verify it exited before you finish. Never kill processes you did not start.`;
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -53,6 +56,20 @@ const artifactName = z.enum(Object.keys(ARTIFACTS) as [string, ...string[]]);
 /** The installed forge package (dist/mcp/server.js and src/mcp/server.ts are both two levels down). */
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const GUIDE_KINDS = ["skills", "rubrics", "rules"] as const;
+
+function summarizeSync(result: SyncResult) {
+  const pages = result.map.surfaces.filter((s) => s.kind === "page").length;
+  return {
+    frameworks: result.map.frameworks,
+    pages,
+    endpoints: result.map.surfaces.length - pages,
+    calls: result.map.calls.length,
+    docs: result.map.docs.length,
+    graph: result.map.graph,
+    diff: result.diff,
+    staleFeatures: result.staleFeatures,
+  };
+}
 
 export function listGuides(): string[] {
   return GUIDE_KINDS.flatMap((kind) => {
@@ -385,6 +402,57 @@ export function createForgeServer(root?: string): McpServer {
         : (loadArtifact<Validation>(root, "validation")?.criteria ?? (() => { throw new Error("No criteria given and no validation artifact yet"); })());
       return scoreValidation(parsed, forge().config().gates.validate.minScore);
     }),
+  );
+
+  server.registerTool(
+    "product_adopt",
+    {
+      description: "Bring forge into an existing product: init if needed, enable the understand stage, skip greenfield-only stages, and build the product map + graphify code graph.",
+      inputSchema: { name: z.string().optional(), graph: z.boolean().optional().describe("Refresh the graphify code graph (default true)") },
+    },
+    guarded(async ({ name, graph }: { name?: string; graph?: boolean }) => {
+      const result = await adoptProject(forge().root, { name, graph });
+      return { root: result.root, skipped: result.skipped, ...summarizeSync(result.sync) };
+    }),
+  );
+
+  server.registerTool(
+    "product_sync",
+    {
+      description: "Re-scan the code: refresh the product map (pages, endpoints, calls, docs), the graphify code graph and the trace links. Reports added/removed surfaces and product-model features that reference removed code.",
+      inputSchema: { graph: z.boolean().optional().describe("Refresh the graphify code graph (default true)") },
+    },
+    guarded(async ({ graph }: { graph?: boolean }) => summarizeSync(await syncProduct(forge().root, { graph }))),
+  );
+
+  server.registerTool(
+    "product_map",
+    {
+      description: "What forge knows about the product's code: pages and endpoints (with files and graphify nodes), client→endpoint calls, docs, and whether the map is stale.",
+      inputSchema: { kind: z.enum(["page", "endpoint"]).optional(), match: z.string().optional().describe("Filter surfaces whose id or file contains this text") },
+    },
+    guarded(({ kind, match }: { kind?: "page" | "endpoint"; match?: string }) => {
+      const root = forge().root;
+      const map = loadProductMap(root);
+      if (!map) throw new Error("No product map yet — call product_adopt (or product_sync)");
+      const surfaces = map.surfaces.filter((s) => (!kind || s.kind === kind) && (!match || `${s.id} ${s.file}`.includes(match)));
+      return { check: checkProduct(root), frameworks: map.frameworks, graph: map.graph, surfaces, calls: map.calls.filter((c) => !match || `${c.from} ${c.to}`.includes(match)), docs: map.docs };
+    }),
+  );
+
+  server.registerTool(
+    "page_audit_write",
+    {
+      description: "Record a pro-page-complete audit for one page (job, every atom with status/break/fix/must, connections, ideas, robustness, proof). The gap gate fails while audited pages have open must-fix atoms.",
+      inputSchema: { slug: z.string().describe("e.g. settings-billing"), data: z.any() },
+    },
+    guarded(({ slug, data }: { slug: string; data: unknown }) => savePageAudit(forge().root, slug, data)),
+  );
+
+  server.registerTool(
+    "page_audit_list",
+    { description: "All page audits with their open must-fix atoms.", inputSchema: {} },
+    guarded(() => listPageAudits(forge().root)),
   );
 
   server.registerTool(

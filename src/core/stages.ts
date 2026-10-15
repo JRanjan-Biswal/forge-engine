@@ -43,6 +43,19 @@ const builtin = (name: string, description: string): GateCheckInput => ({
 
 const STAGE_INPUTS: StageInput[] = [
   {
+    id: "understand",
+    title: "Understand the existing product",
+    department: "product",
+    pack: "adopt",
+    outputs: ["product"],
+    summary: "Map every page and endpoint, model features and gaps from the code (brownfield projects)",
+    gate: [
+      artifact("product"),
+      builtin("product.mapFresh", "The product map matches the current code (run forge sync)"),
+      builtin("product.coverage", "Every page and endpoint in the product map belongs to a feature or is ignored with a reason"),
+    ],
+  },
+  {
     id: "brainstorm",
     title: "Brainstorm",
     department: "strategy",
@@ -218,6 +231,7 @@ const STAGE_INPUTS: StageInput[] = [
       artifact("trace"),
       builtin("trace.coverage", "Trace coverage meets gates.gap.minCoverage"),
       builtin("gap.noPlaceholders", "No placeholder, fake or mock data in product code"),
+      builtin("pages.noMustFix", "Every audited page has no open must-fix atoms (pro-page-complete)"),
     ],
   },
   {

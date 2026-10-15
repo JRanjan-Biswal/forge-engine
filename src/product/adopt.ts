@@ -1,0 +1,53 @@
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { Forge } from "../core/engine.js";
+import { layout } from "../core/paths.js";
+import { syncProduct, type SyncResult } from "./sync.js";
+
+/**
+ * Bring forge into a product that already exists (brownfield): initialise, enable the
+ * `adopt` pack (adds the `understand` stage), skip greenfield-only stages with a
+ * recorded reason, and build the first product map + code graph.
+ */
+
+const GREENFIELD_ONLY = ["brainstorm", "validate"] as const;
+
+export interface AdoptResult {
+  root: string;
+  initialized: boolean;
+  skipped: string[];
+  sync: SyncResult;
+}
+
+function enableAdoptPack(root: string): void {
+  const file = layout(root).config;
+  const text = readFileSync(file, "utf8");
+  const match = /^packs:\s*\[(.*?)\]/m.exec(text);
+  if (match) {
+    const packs = (match[1] ?? "").split(",").map((p) => p.trim()).filter(Boolean);
+    if (packs.includes("adopt")) return;
+    writeFileSync(file, text.replace(match[0], `packs: [${[...packs, "adopt"].join(", ")}]`));
+  } else {
+    writeFileSync(file, `${text.trimEnd()}\npacks: [adopt]\n`);
+  }
+}
+
+export async function adoptProject(rootInput: string, options: { name?: string; graph?: boolean } = {}): Promise<AdoptResult> {
+  const root = resolve(rootInput);
+  const initialized = !existsSync(layout(root).state);
+  if (initialized) Forge.init(root, { name: options.name });
+  enableAdoptPack(root);
+
+  const forge = new Forge(root);
+  const state = forge.readState();
+  const skipped: string[] = [];
+  for (const id of GREENFIELD_ONLY) {
+    const status = state.stages[id]?.status;
+    if (status === "pending" || status === "active" || status === "failed") {
+      forge.skip(id, "adopted an existing product (forge adopt): greenfield-only stage", "forge adopt");
+      skipped.push(id);
+    }
+  }
+  const sync = await syncProduct(root, { graph: options.graph });
+  return { root, initialized, skipped, sync };
+}

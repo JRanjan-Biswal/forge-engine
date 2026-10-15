@@ -3,12 +3,13 @@ import { Forge } from "../core/engine.js";
 import { readLedger } from "../core/ledger.js";
 import { errorMessage } from "../core/util.js";
 import { computeGaps } from "../trace/trace.js";
+import { listPageAudits, loadProductMap } from "../product/sync.js";
 import { listEpisodes } from "./episodes.js";
 import { graphQuery, type GraphResult } from "./graphify.js";
 import { listLearnings } from "./learnings.js";
 
 export type Intent = "status" | "why" | "coverage" | "code" | "history" | "spec";
-export type MemorySource = "state" | "ledger" | "episode" | "learning" | "artifact" | "gaps" | "graph";
+export type MemorySource = "state" | "ledger" | "episode" | "learning" | "artifact" | "gaps" | "graph" | "product";
 
 const INTENTS: ReadonlyArray<readonly [Intent, RegExp]> = [
   ["why", /\b(why|decid\w*|decision|chose|choose|chosen|rejected|alternatives?|trade-?offs?)\b/i],
@@ -27,9 +28,9 @@ const BOOST: Record<Intent, Partial<Record<MemorySource, number>>> = {
   why: { ledger: 3 },
   coverage: { gaps: 3, artifact: 1.5 },
   status: { state: 3, ledger: 1.5 },
-  code: { graph: 3 },
+  code: { graph: 3, product: 2 },
   history: { episode: 3, learning: 2 },
-  spec: { artifact: 3 },
+  spec: { artifact: 3, product: 1.5 },
 };
 
 const STOPWORDS = new Set(
@@ -71,11 +72,12 @@ export interface MemoryAnswer {
 }
 
 /** Array fields that hold individually addressable items in each artifact. */
-const ITEM_FIELDS = ["ideas", "criteria", "competitors", "personas", "stories", "screens", "specs", "tasks", "findings", "checks"];
+const ITEM_FIELDS = ["ideas", "criteria", "competitors", "personas", "stories", "screens", "specs", "tasks", "findings", "checks", "features", "gaps"];
 
 function artifactDocs(root: string): Doc[] {
   const docs: Doc[] = [];
   for (const def of Object.values(ARTIFACTS)) {
+    if (def.name === "trace") continue; // summarised by the gap report and product docs; raw JSON only adds noise
     let data: unknown;
     try {
       data = loadArtifact<unknown>(root, def.name);
@@ -102,6 +104,26 @@ function artifactDocs(root: string): Doc[] {
     if (!itemized || Object.keys(rest).length) {
       docs.push({ source: "artifact", ref: def.name, text: JSON.stringify(rest).slice(0, 4000) });
     }
+  }
+  return docs;
+}
+
+/** The product map (pages, endpoints, calls) and page audits of an adopted product. */
+function productDocs(root: string): Doc[] {
+  const docs: Doc[] = [];
+  try {
+    const map = loadProductMap(root);
+    for (const s of map?.surfaces ?? []) {
+      const callers = (map?.calls ?? []).filter((c) => c.to === s.id).map((c) => c.from);
+      const label = `${s.kind} ${s.method ? `${s.method} ` : ""}${s.route}`;
+      docs.push({ source: "product", ref: s.id, text: `${label} in ${s.file} (${s.framework})${callers.length ? `; called from ${callers.join(", ")}` : ""}` });
+    }
+    for (const audit of listPageAudits(root)) {
+      const open = audit.atoms.filter((a) => a.must && a.status !== "live").map((a) => `${a.label} (${a.break ?? a.status})`);
+      docs.push({ source: "product", ref: `page-audit ${audit.slug}`, text: `page ${audit.page}: job "${audit.job}" for ${audit.who}; ${audit.atoms.length} atoms; open must-fix: ${open.join(", ") || "none"}` });
+    }
+  } catch {
+    // an invalid map is reported by product_sync / the understand gate
   }
   return docs;
 }
@@ -154,6 +176,7 @@ export async function queryMemory(
   for (const episode of episodes) docs.push({ source: "episode", ref: episode.file, text: episode.text.slice(0, 3000) });
   for (const learning of listLearnings(root)) docs.push({ source: "learning", ref: `${learning.scope} learnings`, text: learning.text });
   docs.push(...artifactDocs(root));
+  docs.push(...productDocs(root));
   if (intent === "coverage") docs.push(gapsDoc(root));
 
   // Some questions are answered by one layer whatever the word overlap: "what's next?" by

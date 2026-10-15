@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { z } from "zod";
 import * as S from "../schemas/artifacts.js";
+import { ProductModel } from "../schemas/product.js";
 import { assertNoSecrets } from "../memory/secrets.js";
 import { readJson, writeJsonAtomic, writeTextAtomic } from "./paths.js";
 import { errorMessage, formatIssues } from "./util.js";
@@ -31,6 +32,7 @@ const defs: ArtifactDef[] = [
   { name: "trace", path: ".forge/graph/trace.json", format: "json", schema: S.Trace, description: "Traceability graph: story → screen → code → test → release" },
   { name: "release", path: ".forge/releases/latest.json", format: "json", schema: S.Release, description: "Latest release record with checks and rollback plan" },
   { name: "launch", path: ".forge/artifacts/launch.md", format: "text", description: "Launch plan and kit" },
+  { name: "product", path: ".forge/product/model.json", format: "json", schema: ProductModel, description: "Model of an existing product: personas, features linked to pages/endpoints/files, gaps, facts vs assumptions" },
 ];
 
 export const ARTIFACTS: Readonly<Record<string, ArtifactDef>> = Object.fromEntries(

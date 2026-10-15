@@ -89,6 +89,22 @@ Gemini CLI / Cursor (`settings.json` / `mcp.json`):
 
 Check your host's MCP documentation for the exact file. The server's instructions teach the agent the protocol: status → start → write artifacts → complete → record decisions → save an episode.
 
+## Existing products (brownfield)
+
+Most teams are mid-build, not starting from scratch. forge can adopt a product that already exists and keep an always-current understanding of it:
+
+```bash
+forge adopt            # init + product map + graphify code graph; adds the "understand" stage
+forge hooks install    # re-sync the map after every commit / merge / checkout
+forge product pages    # what forge found: pages, endpoints, calls, docs
+```
+
+- **Product map** — every page and API endpoint (Next.js app/pages, Expo Router, SvelteKit, Nuxt, React Router, Express/Hono/Fastify, FastAPI/Flask, plain `node:http`), which code calls which endpoint, all docs, each linked to its graphify node and into the traceability graph.
+- **Product model** — personas and features, each tied to real pages, endpoints and files with a verified status, gaps, and facts kept apart from assumptions. The `understand` gate fails until **every** page and endpoint is accounted for and the map is fresh.
+- **Always in sync** — a fingerprint detects code changes instantly; git hooks and a Claude Code SessionStart hook keep the map current; `forge sync` reports added/removed surfaces and features that reference removed code.
+- **`/forge:productize-vision`** — the product vision for what is actually built: facts vs assumptions, 3–5 options, one chosen, gaps to close, next move.
+- **`/forge:page <route>`** — pro-page-complete: inventory every atom on a page, trace API → DTO → mapper → render, fix the musts, prove them; the gap gate holds open musts.
+
 ## Evidence engine (validate stage)
 
 Validation is only as good as its sources, so forge **checks quotes instead of trusting them**:

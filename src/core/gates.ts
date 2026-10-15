@@ -15,6 +15,8 @@ import {
 } from "../schemas/artifacts.js";
 import type { CheckResult, GateCheck, GateResult, NumberOrConfig, State } from "../schemas/runtime.js";
 import { findEvidence, loadEvidence } from "../evidence/store.js";
+import { checkProduct, listPageAudits, loadProductMap } from "../product/sync.js";
+import type { ProductModel } from "../schemas/product.js";
 import { listEpisodes } from "../memory/episodes.js";
 import { redactSecrets } from "../memory/secrets.js";
 import { computeGaps, scanPlaceholders } from "../trace/trace.js";
@@ -337,6 +339,33 @@ export const BUILTINS: Record<string, Builtin> = {
     return share >= min
       ? pass(`${verified}/${cited.length} cited quotes verified against their source (${pct(share)})`)
       : fail(`only ${verified}/${cited.length} cited quotes verified (${pct(share)}), needs ${pct(min)} — prefer sources whose pages can be fetched`);
+  },
+
+  "product.mapFresh": (ctx) => {
+    const check = checkProduct(ctx.root);
+    return check.stale ? fail(check.reason) : pass(`product map ${check.reason}`);
+  },
+
+  "product.coverage": (ctx) => {
+    const model = need<ProductModel>(ctx, "product");
+    const map = loadProductMap(ctx.root);
+    if (!map) return fail("no product map — run `forge sync`");
+    const known = new Set(map.surfaces.map((s) => s.id));
+    const covered = new Set([...model.features.flatMap((f) => f.surfaces), ...model.ignoredSurfaces.map((i) => i.surface)]);
+    const unknown = [...covered].filter((id) => !known.has(id));
+    if (unknown.length) return fail(`the model references surfaces not in the product map: ${unknown.slice(0, 8).join(", ")}`);
+    const missing = map.surfaces.filter((s) => !covered.has(s.id)).map((s) => s.id);
+    const shown = missing.slice(0, 10).concat(missing.length > 10 ? [`…and ${missing.length - 10} more`] : []);
+    return listOrPass(shown, `all ${map.surfaces.length} pages/endpoints are accounted for`, "surfaces not yet in any feature (or ignored with a reason)");
+  },
+
+  "pages.noMustFix": (ctx) => {
+    const audits = listPageAudits(ctx.root);
+    if (!audits.length) return pass("no page audits recorded");
+    const open = audits.flatMap((audit) =>
+      audit.atoms.filter((atom) => atom.must && atom.status !== "live").map((atom) => `${audit.page} → ${atom.label} (${atom.status})`),
+    );
+    return listOrPass(open.slice(0, 10), `${audits.length} audited page(s), no open must-fix atoms`, "open must-fix atoms");
   },
 
   "validation.verdictGo": (ctx) => {

@@ -2,10 +2,12 @@ import type { z } from "zod";
 import * as artifacts from "./artifacts.js";
 import * as runtime from "./runtime.js";
 import { EvidenceStore } from "../evidence/store.js";
+import * as product from "./product.js";
 
 export * from "./common.js";
 export * from "./artifacts.js";
 export * from "./runtime.js";
+export * from "./product.js";
 
 /** Every published schema, keyed by the file name used by `forge schemas export`. */
 export const PUBLISHED_SCHEMAS: Record<string, z.ZodType> = {
@@ -27,4 +29,7 @@ export const PUBLISHED_SCHEMAS: Record<string, z.ZodType> = {
   "gate-result": runtime.GateResult,
   "ledger-entry": runtime.LedgerEntry,
   "evidence-store": EvidenceStore,
+  "product-map": product.ProductMap,
+  "product-model": product.ProductModel,
+  "page-audit": product.PageAudit,
 };

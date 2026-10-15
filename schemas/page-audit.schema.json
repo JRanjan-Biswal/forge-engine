@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "page": {
+      "type": "string",
+      "minLength": 1
+    },
+    "surface": {
+      "type": "string"
+    },
+    "who": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trust": {
+      "type": "string",
+      "minLength": 1
+    },
+    "antiGoal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "atoms": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "class": {
+            "type": "string",
+            "enum": [
+              "chrome",
+              "navigation",
+              "action",
+              "input",
+              "content",
+              "people",
+              "media",
+              "conversation",
+              "state",
+              "feedback",
+              "permission"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "tab",
+              "button",
+              "input",
+              "link",
+              "card",
+              "text",
+              "media",
+              "empty",
+              "other"
+            ]
+          },
+          "job": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "string",
+            "minLength": 1
+          },
+          "clickPath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "live",
+              "placeholder",
+              "dead",
+              "missing-join",
+              "permission-wrong",
+              "unknown"
+            ]
+          },
+          "break": {
+            "type": "string",
+            "enum": [
+              "dead-control",
+              "orphan-url",
+              "placeholder-copy",
+              "dropped-field",
+              "mapper-lie",
+              "mock-leftover",
+              "permission-lie",
+              "unconnected"
+            ]
+          },
+          "trace": {
+            "type": "string"
+          },
+          "fix": {
+            "type": "string"
+          },
+          "must": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "label",
+          "class",
+          "type",
+          "job",
+          "data",
+          "clickPath",
+          "status"
+        ]
+      }
+    },
+    "connections": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "already-exists",
+              "small-join",
+              "idea"
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "kind"
+        ]
+      }
+    },
+    "ideas": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "idea": {
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1
+          },
+          "effort": {
+            "type": "string",
+            "enum": [
+              "S",
+              "M",
+              "L"
+            ]
+          }
+        },
+        "required": [
+          "idea",
+          "why",
+          "effort"
+        ]
+      }
+    },
+    "robustness": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "empty": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "gap",
+            "n/a"
+          ]
+        },
+        "error": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "gap",
+            "n/a"
+          ]
+        },
+        "loading": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "gap",
+            "n/a"
+          ]
+        },
+        "permissions": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "gap",
+            "n/a"
+          ]
+        },
+        "stale": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "gap",
+            "n/a"
+          ]
+        },
+        "smallScreen": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "gap",
+            "n/a"
+          ]
+        },
+        "media": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "gap",
+            "n/a"
+          ]
+        },
+        "destructive": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "gap",
+            "n/a"
+          ]
+        }
+      }
+    },
+    "proof": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "auditedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    }
+  },
+  "required": [
+    "page",
+    "who",
+    "job",
+    "trust",
+    "antiGoal",
+    "atoms",
+    "auditedAt"
+  ]
+}

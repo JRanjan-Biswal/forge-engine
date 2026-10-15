@@ -262,11 +262,13 @@ export const Trace = z.object({
         label: z.string().optional(),
         /** Node id in graphify-out/graph.json, linking product nodes to the code graph. */
         graphifyNode: z.string().optional(),
+        /** Set by generators (e.g. "product-map") so they can refresh their own part of the graph. */
+        origin: z.string().optional(),
       }),
     )
     .default([]),
   edges: z
-    .array(z.object({ from: z.string().min(1), to: z.string().min(1), type: TraceEdgeType }))
+    .array(z.object({ from: z.string().min(1), to: z.string().min(1), type: TraceEdgeType, origin: z.string().optional() }))
     .default([]),
 });
 export type Trace = z.infer<typeof Trace>;

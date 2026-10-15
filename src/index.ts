@@ -22,3 +22,6 @@ export { STANDARD_CRITERIA, scoreValidation, validationTemplate } from "./core/v
 export { SOURCES, searchEvidence, cachedResults, type SearchResult } from "./evidence/connectors.js";
 export { saveEvidence, loadEvidence, findEvidence, EvidenceItem, EvidenceMismatchError } from "./evidence/store.js";
 export { quoteAppears, normalizeText, htmlToText } from "./evidence/text.js";
+export { adoptProject } from "./product/adopt.js";
+export { syncProduct, checkProduct, loadProductMap, savePageAudit, listPageAudits, installGitHooks } from "./product/sync.js";
+export { extractProduct, listProjectFiles, fingerprint } from "./product/scan.js";

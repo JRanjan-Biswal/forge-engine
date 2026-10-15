@@ -31,6 +31,9 @@
           },
           "graphifyNode": {
             "type": "string"
+          },
+          "origin": {
+            "type": "string"
           }
         },
         "required": [
@@ -64,6 +67,9 @@
               "releasedIn",
               "uses"
             ]
+          },
+          "origin": {
+            "type": "string"
           }
         },
         "required": [

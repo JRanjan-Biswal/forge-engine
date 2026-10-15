@@ -10,6 +10,8 @@ import { gateChecks } from "./core/gates.js";
 import { appendLedger, readLedger } from "./core/ledger.js";
 import { findRoot } from "./core/paths.js";
 import { listProjectProcesses, memorySnapshot, registryTemplate } from "./core/procs.js";
+import { adoptProject } from "./product/adopt.js";
+import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
 import { scoreValidation, validationTemplate } from "./core/validation.js";
 import { searchEvidence } from "./evidence/connectors.js";
 import { loadEvidence, saveEvidence } from "./evidence/store.js";
@@ -52,6 +54,14 @@ Artifacts
   artifact read <name>
   artifact write <name> [--file <path>]   (reads stdin when --file is omitted)
   artifact validate <name>
+
+Existing products (brownfield)
+  adopt [--name <n>] [--no-graph]      init + build the product map and code graph; adds the understand stage
+  sync [--no-graph] [--quiet]          refresh product map, graphify graph and trace links from the code
+  sync --check                         is the product map stale? (exit 1 when stale)
+  product [pages|endpoints|calls|docs] what forge knows about the product
+  pages [<slug>]                       pro-page-complete audits and open must-fix atoms
+  hooks install                        git hooks that run "forge sync" after commit / merge / checkout
 
 Evidence & validation
   evidence search <source> "<query>" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit
@@ -102,6 +112,9 @@ const OPTIONS = {
   url: { type: "string" },
   quote: { type: "string" },
   fresh: { type: "boolean" },
+  check: { type: "boolean" },
+  hook: { type: "boolean" },
+  quiet: { type: "boolean" },
 } as const;
 
 export interface CliIO {
@@ -486,6 +499,92 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
           return 0;
         }
         throw new UsageError(`Unknown validate subcommand "${sub}"`);
+      }
+
+      case "adopt": {
+        const result = await adoptProject(resolve(opts.root ?? process.cwd()), { name: opts.name, graph: !opts["no-graph"] });
+        print(result, () => {
+          const map = result.sync.map;
+          const pages = map.surfaces.filter((s) => s.kind === "page").length;
+          io.out(`Adopted ${result.root}${result.initialized ? " (initialised)" : ""}`);
+          io.out(`  frameworks: ${map.frameworks.join(", ") || "none detected"}`);
+          io.out(`  ${pages} pages · ${map.surfaces.length - pages} endpoints · ${map.calls.length} client→endpoint calls · ${map.docs.length} docs`);
+          io.out(`  code graph: ${map.graph.status}${map.graph.note ? ` (${map.graph.note})` : ""}`);
+          if (result.skipped.length) io.out(`  skipped greenfield stages: ${result.skipped.join(", ")}`);
+          io.out("\nNext: /forge:understand (or follow guide skills/understand-product) to write the product model, then `forge complete understand`.");
+        });
+        return 0;
+      }
+
+      case "sync": {
+        const root = forge().root;
+        if (opts.check) {
+          const check = checkProduct(root);
+          if (opts.hook) {
+            // SessionStart hook: speak only for adopted projects whose map went stale.
+            if (check.mapExists && check.stale) io.out(`forge: the product map is stale — ${check.reason}. Call product_sync before relying on product memory.`);
+            return 0;
+          }
+          print(check, () => io.out(check.stale ? `stale: ${check.reason}` : `fresh: ${check.reason}`));
+          return check.stale ? 1 : 0;
+        }
+        const result = await syncProduct(root, { graph: !opts["no-graph"] });
+        if (!opts.quiet) {
+          print(result, () => {
+            const map = result.map;
+            const pages = map.surfaces.filter((s) => s.kind === "page").length;
+            io.out(`Synced: ${pages} pages · ${map.surfaces.length - pages} endpoints · ${map.calls.length} calls · graph ${map.graph.status}`);
+            if (result.diff.added.length) io.out(`  + ${result.diff.added.join(", ")}`);
+            if (result.diff.removed.length) io.out(`  - ${result.diff.removed.join(", ")}`);
+            for (const stale of result.staleFeatures) io.out(`  ! ${stale.feature} references removed: ${stale.missing.join(", ")}`);
+          });
+        }
+        return 0;
+      }
+
+      case "product": {
+        const root = forge().root;
+        const map = loadProductMap(root);
+        if (!map) throw new Error("No product map yet — run `forge adopt` or `forge sync`");
+        const view = args[0] ?? "summary";
+        if (view === "pages" || view === "endpoints") {
+          const list = map.surfaces.filter((s) => s.kind === (view === "pages" ? "page" : "endpoint"));
+          print(list, () => list.forEach((s) => io.out(`  ${s.id.padEnd(48)} ${s.file}${s.graphifyNode ? "  ◆" : ""}`)));
+        } else if (view === "calls") {
+          print(map.calls, () => map.calls.forEach((c) => io.out(`  ${c.from} → ${c.to}`)));
+        } else if (view === "docs") {
+          print(map.docs, () => map.docs.forEach((d) => io.out(`  ${d.path} — ${d.title}`)));
+        } else {
+          const check = checkProduct(root);
+          const pages = map.surfaces.filter((s) => s.kind === "page").length;
+          print({ ...map, check }, () => {
+            io.out(`frameworks: ${map.frameworks.join(", ") || "none detected"} · synced ${map.generatedAt} · ${check.stale ? "STALE" : "fresh"}`);
+            io.out(`${pages} pages · ${map.surfaces.length - pages} endpoints · ${map.calls.length} calls · ${map.docs.length} docs · graph ${map.graph.status}`);
+          });
+        }
+        return 0;
+      }
+
+      case "pages": {
+        const audits = listPageAudits(forge().root);
+        const chosen = args[0] ? audits.filter((a) => a.slug === args[0]) : audits;
+        if (args[0] && !chosen.length) throw new Error(`No page audit "${args[0]}"`);
+        print(chosen, () => {
+          if (!chosen.length) io.out("No page audits yet — run /forge:page <route> (pro-page-complete).");
+          for (const audit of chosen) {
+            const open = audit.atoms.filter((a) => a.must && a.status !== "live");
+            io.out(`${audit.slug.padEnd(24)} ${audit.page} · ${audit.atoms.length} atoms · ${open.length} open must-fix`);
+            if (args[0]) for (const atom of open) io.out(`    ✗ ${atom.label} — ${atom.break ?? atom.status}${atom.fix ? ` → ${atom.fix}` : ""}`);
+          }
+        });
+        return 0;
+      }
+
+      case "hooks": {
+        if (args[0] !== "install") throw new UsageError("Usage: forge hooks install");
+        const installed = installGitHooks(forge().root);
+        print(installed, () => io.out(installed.length ? `Installed: ${installed.join(", ")}` : "forge git hooks already installed"));
+        return 0;
       }
 
       case "procs": {

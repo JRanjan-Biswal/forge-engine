@@ -19,6 +19,7 @@
     "commands",
     "skills",
     "rubrics",
+    "hooks",
     "rules",
     "schemas",
     ".claude-plugin",
