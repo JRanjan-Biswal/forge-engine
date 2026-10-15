@@ -140,7 +140,7 @@ export async function withCommandSlot(root, options, fn) {
     let notified = false;
     for (;;) {
         for (let slot = 0; slot < options.max; slot++) {
-            const file = join(dir, `.command-slot-${slot}.lock`);
+            const file = join(dir, ".command-slot-".concat(slot, ".lock"));
             if (tryAcquire(file, options.task)) {
                 try {
                     return await fn();
@@ -151,7 +151,7 @@ export async function withCommandSlot(root, options, fn) {
             }
         }
         if (Date.now() > deadline) {
-            throw new Error(`All ${options.max} command slot(s) for this project stayed busy for ${Math.round(options.waitMs / 1000)}s ` +
+            throw new Error("All ".concat(options.max, " command slot(s) for this project stayed busy for ", Math.round(options.waitMs / 1000), "s ") +
                 "(another agent is running a build or test). Raise resources.commandWaitMs or check `forge procs`.");
         }
         if (!notified) {

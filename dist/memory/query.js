@@ -70,7 +70,7 @@ function artifactDocs(root) {
             itemized = true;
             items.forEach((item, index) => {
                 const id = item.id ?? item.name ?? String(index);
-                docs.push({ source: "artifact", ref: `${def.name}#${id}`, text: JSON.stringify(item) });
+                docs.push({ source: "artifact", ref: "".concat(def.name, "#", id), text: JSON.stringify(item) });
             });
         }
         const rest = Object.fromEntries(Object.entries(record).filter(([key]) => !ITEM_FIELDS.includes(key)));
@@ -87,12 +87,12 @@ function productDocs(root) {
         const map = loadProductMap(root);
         for (const s of map?.surfaces ?? []) {
             const callers = (map?.calls ?? []).filter((c) => c.to === s.id).map((c) => c.from);
-            const label = `${s.kind} ${s.method ? `${s.method} ` : ""}${s.route}`;
-            docs.push({ source: "product", ref: s.id, text: `${label} in ${s.file} (${s.framework})${callers.length ? `; called from ${callers.join(", ")}` : ""}` });
+            const label = "".concat(s.kind, " ", s.method ? "".concat(s.method, " ") : "", s.route);
+            docs.push({ source: "product", ref: s.id, text: "".concat(label, " in ", s.file, " (", s.framework, ")", callers.length ? "; called from ".concat(callers.join(", ")) : "") });
         }
         for (const audit of listPageAudits(root)) {
-            const open = audit.atoms.filter((a) => a.must && a.status !== "live").map((a) => `${a.label} (${a.break ?? a.status})`);
-            docs.push({ source: "product", ref: `page-audit ${audit.slug}`, text: `page ${audit.page}: job "${audit.job}" for ${audit.who}; ${audit.atoms.length} atoms; open must-fix: ${open.join(", ") || "none"}` });
+            const open = audit.atoms.filter((a) => a.must && a.status !== "live").map((a) => "".concat(a.label, " (", a.break ?? a.status, ")"));
+            docs.push({ source: "product", ref: "page-audit ".concat(audit.slug), text: "page ".concat(audit.page, ": job \"", audit.job, "\" for ", audit.who, "; ", audit.atoms.length, " atoms; open must-fix: ", open.join(", ") || "none") });
         }
     }
     catch {
@@ -103,12 +103,12 @@ function productDocs(root) {
 function stateDoc(root) {
     try {
         const status = new Forge(root).status();
-        const lines = status.stages.map((stage) => `${stage.id}: ${stage.status}`);
-        const blockers = status.blockers.map((blocker) => `${blocker.id} ${blocker.need}`);
+        const lines = status.stages.map((stage) => "".concat(stage.id, ": ", stage.status));
+        const blockers = status.blockers.map((blocker) => "".concat(blocker.id, " ", blocker.need));
         return {
             source: "state",
             ref: "state.json",
-            text: `project ${status.project}; next stage: ${status.next ?? "none"}; stages — ${lines.join(", ")}${blockers.length ? `; blockers — ${blockers.join(", ")}` : ""}`,
+            text: "project ".concat(status.project, "; next stage: ", status.next ?? "none", "; stages — ", lines.join(", "), blockers.length ? "; blockers — ".concat(blockers.join(", ")) : ""),
         };
     }
     catch (error) {
@@ -117,11 +117,11 @@ function stateDoc(root) {
 }
 function gapsDoc(root) {
     const report = computeGaps(root);
-    const gaps = report.gaps.map((gap) => `${gap.story} missing ${gap.missing}`).join(", ");
+    const gaps = report.gaps.map((gap) => "".concat(gap.story, " missing ", gap.missing)).join(", ");
     return {
         source: "gaps",
         ref: "trace/gaps",
-        text: `coverage ${Math.round(report.coverage * 100)}% (${report.satisfied}/${report.required})${gaps ? `; gaps: ${gaps}` : ""}${report.notes.length ? `; notes: ${report.notes.join("; ")}` : ""}`,
+        text: "coverage ".concat(Math.round(report.coverage * 100), "% (", report.satisfied, "/", report.required, ")", gaps ? "; gaps: ".concat(gaps) : "", report.notes.length ? "; notes: ".concat(report.notes.join("; ")) : ""),
     };
 }
 /**
@@ -135,14 +135,14 @@ export async function queryMemory(root, question, options = {}) {
     const budgetTokens = options.budgetTokens ?? 1500;
     const docs = [stateDoc(root)];
     for (const entry of readLedger(root)) {
-        const parts = [`${entry.summary}`, entry.why ? `why: ${entry.why}` : "", entry.rejected.length ? `rejected: ${entry.rejected.join("; ")}` : ""];
-        docs.push({ source: "ledger", ref: `${entry.id}${entry.stage ? ` (${entry.stage})` : ""}`, text: parts.filter(Boolean).join(" — ") });
+        const parts = ["".concat(entry.summary), entry.why ? "why: ".concat(entry.why) : "", entry.rejected.length ? "rejected: ".concat(entry.rejected.join("; ")) : ""];
+        docs.push({ source: "ledger", ref: "".concat(entry.id, entry.stage ? " (".concat(entry.stage, ")") : ""), text: parts.filter(Boolean).join(" — ") });
     }
     const episodes = listEpisodes(root);
     for (const episode of episodes)
         docs.push({ source: "episode", ref: episode.file, text: episode.text.slice(0, 3000) });
     for (const learning of listLearnings(root))
-        docs.push({ source: "learning", ref: `${learning.scope} learnings`, text: learning.text });
+        docs.push({ source: "learning", ref: "".concat(learning.scope, " learnings"), text: learning.text });
     docs.push(...artifactDocs(root));
     docs.push(...productDocs(root));
     if (intent === "coverage")
@@ -160,7 +160,7 @@ export async function queryMemory(root, question, options = {}) {
         return 0;
     };
     const hits = docs
-        .map((doc) => ({ ...doc, score: relevance(`${doc.ref} ${doc.text}`, queryTerms) * (BOOST[intent][doc.source] ?? 1) + pinned(doc) }))
+        .map((doc) => ({ ...doc, score: relevance("".concat(doc.ref, " ", doc.text), queryTerms) * (BOOST[intent][doc.source] ?? 1) + pinned(doc) }))
         .filter((hit) => hit.score > 0)
         .sort((a, b) => b.score - a.score);
     let graph;
@@ -174,11 +174,11 @@ export async function queryMemory(root, question, options = {}) {
     const lines = [];
     let used = 0;
     for (const hit of hits) {
-        const line = `[${hit.source} ${hit.ref}] ${hit.text}`;
+        const line = "[".concat(hit.source, " ", hit.ref, "] ", hit.text);
         const room = maxChars - used;
         if (room <= 80)
             break;
-        lines.push(line.length > room ? `${line.slice(0, room - 1)}…` : line);
+        lines.push(line.length > room ? "".concat(line.slice(0, room - 1), "…") : line);
         used += Math.min(line.length, room) + 1;
     }
     return {

@@ -25,15 +25,15 @@ export function deployPlan(root, env, only) {
         const target = wanted ? pack.deploy.find((t) => t.id === wanted) : (pack.deploy.find((t) => onPath(t.bin)) ?? pack.deploy[0]);
         const problems = [];
         if (!target) {
-            problems.push(wanted ? `deploy.targets.${id} = ${wanted}, but ${id} knows: ${pack.deploy.map((t) => t.id).join(", ") || "none"}` : `the ${id} pack has no deploy target`);
+            problems.push(wanted ? "deploy.targets.".concat(id, " = ", wanted, ", but ", id, " knows: ", pack.deploy.map((t) => t.id).join(", ") || "none") : "the ".concat(id, " pack has no deploy target"));
             return { pack: id, dir, kind: pack.kind, problems };
         }
         const command = env === "preview" ? target.preview : target.production;
         if (!onPath(target.bin))
-            problems.push(`${target.bin} is not installed — ${target.login}`);
+            problems.push("".concat(target.bin, " is not installed — ", target.login));
         for (const req of target.requires) {
             if (!existsSync(resolve(root, dir, req.file)))
-                problems.push(`${dir === "." ? "" : `${dir}/`}${req.file} is missing — ${req.create}`);
+                problems.push("".concat(dir === "." ? "" : "".concat(dir, "/"), req.file, " is missing — ", req.create));
         }
         return { pack: id, dir, kind: pack.kind, target, ...(command ? { command } : {}), problems };
     });
@@ -58,23 +58,23 @@ export async function deploy(root, options = {}) {
         const target = item.target;
         if (!target || item.problems.length) {
             steps.push({ pack: item.pack, ...(target ? { target: target.id } : {}), status: "blocked", detail: item.problems.join("; ") });
-            checks.push({ name: `deploy ${item.pack}`, pass: false, detail: item.problems.join("; ") });
+            checks.push({ name: "deploy ".concat(item.pack), pass: false, detail: item.problems.join("; ") });
             continue;
         }
         if (!item.command) {
-            steps.push({ pack: item.pack, target: target.id, status: "skipped", detail: `${target.name} has no ${env} deploy (production only)` });
+            steps.push({ pack: item.pack, target: target.id, status: "skipped", detail: "".concat(target.name, " has no ", env, " deploy (production only)") });
             continue;
         }
         const cwd = resolve(root, item.dir);
         const auth = await runCommand(target.auth, cwd, { timeoutMs: AUTH_TIMEOUT });
         if (auth.code !== 0 || auth.timedOut) {
-            const detail = `not logged in to ${target.name} (\`${target.auth}\` failed) — run \`${target.login}\``;
+            const detail = "not logged in to ".concat(target.name, " (`", target.auth, "` failed) — run `", target.login, "`");
             steps.push({ pack: item.pack, target: target.id, status: "blocked", detail });
-            checks.push({ name: `deploy ${item.pack}`, pass: false, detail });
+            checks.push({ name: "deploy ".concat(item.pack), pass: false, detail });
             continue;
         }
         const command = item.command;
-        const result = await withCommandSlot(root, { ...slot, task: `forge deploy ${item.pack}` }, () => runCommand(command, cwd, { timeoutMs: options.timeoutMs ?? 1_200_000 }));
+        const result = await withCommandSlot(root, { ...slot, task: "forge deploy ".concat(item.pack) }, () => runCommand(command, cwd, { timeoutMs: options.timeoutMs ?? 1_200_000 }));
         const output = redactSecrets(result.output);
         const url = target.url ? [...output.matchAll(new RegExp(target.url, "g"))].map((m) => m[0]).at(-1) : undefined;
         const ok = result.code === 0 && !result.timedOut;
@@ -83,11 +83,11 @@ export async function deploy(root, options = {}) {
             target: target.id,
             status: ok ? "deployed" : "failed",
             ...(url ? { url } : {}),
-            detail: ok ? `\`${command}\` exited 0` : `\`${command}\` ${result.timedOut ? "timed out" : `exited ${result.code}`}\n${tail(output.trim(), 1_500)}`,
+            detail: ok ? "`".concat(command, "` exited 0") : "`".concat(command, "` ", result.timedOut ? "timed out" : "exited ".concat(result.code), "\n", tail(output.trim(), 1_500)),
         });
-        checks.push({ name: `deploy ${item.pack} (${target.name}, ${env})`, pass: ok, detail: ok ? (url ?? "deployed") : tail(output.trim(), 500) });
+        checks.push({ name: "deploy ".concat(item.pack, " (", target.name, ", ", env, ")"), pass: ok, detail: ok ? (url ?? "deployed") : tail(output.trim(), 500) });
         if (ok && target.url && !url)
-            checks.push({ name: `deploy ${item.pack}: URL`, pass: false, detail: "deploy succeeded but no URL was found in its output" });
+            checks.push({ name: "deploy ".concat(item.pack, ": URL"), pass: false, detail: "deploy succeeded but no URL was found in its output" });
         if (ok && url)
             checks.push(...(await verifyDeployment(root, url, target, slot)));
     }
@@ -107,7 +107,7 @@ export async function deploy(root, options = {}) {
         checks,
         rollback: plan
             .filter((p) => p.target && deployed.some((s) => s.pack === p.pack))
-            .map((p) => `${p.pack}: ${p.target?.rollback}`)
+            .map((p) => "".concat(p.pack, ": ", p.target?.rollback))
             .join(" · "),
         target: deployed.map((s) => s.target).join(","),
         source: "forge-deploy",
@@ -117,8 +117,8 @@ export async function deploy(root, options = {}) {
     appendLedger(root, {
         kind: "decision",
         stage: "ship",
-        summary: `Deployed ${release.version} to ${env}${release.url ? ` at ${release.url}` : ""} — ${ok ? "all checks passed" : "checks failing"}`,
-        why: steps.map((s) => `${s.pack}: ${s.status}${s.url ? ` ${s.url}` : ""}`).join("; "),
+        summary: "Deployed ".concat(release.version, " to ", env, release.url ? " at ".concat(release.url) : "", " — ", ok ? "all checks passed" : "checks failing"),
+        why: steps.map((s) => "".concat(s.pack, ": ", s.status, s.url ? " ".concat(s.url) : "")).join("; "),
     });
     return { env, ok, steps, checks, release, notesFile: release.notes };
 }
@@ -131,7 +131,7 @@ async function verifyDeployment(root, url, target, slot) {
     const checks = [];
     const smoke = await httpStatus(healthUrl, headers);
     const up = answered(smoke);
-    checks.push({ name: `smoke GET ${healthUrl}`, pass: up, detail: describeHttp(smoke, target, Boolean(bypassValue)) });
+    checks.push({ name: "smoke GET ".concat(healthUrl), pass: up, detail: describeHttp(smoke, target, Boolean(bypassValue)) });
     if (!up)
         return checks;
     try {
@@ -140,7 +140,7 @@ async function verifyDeployment(root, url, target, slot) {
         checks.push({
             name: "security headers",
             pass: !blockers.length,
-            detail: blockers.length ? blockers.map((b) => `${b.id} (${b.severity}): ${b.detail}`).join("; ") : `${report.checks.filter((c) => c.status === "pass").length}/${report.checks.length} pass`,
+            detail: blockers.length ? blockers.map((b) => "".concat(b.id, " (", b.severity, "): ", b.detail)).join("; ") : "".concat(report.checks.filter((c) => c.status === "pass").length, "/", report.checks.length, " pass"),
         });
     }
     catch (error) {
@@ -150,7 +150,7 @@ async function verifyDeployment(root, url, target, slot) {
     if (config.deploy.e2e && e2e) {
         const e2eEnv = { ...process.env, BASE_URL: url, PLAYWRIGHT_BASE_URL: url, ...(bypassValue && target.bypass ? { [target.bypass.env]: bypassValue } : {}) };
         const result = await withCommandSlot(root, { ...slot, task: "forge deploy e2e" }, () => runCommand(e2e, root, { timeoutMs: 1_800_000, env: e2eEnv }));
-        checks.push({ name: `e2e against ${url}`, pass: result.code === 0 && !result.timedOut, detail: tail(redactSecrets(result.output).trim(), 800) });
+        checks.push({ name: "e2e against ".concat(url), pass: result.code === 0 && !result.timedOut, detail: tail(redactSecrets(result.output).trim(), 800) });
     }
     return checks;
 }
@@ -170,7 +170,7 @@ export async function httpStatus(url, headers = {}, timeoutMs = 15_000) {
             if (response.status >= 300 && response.status < 400 && location) {
                 const next = new URL(location, current);
                 if (next.origin !== origin)
-                    return { status: response.status, finalUrl: current, offsite: `${next.origin}${next.pathname}` };
+                    return { status: response.status, finalUrl: current, offsite: "".concat(next.origin, next.pathname) };
                 current = next.href;
                 continue;
             }
@@ -180,18 +180,18 @@ export async function httpStatus(url, headers = {}, timeoutMs = 15_000) {
     }
     catch (error) {
         const cause = error.cause;
-        return { error: `unreachable: ${cause instanceof Error ? cause.message : error.message}` };
+        return { error: "unreachable: ".concat(cause instanceof Error ? cause.message : error.message) };
     }
 }
 /** Did the app itself answer successfully? */
 export const answered = (check) => !check.offsite && check.status !== undefined && check.status < 400;
 export function describeHttp(check, target, bypassSet = false) {
-    const hint = target?.bypass && !bypassSet ? ` — the deployment is protected; set ${target.bypass.env} so forge can send ${target.bypass.header}` : "";
+    const hint = target?.bypass && !bypassSet ? " — the deployment is protected; set ".concat(target.bypass.env, " so forge can send ", target.bypass.header) : "";
     if (check.offsite)
-        return `HTTP ${check.status} redirect to ${check.offsite} (login wall or deployment protection, not the app)${hint}`;
+        return "HTTP ".concat(check.status, " redirect to ", check.offsite, " (login wall or deployment protection, not the app)", hint);
     if (check.status === 401 || check.status === 403)
-        return `HTTP ${check.status}${hint}`;
-    return check.status !== undefined ? `HTTP ${check.status}${check.finalUrl ? ` (${check.finalUrl})` : ""}` : (check.error ?? "no response");
+        return "HTTP ".concat(check.status, hint);
+    return check.status !== undefined ? "HTTP ".concat(check.status, check.finalUrl ? " (".concat(check.finalUrl, ")") : "") : (check.error ?? "no response");
 }
 /** Bypass header for a release's targets, when the env var is set (the ship gate's live check uses it). */
 export function bypassHeaders(root, targetIds) {
@@ -240,31 +240,31 @@ export function releaseNotes(root, release, steps = []) {
     const lastRelease = [...ledger].reverse().find((e) => e.stage === "ship" && /^Deployed /.test(e.summary));
     const decisions = ledger.filter((e) => e.kind === "decision" && e.stage !== "ship" && (!lastRelease || e.at > lastRelease.at)).slice(-15);
     const lastTag = git(root, "describe", "--tags", "--abbrev=0");
-    const commits = git(root, "log", "--no-merges", "--pretty=format:- %s (%h)", "-n", "40", ...(lastTag ? [`${lastTag}..HEAD`] : []))
+    const commits = git(root, "log", "--no-merges", "--pretty=format:- %s (%h)", "-n", "40", ...(lastTag ? ["".concat(lastTag, "..HEAD")] : []))
         .split("\n")
         .filter(Boolean);
     return [
-        `# Release ${release.version} — ${release.env}`,
+        "# Release ".concat(release.version, " — ", release.env),
         "",
-        `- When: ${release.at}${release.commit ? ` · commit ${release.commit}` : ""}`,
-        ...(release.url ? [`- URL: ${release.url}`] : []),
-        ...steps.filter((s) => s.url && s.url !== release.url).map((s) => `- ${s.pack}: ${s.url}`),
-        `- Rollback: ${release.rollback}`,
+        "- When: ".concat(release.at, release.commit ? " · commit ".concat(release.commit) : ""),
+        ...(release.url ? ["- URL: ".concat(release.url)] : []),
+        ...steps.filter((s) => s.url && s.url !== release.url).map((s) => "- ".concat(s.pack, ": ", s.url)),
+        "- Rollback: ".concat(release.rollback),
         "",
         "## Checks",
-        ...release.checks.map((c) => `- ${c.pass ? "✅" : "❌"} ${c.name}${c.detail ? ` — ${c.detail.split("\n")[0]}` : ""}`),
-        ...(stories.length ? ["", "## What's new", ...stories.map((s) => `- ${s.id}: as ${s.as}, ${s.iWant} — so that ${s.soThat}`)] : []),
-        ...(decisions.length ? ["", "## Decisions", ...decisions.map((d) => `- ${d.summary}${d.why ? ` — ${d.why.split(";")[0]}` : ""}`)] : []),
-        ...(commits.length ? ["", `## Commits${lastTag ? ` since ${lastTag}` : ""}`, ...commits] : []),
+        ...release.checks.map((c) => "- ".concat(c.pass ? "✅" : "❌", " ", c.name, c.detail ? " — ".concat(c.detail.split("\n")[0]) : "")),
+        ...(stories.length ? ["", "## What's new", ...stories.map((s) => "- ".concat(s.id, ": as ", s.as, ", ", s.iWant, " — so that ", s.soThat))] : []),
+        ...(decisions.length ? ["", "## Decisions", ...decisions.map((d) => "- ".concat(d.summary, d.why ? " — ".concat(d.why.split(";")[0]) : ""))] : []),
+        ...(commits.length ? ["", "## Commits".concat(lastTag ? " since ".concat(lastTag) : ""), ...commits] : []),
         "",
     ].join("\n");
 }
 function writeReleaseNotes(root, release, steps) {
     const dir = layout(root).releases;
     mkdirSync(dir, { recursive: true });
-    const name = `${release.version}-${release.env}-${release.at.replace(/[:.]/g, "-")}.md`.replace(/[^\w.-]/g, "_");
+    const name = "".concat(release.version, "-", release.env, "-", release.at.replace(/[:.]/g, "-"), ".md").replace(/[^\w.-]/g, "_");
     writeFileSync(join(dir, name), redactSecrets(releaseNotes(root, release, steps)));
-    return `.forge/releases/${name}`;
+    return ".forge/releases/".concat(name);
 }
 function safe(fn) {
     try {

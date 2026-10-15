@@ -34,7 +34,7 @@ function run(binary, args, cwd, timeoutMs) {
 async function withGraph(root, build) {
     const status = graphStatus(root);
     if (!status.binary)
-        return { ok: false, output: "", error: `graphify is not installed — ${GRAPHIFY_INSTALL_HINT}` };
+        return { ok: false, output: "", error: "graphify is not installed — ".concat(GRAPHIFY_INSTALL_HINT) };
     if (!status.graphExists) {
         return { ok: false, output: "", error: "no code graph yet — run `forge graph update` (or /graphify) first" };
     }
@@ -53,6 +53,6 @@ export function graphExplain(root, node) {
 export async function graphUpdate(root) {
     const binary = findGraphify();
     if (!binary)
-        return { ok: false, output: "", error: `graphify is not installed — ${GRAPHIFY_INSTALL_HINT}` };
+        return { ok: false, output: "", error: "graphify is not installed — ".concat(GRAPHIFY_INSTALL_HINT) };
     return run(binary, ["update", root], root, 10 * 60_000);
 }

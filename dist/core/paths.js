@@ -57,10 +57,10 @@ export function readJson(path) {
 /** Write via a temp file + rename so a crash never leaves half-written state. */
 export function writeTextAtomic(path, text) {
     mkdirSync(dirname(path), { recursive: true });
-    const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
+    const tmp = "".concat(path, ".", process.pid, ".", Date.now(), ".tmp");
     writeFileSync(tmp, text, "utf8");
     renameSync(tmp, path);
 }
 export function writeJsonAtomic(path, data) {
-    writeTextAtomic(path, `${JSON.stringify(data, null, 2)}\n`);
+    writeTextAtomic(path, "".concat(JSON.stringify(data, null, 2), "\n"));
 }

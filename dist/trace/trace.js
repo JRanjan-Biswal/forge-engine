@@ -56,7 +56,7 @@ export function computeGaps(root) {
                 gaps.push({
                     story: story.id,
                     missing: requirement,
-                    message: `${story.id} has no ${requirement} link — ${HINTS[requirement].replaceAll("<id>", story.id)}`,
+                    message: "".concat(story.id, " has no ", requirement, " link — ", HINTS[requirement].replaceAll("<id>", story.id)),
                 });
             }
         }
@@ -75,7 +75,7 @@ function linkTraceUnlocked(root, from, to, type) {
     for (const id of [from, to]) {
         const nodeType = TraceNodeType.safeParse(id.split(":", 1)[0]);
         if (!nodeType.success || !id.includes(":")) {
-            throw new Error(`Trace node "${id}" must look like <type>:<name> with type one of ${TraceNodeType.options.join(", ")}`);
+            throw new Error("Trace node \"".concat(id, "\" must look like <type>:<name> with type one of ", TraceNodeType.options.join(", ")));
         }
         if (!trace.nodes.some((node) => node.id === id))
             trace.nodes.push({ id, type: nodeType.data });

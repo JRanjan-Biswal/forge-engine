@@ -18,7 +18,7 @@ import {
   string,
   union,
   unknown
-} from "./chunk-PESWS66E.js";
+} from "./chunk-NFMB5KLF.js";
 
 // node_modules/.pnpm/@modelcontextprotocol+sdk@1.32.1_zod@4.6.7/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
 var LATEST_PROTOCOL_VERSION = "2025-11-25";
@@ -1396,13 +1396,13 @@ var CompleteRequestSchema = RequestSchema.extend({
 });
 function assertCompleteRequestPrompt(request) {
   if (request.params.ref.type !== "ref/prompt") {
-    throw new TypeError(`Expected CompleteRequestPrompt, but got ${request.params.ref.type}`);
+    throw new TypeError("Expected CompleteRequestPrompt, but got ".concat(request.params.ref.type));
   }
   void request;
 }
 function assertCompleteRequestResourceTemplate(request) {
   if (request.params.ref.type !== "ref/resource") {
-    throw new TypeError(`Expected CompleteRequestResourceTemplate, but got ${request.params.ref.type}`);
+    throw new TypeError("Expected CompleteRequestResourceTemplate, but got ".concat(request.params.ref.type));
   }
   void request;
 }
@@ -1522,7 +1522,7 @@ var ServerResultSchema = union([
 ]);
 var McpError = class _McpError extends Error {
   constructor(code, message, data) {
-    super(`MCP error ${code}: ${message}`);
+    super("MCP error ".concat(code, ": ").concat(message));
     this.code = code;
     this.data = data;
     this.name = "McpError";
@@ -1541,7 +1541,7 @@ var McpError = class _McpError extends Error {
   }
 };
 var UrlElicitationRequiredError = class extends McpError {
-  constructor(elicitations, message = `URL elicitation${elicitations.length > 1 ? "s" : ""} required`) {
+  constructor(elicitations, message = "URL elicitation".concat(elicitations.length > 1 ? "s" : "", " required")) {
     super(ErrorCode.UrlElicitationRequired, message, {
       elicitations
     });

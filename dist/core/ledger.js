@@ -29,10 +29,10 @@ export function appendLedger(root, input) {
     // Locked: the next id is derived from the file, so concurrent writers would collide.
     return withLock(root, () => {
         const lastId = readLedger(root).reduce((max, entry) => Math.max(max, Number(entry.id.slice(2))), 0);
-        const entry = LedgerEntry.parse({ ...input, id: `D-${lastId + 1}`, at: input.at ?? nowIso() });
+        const entry = LedgerEntry.parse({ ...input, id: "D-".concat(lastId + 1), at: input.at ?? nowIso() });
         assertNoSecrets([entry.summary, entry.why ?? "", ...entry.rejected].join("\n"), "ledger entry");
         mkdirSync(dirname(file), { recursive: true });
-        appendFileSync(file, `${JSON.stringify(entry)}\n`, "utf8");
+        appendFileSync(file, "".concat(JSON.stringify(entry), "\n"), "utf8");
         return entry;
     });
 }

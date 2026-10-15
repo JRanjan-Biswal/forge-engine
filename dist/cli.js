@@ -40,115 +40,7 @@ import { PUBLISHED_SCHEMAS } from "./schemas/index.js";
 import { computeGaps, linkTrace } from "./trace/trace.js";
 import { contractDrift, platformParity } from "./trace/drift.js";
 import { VERSION } from "./version.js";
-const HELP = `forge ${VERSION} — idea → validated → designed → built → verified → shipped
-
-Usage: forge <command> [options]          (also available as \`forge-engine\`)
-
-Install
-  setup [--host claude,codex] [--scope user|project|local] [--source <path|owner/repo>] [--dry-run] [--yes]
-                                       install the forge-engine plugin in Claude Code and Codex (shows the commands first)
-  setup --remove                       uninstall it again
-
-Project
-  init [--name <n>] [--force]          create forge.config.yaml and .forge/ here
-  status                               pipeline dashboard
-  stages                               enabled stages and their gate checks
-  doctor                               check node, memory, config, graphify and agent CLIs
-  procs                                processes belonging to this project, with RSS memory
-  procs init                           create an AGENT_PROCESSES.md process registry here
-
-Stages
-  start <stage> [--force]              begin a stage
-  complete <stage>                     run the stage gate (alias: gate)
-  approve <stage> [--note <text>]      record human approval for a checkpoint stage
-  skip <stage> --reason <text>         skip a stage (recorded in the ledger)
-  override <stage> --reason <text>     pass a stage despite its gate (recorded)
-  reopen <stage> --reason <text> [--cascade]
-  archive --reason <text>              archive the project (e.g. verdict = kill)
-  block "<need>" [--stage <s>]         record a blocker instead of faking a dependency
-  unblock <B-n> [--note <text>]
-
-Artifacts
-  artifact list
-  artifact read <name>
-  artifact write <name> [--file <path>]   (reads stdin when --file is omitted)
-  artifact validate <name>
-
-Existing products (brownfield)
-  adopt [--name <n>] [--no-graph]      init + build the product map and code graph; adds the understand stage
-  sync [--no-graph] [--quiet]          refresh product map, graphify graph and trace links from the code
-  sync --check                         is the product map stale? (exit 1 when stale)
-  product [pages|endpoints|calls|docs] what forge knows about the product
-  pages [<slug>]                       pro-page-complete audits and open must-fix atoms
-  hooks install                        git hooks that run "forge sync" after commit / merge / checkout
-
-Build (Phase 4)
-  tasks [waves|next]                   task DAG as parallel waves (deps + file conflicts) / runnable now
-  tasks brief <id>                     everything one task needs: stories, acceptance, screens, motion, contract, decisions
-  tasks update <id> --status <s>       todo | doing | done | blocked [--note <text>]
-  worktree [list|create <id>|remove <id>] [--force]
-  workers run [--host claude|codex|gemini|opencode] [--max <n>] [--tasks a,b]
-                                       run ready tasks headless, one git worktree each (default max 1)
-  merge [<id> …]                       merge done task worktrees in wave order: tests in the worktree, then --no-ff
-
-Ship & QA
-  qa plan                              one test case per MVP acceptance criterion (@S-1/AC1) with the tool and file to use
-  qa coverage [--link]                 which criteria have a tagged test; --link adds story → test trace links
-  ci [--force]                         write .github/workflows/forge.yml from the stacks' gate commands
-  ci check review|gap [--format text|github|json]
-                                       the verify/gap checks for any repo; github = PR annotations + job summary
-  deploy --plan [--prod]               targets per stack (Vercel, Fly, EAS, Supabase) and what is missing
-  deploy [--prod] [--only a,b]         deploy with the official CLIs, smoke-test, probe headers, run e2e on the URL,
-                                       write the release + notes (--prod needs "forge approve ship")
-  release notes                        release notes for the latest release
-
-Security
-  security scan [--record]             static scan: injection sinks, committed secrets, env files (exit 1 at security.failOn)
-                                       --record files new findings into the reviews artifact
-  security headers <url>               live check: CSP, HSTS, clickjacking, nosniff, cookies, CORS, info leaks
-
-Stacks
-  stack [list]                         stack packs, what this repo has, and what is configured
-  stack detect                         stacks found here and the gate commands each could run
-  stack use [<pack>] [--dir <d>] [--force]
-                                       record stacks in forge.config.yaml and fill empty gate commands
-  stack show <pack>                    a pack's manifest, conventions and review lens
-  stack scaffold <pack> [--dir <d>] [--pm pnpm|npm|yarn|bun] [--run]
-                                       the official generator command (runs it with --run, then "stack use")
-
-Design
-  design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)
-  design audit                         token validity, WCAG contrast pairs, hard-coded colour drift
-  design prototype [--force]           single-file prototype scaffold: every screen × state, on the tokens
-  design shots [--url <base>] [--viewport mobile,tablet,desktop,phone] [--screens a,b]
-                                       screenshot every screen × state × viewport (headless Chromium) for the critique
-
-Evidence & validation
-  evidence search <source> "<query>" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit
-  evidence save --url <url> --quote "<exact words>" [--source <s>]   checked against the source
-  evidence list
-  validate template "<idea>"           standard 12-criteria scorecard (JSON)
-  validate score [--file <json>]       weighted score + suggested verdict (default: the validation artifact)
-
-Memory
-  ledger list [--limit <n>]
-  ledger add --summary <text> [--why <text>] [--rejected <a,b>] [--stage <s>]
-  memory query "<question>" [--budget <tokens>] [--no-graph]
-  memory episode --file <episode.json>
-  memory learn "<text>" [--source <s>] [--global]
-
-Traceability & code graph
-  trace link <from> <to> <type>        e.g. trace link story:S-4 test:e2e/checkin.spec.ts verifiedBy
-  gaps                                 MVP stories missing design / code / test links
-  drift                                contracts/openapi.yaml vs the endpoints the code serves (missing / undocumented)
-  parity                               web vs mobile: MVP stories without screens on every targeted platform
-  graph status | update | query "<q>" | path <a> <b> | explain <node>
-
-Integration
-  mcp                                  run the forge MCP server on stdio
-  schemas export [--out <dir>]         write JSON Schemas for every artifact
-
-Global options: --json (machine-readable output), --root <dir> (target another project)`;
+const HELP = "forge ".concat(VERSION, " — idea → validated → designed → built → verified → shipped\n\nUsage: forge <command> [options]          (also available as `forge-engine`)\n\nInstall\n  setup [--host claude,codex] [--scope user|project|local] [--source <path|owner/repo>] [--dry-run] [--yes]\n                                       install the forge-engine plugin in Claude Code and Codex (shows the commands first)\n  setup --remove                       uninstall it again\n\nProject\n  init [--name <n>] [--force]          create forge.config.yaml and .forge/ here\n  status                               pipeline dashboard\n  stages                               enabled stages and their gate checks\n  doctor                               check node, memory, config, graphify and agent CLIs\n  procs                                processes belonging to this project, with RSS memory\n  procs init                           create an AGENT_PROCESSES.md process registry here\n\nStages\n  start <stage> [--force]              begin a stage\n  complete <stage>                     run the stage gate (alias: gate)\n  approve <stage> [--note <text>]      record human approval for a checkpoint stage\n  skip <stage> --reason <text>         skip a stage (recorded in the ledger)\n  override <stage> --reason <text>     pass a stage despite its gate (recorded)\n  reopen <stage> --reason <text> [--cascade]\n  archive --reason <text>              archive the project (e.g. verdict = kill)\n  block \"<need>\" [--stage <s>]         record a blocker instead of faking a dependency\n  unblock <B-n> [--note <text>]\n\nArtifacts\n  artifact list\n  artifact read <name>\n  artifact write <name> [--file <path>]   (reads stdin when --file is omitted)\n  artifact validate <name>\n\nExisting products (brownfield)\n  adopt [--name <n>] [--no-graph]      init + build the product map and code graph; adds the understand stage\n  sync [--no-graph] [--quiet]          refresh product map, graphify graph and trace links from the code\n  sync --check                         is the product map stale? (exit 1 when stale)\n  product [pages|endpoints|calls|docs] what forge knows about the product\n  pages [<slug>]                       pro-page-complete audits and open must-fix atoms\n  hooks install                        git hooks that run \"forge sync\" after commit / merge / checkout\n\nBuild (Phase 4)\n  tasks [waves|next]                   task DAG as parallel waves (deps + file conflicts) / runnable now\n  tasks brief <id>                     everything one task needs: stories, acceptance, screens, motion, contract, decisions\n  tasks update <id> --status <s>       todo | doing | done | blocked [--note <text>]\n  worktree [list|create <id>|remove <id>] [--force]\n  workers run [--host claude|codex|gemini|opencode] [--max <n>] [--tasks a,b]\n                                       run ready tasks headless, one git worktree each (default max 1)\n  merge [<id> …]                       merge done task worktrees in wave order: tests in the worktree, then --no-ff\n\nShip & QA\n  qa plan                              one test case per MVP acceptance criterion (@S-1/AC1) with the tool and file to use\n  qa coverage [--link]                 which criteria have a tagged test; --link adds story → test trace links\n  ci [--force]                         write .github/workflows/forge.yml from the stacks' gate commands\n  ci check review|gap [--format text|github|json]\n                                       the verify/gap checks for any repo; github = PR annotations + job summary\n  deploy --plan [--prod]               targets per stack (Vercel, Fly, EAS, Supabase) and what is missing\n  deploy [--prod] [--only a,b]         deploy with the official CLIs, smoke-test, probe headers, run e2e on the URL,\n                                       write the release + notes (--prod needs \"forge approve ship\")\n  release notes                        release notes for the latest release\n\nSecurity\n  security scan [--record]             static scan: injection sinks, committed secrets, env files (exit 1 at security.failOn)\n                                       --record files new findings into the reviews artifact\n  security headers <url>               live check: CSP, HSTS, clickjacking, nosniff, cookies, CORS, info leaks\n\nStacks\n  stack [list]                         stack packs, what this repo has, and what is configured\n  stack detect                         stacks found here and the gate commands each could run\n  stack use [<pack>] [--dir <d>] [--force]\n                                       record stacks in forge.config.yaml and fill empty gate commands\n  stack show <pack>                    a pack's manifest, conventions and review lens\n  stack scaffold <pack> [--dir <d>] [--pm pnpm|npm|yarn|bun] [--run]\n                                       the official generator command (runs it with --run, then \"stack use\")\n\nDesign\n  design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)\n  design audit                         token validity, WCAG contrast pairs, hard-coded colour drift\n  design prototype [--force]           single-file prototype scaffold: every screen × state, on the tokens\n  design shots [--url <base>] [--viewport mobile,tablet,desktop,phone] [--screens a,b]\n                                       screenshot every screen × state × viewport (headless Chromium) for the critique\n\nEvidence & validation\n  evidence search <source> \"<query>\" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit\n  evidence save --url <url> --quote \"<exact words>\" [--source <s>]   checked against the source\n  evidence list\n  validate template \"<idea>\"           standard 12-criteria scorecard (JSON)\n  validate score [--file <json>]       weighted score + suggested verdict (default: the validation artifact)\n\nMemory\n  ledger list [--limit <n>]\n  ledger add --summary <text> [--why <text>] [--rejected <a,b>] [--stage <s>]\n  memory query \"<question>\" [--budget <tokens>] [--no-graph]\n  memory episode --file <episode.json>\n  memory learn \"<text>\" [--source <s>] [--global]\n\nTraceability & code graph\n  trace link <from> <to> <type>        e.g. trace link story:S-4 test:e2e/checkin.spec.ts verifiedBy\n  gaps                                 MVP stories missing design / code / test links\n  drift                                contracts/openapi.yaml vs the endpoints the code serves (missing / undocumented)\n  parity                               web vs mobile: MVP stories without screens on every targeted platform\n  graph status | update | query \"<q>\" | path <a> <b> | explain <node>\n\nIntegration\n  mcp                                  run the forge MCP server on stdio\n  schemas export [--out <dir>]         write JSON Schemas for every artifact\n\nGlobal options: --json (machine-readable output), --root <dir> (target another project)");
 const OPTIONS = {
     json: { type: "boolean" },
     force: { type: "boolean" },
@@ -197,8 +89,8 @@ const OPTIONS = {
     screens: { type: "string" },
 };
 const defaultIO = {
-    out: (line) => process.stdout.write(`${line}\n`),
-    err: (line) => process.stderr.write(`${line}\n`),
+    out: (line) => process.stdout.write("".concat(line, "\n")),
+    err: (line) => process.stderr.write("".concat(line, "\n")),
     stdin: async () => {
         const chunks = [];
         for await (const chunk of process.stdin)
@@ -219,7 +111,7 @@ const ICONS = {
 };
 function need(value, what) {
     if (!value)
-        throw new UsageError(`Missing ${what}. See \`forge --help\`.`);
+        throw new UsageError("Missing ".concat(what, ". See `forge --help`."));
     return value;
 }
 function toInt(value, fallback) {
@@ -227,21 +119,21 @@ function toInt(value, fallback) {
         return fallback;
     const n = Number.parseInt(value, 10);
     if (!Number.isFinite(n) || n <= 0)
-        throw new UsageError(`Expected a positive number, got "${value}"`);
+        throw new UsageError("Expected a positive number, got \"".concat(value, "\""));
     return n;
 }
 function renderGate(result, io) {
     const icon = { pass: "✓", fail: "✗", skip: "–" };
     for (const check of result.checks) {
         const [head, ...rest] = check.message.split("\n");
-        io.out(`  ${icon[check.status]} ${check.id.padEnd(22)} ${head}`);
+        io.out("  ".concat(icon[check.status], " ", check.id.padEnd(22), " ", head));
         for (const line of rest)
-            io.out(`      ${line}`);
+            io.out("      ".concat(line));
     }
     io.out("");
-    io.out(result.passed ? `PASSED  ${result.stage} (gate run ${result.run})` : `FAILED  ${result.stage} (gate run ${result.run})`);
+    io.out(result.passed ? "PASSED  ".concat(result.stage, " (gate run ", result.run, ")") : "FAILED  ".concat(result.stage, " (gate run ", result.run, ")"));
     if (result.memo)
-        io.out(`\n${result.memo}`);
+        io.out("\n".concat(result.memo));
 }
 async function readInput(file, io) {
     if (file)
@@ -282,12 +174,12 @@ export async function run(argv, io = defaultIO) {
                 const result = Forge.init(resolve(opts.root ?? process.cwd()), { name: opts.name, force: opts.force });
                 print(result, () => {
                     if (result.alreadyInitialized) {
-                        io.out(`forge is already initialised in ${result.root} (use --force to reset state; the ledger is kept)`);
+                        io.out("forge is already initialised in ".concat(result.root, " (use --force to reset state; the ledger is kept)"));
                         return;
                     }
-                    io.out(`Initialised forge in ${result.root}`);
+                    io.out("Initialised forge in ".concat(result.root));
                     for (const path of result.created)
-                        io.out(`  + ${path}`);
+                        io.out("  + ".concat(path));
                     io.out("\nNext: `forge status`, then `forge start brainstorm` (or /forge in your agent).");
                 });
                 return 0;
@@ -295,18 +187,18 @@ export async function run(argv, io = defaultIO) {
             case "status": {
                 const status = forge().status();
                 print(status, () => {
-                    io.out(`forge · ${status.project} · autonomy=${status.autonomy}${status.archived ? ` · ARCHIVED (${status.archived.reason})` : ""}`);
+                    io.out("forge · ".concat(status.project, " · autonomy=", status.autonomy, status.archived ? " · ARCHIVED (".concat(status.archived.reason, ")") : ""));
                     io.out("");
                     for (const stage of status.stages) {
-                        const runs = stage.gateRuns ? ` (${stage.gateRuns} gate run${stage.gateRuns > 1 ? "s" : ""})` : "";
-                        io.out(`  ${ICONS[stage.status]} ${stage.id.padEnd(11)} ${stage.status}${runs}`);
+                        const runs = stage.gateRuns ? " (".concat(stage.gateRuns, " gate run", stage.gateRuns > 1 ? "s" : "", ")") : "";
+                        io.out("  ".concat(ICONS[stage.status], " ", stage.id.padEnd(11), " ", stage.status, runs));
                         for (const failure of stage.lastFailures.slice(0, 5))
-                            io.out(`      ✗ ${failure}`);
+                            io.out("      ✗ ".concat(failure));
                     }
                     io.out("");
-                    io.out(status.next ? `next: ${status.next}  (${status.nextCommand})` : "next: — pipeline complete");
+                    io.out(status.next ? "next: ".concat(status.next, "  (", status.nextCommand, ")") : "next: — pipeline complete");
                     for (const blocker of status.blockers)
-                        io.out(`blocked: ${blocker.id} ${blocker.need}${blocker.stage ? ` [${blocker.stage}]` : ""}`);
+                        io.out("blocked: ".concat(blocker.id, " ", blocker.need, blocker.stage ? " [".concat(blocker.stage, "]") : ""));
                 });
                 return 0;
             }
@@ -316,10 +208,10 @@ export async function run(argv, io = defaultIO) {
                 const stages = f.stages().map((stage) => ({ ...stage, gate: gateChecks(stage, config) }));
                 print(stages, () => {
                     for (const stage of stages) {
-                        io.out(`${stage.id} — ${stage.title} (${stage.command})${stage.checkpoint ? " [checkpoint]" : ""}`);
-                        io.out(`  ${stage.summary}`);
+                        io.out("".concat(stage.id, " — ", stage.title, " (", stage.command, ")", stage.checkpoint ? " [checkpoint]" : ""));
+                        io.out("  ".concat(stage.summary));
                         for (const check of stage.gate)
-                            io.out(`    · ${check.description}${check.optional ? " (optional)" : ""}`);
+                            io.out("    · ".concat(check.description, check.optional ? " (optional)" : ""));
                     }
                 });
                 return 0;
@@ -327,7 +219,7 @@ export async function run(argv, io = defaultIO) {
             case "start": {
                 const id = need(args[0], "stage");
                 const state = forge().start(id, { force: opts.force });
-                print(state, () => io.out(`▶ ${id} is active. When its outputs are written, run \`forge complete ${id}\`.`));
+                print(state, () => io.out("▶ ".concat(id, " is active. When its outputs are written, run `forge complete ", id, "`.")));
                 return 0;
             }
             case "complete":
@@ -339,7 +231,7 @@ export async function run(argv, io = defaultIO) {
             case "approve": {
                 const id = need(args[0], "stage");
                 forge().approve(id, currentUser(), opts.note);
-                print({ approved: id }, () => io.out(`Approved ${id}. Run \`forge complete ${id}\` to re-check the gate.`));
+                print({ approved: id }, () => io.out("Approved ".concat(id, ". Run `forge complete ", id, "` to re-check the gate.")));
                 return 0;
             }
             case "skip":
@@ -348,12 +240,12 @@ export async function run(argv, io = defaultIO) {
                 const reason = need(opts.reason, "--reason");
                 const by = currentUser();
                 const state = command === "skip" ? forge().skip(id, reason, by) : forge().override(id, reason, by);
-                print(state, () => io.out(`${command === "skip" ? "↷ Skipped" : "⚑ Overrode"} ${id} — recorded in the ledger.`));
+                print(state, () => io.out("".concat(command === "skip" ? "↷ Skipped" : "⚑ Overrode", " ", id, " — recorded in the ledger.")));
                 return 0;
             }
             case "reopen": {
                 const reopened = forge().reopen(need(args[0], "stage"), need(opts.reason, "--reason"), { cascade: opts.cascade });
-                print(reopened, () => io.out(`Reopened: ${reopened.join(", ")}`));
+                print(reopened, () => io.out("Reopened: ".concat(reopened.join(", "))));
                 return 0;
             }
             case "archive": {
@@ -363,12 +255,12 @@ export async function run(argv, io = defaultIO) {
             }
             case "block": {
                 const blocker = forge().addBlocker(need(args[0], "what is needed"), opts.stage);
-                print(blocker, () => io.out(`Recorded ${blocker.id}: ${blocker.need}`));
+                print(blocker, () => io.out("Recorded ".concat(blocker.id, ": ", blocker.need)));
                 return 0;
             }
             case "unblock": {
                 const blocker = forge().resolveBlocker(need(args[0], "blocker id"), opts.note);
-                print(blocker, () => io.out(`Resolved ${blocker.id}`));
+                print(blocker, () => io.out("Resolved ".concat(blocker.id)));
                 return 0;
             }
             case "artifact": {
@@ -379,7 +271,7 @@ export async function run(argv, io = defaultIO) {
                     print(items, () => {
                         for (const item of items) {
                             const mark = !item.exists ? "·" : item.valid ? "✓" : "✗";
-                            io.out(`  ${mark} ${item.name.padEnd(12)} ${item.path}${item.exists && !item.valid ? `  (${item.errors[0]?.trim()})` : ""}`);
+                            io.out("  ".concat(mark, " ", item.name.padEnd(12), " ", item.path, item.exists && !item.valid ? "  (".concat(item.errors[0]?.trim(), ")") : ""));
                         }
                     });
                     return 0;
@@ -388,22 +280,22 @@ export async function run(argv, io = defaultIO) {
                 if (sub === "read") {
                     const content = readArtifactText(root, name);
                     if (content === undefined)
-                        throw new Error(`${ARTIFACTS[name]?.path ?? name} does not exist yet`);
+                        throw new Error("".concat(ARTIFACTS[name]?.path ?? name, " does not exist yet"));
                     io.out(content.trimEnd());
                     return 0;
                 }
                 if (sub === "write") {
                     const raw = await readInput(opts.file, io);
                     const result = writeArtifact(root, name, raw);
-                    print(result, () => io.out(`Wrote ${result.path}`));
+                    print(result, () => io.out("Wrote ".concat(result.path)));
                     return 0;
                 }
                 if (sub === "validate") {
                     const result = checkArtifact(root, name);
-                    print(result, () => io.out(result.valid ? `✓ ${result.path} is valid` : `✗ ${result.path}: ${result.errors.join("\n")}`));
+                    print(result, () => io.out(result.valid ? "✓ ".concat(result.path, " is valid") : "✗ ".concat(result.path, ": ", result.errors.join("\n"))));
                     return result.valid ? 0 : 1;
                 }
-                throw new UsageError(`Unknown artifact subcommand "${sub}"`);
+                throw new UsageError("Unknown artifact subcommand \"".concat(sub, "\""));
             }
             case "ledger": {
                 const sub = need(args[0], "ledger subcommand (list | add)");
@@ -412,11 +304,11 @@ export async function run(argv, io = defaultIO) {
                     const entries = readLedger(root).slice(-toInt(opts.limit, 30));
                     print(entries, () => {
                         for (const entry of entries) {
-                            io.out(`${entry.id.padEnd(6)} ${entry.at.slice(0, 16).replace("T", " ")}  ${entry.kind.padEnd(8)} ${entry.stage ? `[${entry.stage}] ` : ""}${entry.summary}`);
+                            io.out("".concat(entry.id.padEnd(6), " ", entry.at.slice(0, 16).replace("T", " "), "  ", entry.kind.padEnd(8), " ", entry.stage ? "[".concat(entry.stage, "] ") : "", entry.summary));
                             if (entry.why)
-                                io.out(`       why: ${entry.why}`);
+                                io.out("       why: ".concat(entry.why));
                             if (entry.rejected.length)
-                                io.out(`       rejected: ${entry.rejected.join("; ")}`);
+                                io.out("       rejected: ".concat(entry.rejected.join("; ")));
                         }
                     });
                     return 0;
@@ -430,10 +322,10 @@ export async function run(argv, io = defaultIO) {
                         stage: opts.stage,
                         by: currentUser(),
                     });
-                    print(entry, () => io.out(`Recorded ${entry.id}`));
+                    print(entry, () => io.out("Recorded ".concat(entry.id)));
                     return 0;
                 }
-                throw new UsageError(`Unknown ledger subcommand "${sub}"`);
+                throw new UsageError("Unknown ledger subcommand \"".concat(sub, "\""));
             }
             case "memory": {
                 const sub = need(args[0], "memory subcommand (query | episode | learn)");
@@ -444,7 +336,7 @@ export async function run(argv, io = defaultIO) {
                         useGraph: !opts["no-graph"],
                     });
                     print(answer, () => {
-                        io.out(`intent: ${answer.intent}${answer.graph?.error ? `  (graphify: ${answer.graph.error})` : ""}\n`);
+                        io.out("intent: ".concat(answer.intent, answer.graph?.error ? "  (graphify: ".concat(answer.graph.error, ")") : "", "\n"));
                         io.out(answer.text);
                     });
                     return 0;
@@ -452,21 +344,21 @@ export async function run(argv, io = defaultIO) {
                 if (sub === "episode") {
                     const input = EpisodeFile.parse(JSON.parse(await readInput(opts.file, io)));
                     const episode = saveEpisode(root, input);
-                    print(episode, () => io.out(`Saved ${episode.file}`));
+                    print(episode, () => io.out("Saved ".concat(episode.file)));
                     return 0;
                 }
                 if (sub === "learn") {
                     const learning = addLearning(root, need(args[1], "lesson text"), { source: opts.source, scope: opts.global ? "global" : "project" });
-                    print(learning, () => io.out(`Recorded (${learning.scope}): ${learning.text}`));
+                    print(learning, () => io.out("Recorded (".concat(learning.scope, "): ", learning.text)));
                     return 0;
                 }
-                throw new UsageError(`Unknown memory subcommand "${sub}"`);
+                throw new UsageError("Unknown memory subcommand \"".concat(sub, "\""));
             }
             case "trace": {
                 if (args[0] !== "link")
                     throw new UsageError("Usage: forge trace link <from> <to> <type>");
                 const trace = linkTrace(forge().root, need(args[1], "from node"), need(args[2], "to node"), need(args[3], "edge type"));
-                print(trace, () => io.out(`Linked ${args[1]} → ${args[2]} (${args[3]}); ${trace.edges.length} edges`));
+                print(trace, () => io.out("Linked ".concat(args[1], " → ", args[2], " (", args[3], "); ", trace.edges.length, " edges")));
                 return 0;
             }
             case "drift": {
@@ -477,12 +369,12 @@ export async function run(argv, io = defaultIO) {
                         return;
                     }
                     for (const m of report.missing)
-                        io.out(`  ✗ missing       ${m.method} ${m.path}`);
+                        io.out("  ✗ missing       ".concat(m.method, " ", m.path));
                     for (const u of report.undocumented)
-                        io.out(`  ✗ undocumented  ${u.method} ${u.route}  (${u.file})`);
+                        io.out("  ✗ undocumented  ".concat(u.method, " ", u.route, "  (", u.file, ")"));
                     for (const s of report.suffixMatches)
-                        io.out(`  ~ ${s.operation} matched ${s.route} in ${s.file} (router prefix)`);
-                    io.out(`${report.contract}: ${report.operations} operations · code: ${report.endpoints} endpoints · ${report.missing.length} missing · ${report.undocumented.length} undocumented`);
+                        io.out("  ~ ".concat(s.operation, " matched ", s.route, " in ", s.file, " (router prefix)"));
+                    io.out("".concat(report.contract, ": ", report.operations, " operations · code: ", report.endpoints, " endpoints · ", report.missing.length, " missing · ", report.undocumented.length, " undocumented"));
                 });
                 return report.missing.length || report.undocumented.length ? 1 : 0;
             }
@@ -490,22 +382,22 @@ export async function run(argv, io = defaultIO) {
                 const report = platformParity(forge().root);
                 print(report, () => {
                     if (report.groups.length < 2) {
-                        io.out(`One UI platform targeted (${report.groups.join(", ") || "none"}) — nothing to compare.`);
+                        io.out("One UI platform targeted (".concat(report.groups.join(", ") || "none", ") — nothing to compare."));
                         return;
                     }
                     for (const s of report.stories)
-                        io.out(`  ${s.missing.length && !s.exempt ? "✗" : "✓"} ${s.id.padEnd(8)} ${s.has.join(" + ") || "no screens"}${s.missing.length ? ` — missing ${s.missing.join(", ")}${s.exempt ? " (exempt)" : ""}` : ""}`);
+                        io.out("  ".concat(s.missing.length && !s.exempt ? "✗" : "✓", " ", s.id.padEnd(8), " ", s.has.join(" + ") || "no screens", s.missing.length ? " — missing ".concat(s.missing.join(", "), s.exempt ? " (exempt)" : "") : ""));
                 });
                 return report.gaps.length ? 1 : 0;
             }
             case "gaps": {
                 const report = computeGaps(forge().root);
                 print(report, () => {
-                    io.out(`trace coverage: ${Math.round(report.coverage * 100)}% (${report.satisfied}/${report.required})`);
+                    io.out("trace coverage: ".concat(Math.round(report.coverage * 100), "% (", report.satisfied, "/", report.required, ")"));
                     for (const gap of report.gaps)
-                        io.out(`  ✗ ${gap.message}`);
+                        io.out("  ✗ ".concat(gap.message));
                     for (const note of report.notes)
-                        io.out(`  note: ${note}`);
+                        io.out("  note: ".concat(note));
                 });
                 return report.gaps.length || !report.required ? 1 : 0;
             }
@@ -515,8 +407,8 @@ export async function run(argv, io = defaultIO) {
                 if (sub === "status") {
                     const status = graphStatus(root);
                     print(status, () => io.out(status.installed
-                        ? `graphify: ${status.binary}\ngraph: ${status.graphExists ? status.graphPath : "not built yet — run `forge graph update`"}`
-                        : `graphify not installed — ${GRAPHIFY_INSTALL_HINT}`));
+                        ? "graphify: ".concat(status.binary, "\ngraph: ", status.graphExists ? status.graphPath : "not built yet — run `forge graph update`")
+                        : "graphify not installed — ".concat(GRAPHIFY_INSTALL_HINT)));
                     return 0;
                 }
                 const result = sub === "update" ? await graphUpdate(root)
@@ -525,8 +417,8 @@ export async function run(argv, io = defaultIO) {
                             : sub === "explain" ? await graphExplain(root, need(args[1], "node"))
                                 : undefined;
                 if (!result)
-                    throw new UsageError(`Unknown graph subcommand "${sub}"`);
-                print(result, () => io.out(result.ok ? result.output : `graphify: ${result.error}`));
+                    throw new UsageError("Unknown graph subcommand \"".concat(sub, "\""));
+                print(result, () => io.out(result.ok ? result.output : "graphify: ".concat(result.error)));
                 return result.ok ? 0 : 1;
             }
             case "evidence": {
@@ -538,10 +430,10 @@ export async function run(argv, io = defaultIO) {
                         fresh: opts.fresh,
                     });
                     print(response, () => {
-                        io.out(`${response.source} · "${response.query}" · ${response.results.length} results${response.cached ? " (cached)" : ""}`);
+                        io.out("".concat(response.source, " · \"", response.query, "\" · ", response.results.length, " results", response.cached ? " (cached)" : ""));
                         for (const result of response.results) {
-                            const metrics = Object.entries(result.metrics).map(([key, value]) => `${key}=${value}`).join(" ");
-                            io.out(`\n• ${result.title}\n  ${result.url}\n  ${metrics}\n  ${result.text.slice(0, 200)}`);
+                            const metrics = Object.entries(result.metrics).map(([key, value]) => "".concat(key, "=", value)).join(" ");
+                            io.out("\n• ".concat(result.title, "\n  ", result.url, "\n  ", metrics, "\n  ", result.text.slice(0, 200)));
                         }
                     });
                     return 0;
@@ -553,20 +445,20 @@ export async function run(argv, io = defaultIO) {
                         source: opts.source,
                         savedBy: currentUser(),
                     });
-                    print(item, () => io.out(`Saved ${item.id} (${item.verification.status} via ${item.verification.method}${item.verification.note ? `: ${item.verification.note}` : ""})`));
+                    print(item, () => io.out("Saved ".concat(item.id, " (", item.verification.status, " via ", item.verification.method, item.verification.note ? ": ".concat(item.verification.note) : "", ")")));
                     return 0;
                 }
                 if (sub === "list") {
                     const items = loadEvidence(root);
                     print(items, () => {
                         for (const item of items)
-                            io.out(`${item.id.padEnd(6)} ${item.verification.status.padEnd(12)} ${item.url}\n       "${item.quote.slice(0, 120)}"`);
+                            io.out("".concat(item.id.padEnd(6), " ", item.verification.status.padEnd(12), " ", item.url, "\n       \"", item.quote.slice(0, 120), "\""));
                         const verified = items.filter((i) => i.verification.status === "verified").length;
-                        io.out(`${items.length} item(s), ${verified} verified`);
+                        io.out("".concat(items.length, " item(s), ", verified, " verified"));
                     });
                     return 0;
                 }
-                throw new UsageError(`Unknown evidence subcommand "${sub}"`);
+                throw new UsageError("Unknown evidence subcommand \"".concat(sub, "\""));
             }
             case "validate": {
                 const sub = need(args[0], "validate subcommand (template | score)");
@@ -583,30 +475,30 @@ export async function run(argv, io = defaultIO) {
                         })());
                     const report = scoreValidation(criteria, f.config().gates.validate.minScore);
                     print(report, () => {
-                        io.out(`score ${report.score} · suggested verdict: ${report.suggestedVerdict} (${report.reason})`);
-                        io.out(`yes ${report.yes.length} · no ${report.no.length} · unknown ${report.unknown.length}`);
+                        io.out("score ".concat(report.score, " · suggested verdict: ", report.suggestedVerdict, " (", report.reason, ")"));
+                        io.out("yes ".concat(report.yes.length, " · no ", report.no.length, " · unknown ", report.unknown.length));
                         if (report.unsupportedYes.length)
-                            io.out(`'yes' without evidence: ${report.unsupportedYes.join(", ")}`);
+                            io.out("'yes' without evidence: ".concat(report.unsupportedYes.join(", ")));
                     });
                     return 0;
                 }
-                throw new UsageError(`Unknown validate subcommand "${sub}"`);
+                throw new UsageError("Unknown validate subcommand \"".concat(sub, "\""));
             }
             case "adopt": {
                 const result = await adoptProject(resolve(opts.root ?? process.cwd()), { name: opts.name, graph: !opts["no-graph"] });
                 print(result, () => {
                     const map = result.sync.map;
                     const pages = map.surfaces.filter((s) => s.kind === "page").length;
-                    io.out(`Adopted ${result.root}${result.initialized ? " (initialised)" : ""}`);
-                    io.out(`  frameworks: ${map.frameworks.join(", ") || "none detected"}`);
-                    io.out(`  ${pages} pages · ${map.surfaces.length - pages} endpoints · ${map.calls.length} client→endpoint calls · ${map.docs.length} docs`);
-                    io.out(`  code graph: ${map.graph.status}${map.graph.note ? ` (${map.graph.note})` : ""}`);
+                    io.out("Adopted ".concat(result.root, result.initialized ? " (initialised)" : ""));
+                    io.out("  frameworks: ".concat(map.frameworks.join(", ") || "none detected"));
+                    io.out("  ".concat(pages, " pages · ", map.surfaces.length - pages, " endpoints · ", map.calls.length, " client→endpoint calls · ", map.docs.length, " docs"));
+                    io.out("  code graph: ".concat(map.graph.status, map.graph.note ? " (".concat(map.graph.note, ")") : ""));
                     if (result.skipped.length)
-                        io.out(`  skipped greenfield stages: ${result.skipped.join(", ")}`);
+                        io.out("  skipped greenfield stages: ".concat(result.skipped.join(", ")));
                     if (result.stacks) {
-                        io.out(`  stacks: ${result.stacks.stacks.map((st) => `${st.pack} (${st.dir})`).join(", ")}`);
+                        io.out("  stacks: ".concat(result.stacks.stacks.map((st) => "".concat(st.pack, " (", st.dir, ")")).join(", ")));
                         for (const [key, command] of Object.entries(result.stacks.set))
-                            io.out(`    ✓ commands.${key.padEnd(6)} ${command}`);
+                            io.out("    ✓ commands.".concat(key.padEnd(6), " ", command));
                     }
                     io.out("\nNext: /forge-engine:understand (or follow guide skills/understand-product) to write the product model, then `forge complete understand`.");
                 });
@@ -619,10 +511,10 @@ export async function run(argv, io = defaultIO) {
                     if (opts.hook) {
                         // SessionStart hook: speak only for adopted projects whose map went stale.
                         if (check.mapExists && check.stale)
-                            io.out(`forge: the product map is stale — ${check.reason}. Call product_sync before relying on product memory.`);
+                            io.out("forge: the product map is stale — ".concat(check.reason, ". Call product_sync before relying on product memory."));
                         return 0;
                     }
-                    print(check, () => io.out(check.stale ? `stale: ${check.reason}` : `fresh: ${check.reason}`));
+                    print(check, () => io.out(check.stale ? "stale: ".concat(check.reason) : "fresh: ".concat(check.reason)));
                     return check.stale ? 1 : 0;
                 }
                 const result = await syncProduct(root, { graph: !opts["no-graph"] });
@@ -630,13 +522,13 @@ export async function run(argv, io = defaultIO) {
                     print(result, () => {
                         const map = result.map;
                         const pages = map.surfaces.filter((s) => s.kind === "page").length;
-                        io.out(`Synced: ${pages} pages · ${map.surfaces.length - pages} endpoints · ${map.calls.length} calls · graph ${map.graph.status}`);
+                        io.out("Synced: ".concat(pages, " pages · ", map.surfaces.length - pages, " endpoints · ", map.calls.length, " calls · graph ", map.graph.status));
                         if (result.diff.added.length)
-                            io.out(`  + ${result.diff.added.join(", ")}`);
+                            io.out("  + ".concat(result.diff.added.join(", ")));
                         if (result.diff.removed.length)
-                            io.out(`  - ${result.diff.removed.join(", ")}`);
+                            io.out("  - ".concat(result.diff.removed.join(", ")));
                         for (const stale of result.staleFeatures)
-                            io.out(`  ! ${stale.feature} references removed: ${stale.missing.join(", ")}`);
+                            io.out("  ! ".concat(stale.feature, " references removed: ", stale.missing.join(", ")));
                     });
                 }
                 return 0;
@@ -649,20 +541,20 @@ export async function run(argv, io = defaultIO) {
                 const view = args[0] ?? "summary";
                 if (view === "pages" || view === "endpoints") {
                     const list = map.surfaces.filter((s) => s.kind === (view === "pages" ? "page" : "endpoint"));
-                    print(list, () => list.forEach((s) => io.out(`  ${s.id.padEnd(48)} ${s.file}${s.graphifyNode ? "  ◆" : ""}`)));
+                    print(list, () => list.forEach((s) => io.out("  ".concat(s.id.padEnd(48), " ", s.file, s.graphifyNode ? "  ◆" : ""))));
                 }
                 else if (view === "calls") {
-                    print(map.calls, () => map.calls.forEach((c) => io.out(`  ${c.from} → ${c.to}`)));
+                    print(map.calls, () => map.calls.forEach((c) => io.out("  ".concat(c.from, " → ", c.to))));
                 }
                 else if (view === "docs") {
-                    print(map.docs, () => map.docs.forEach((d) => io.out(`  ${d.path} — ${d.title}`)));
+                    print(map.docs, () => map.docs.forEach((d) => io.out("  ".concat(d.path, " — ", d.title))));
                 }
                 else {
                     const check = checkProduct(root);
                     const pages = map.surfaces.filter((s) => s.kind === "page").length;
                     print({ ...map, check }, () => {
-                        io.out(`frameworks: ${map.frameworks.join(", ") || "none detected"} · synced ${map.generatedAt} · ${check.stale ? "STALE" : "fresh"}`);
-                        io.out(`${pages} pages · ${map.surfaces.length - pages} endpoints · ${map.calls.length} calls · ${map.docs.length} docs · graph ${map.graph.status}`);
+                        io.out("frameworks: ".concat(map.frameworks.join(", ") || "none detected", " · synced ", map.generatedAt, " · ", check.stale ? "STALE" : "fresh"));
+                        io.out("".concat(pages, " pages · ", map.surfaces.length - pages, " endpoints · ", map.calls.length, " calls · ", map.docs.length, " docs · graph ", map.graph.status));
                     });
                 }
                 return 0;
@@ -671,16 +563,16 @@ export async function run(argv, io = defaultIO) {
                 const audits = listPageAudits(forge().root);
                 const chosen = args[0] ? audits.filter((a) => a.slug === args[0]) : audits;
                 if (args[0] && !chosen.length)
-                    throw new Error(`No page audit "${args[0]}"`);
+                    throw new Error("No page audit \"".concat(args[0], "\""));
                 print(chosen, () => {
                     if (!chosen.length)
                         io.out("No page audits yet — run /forge-engine:page <route> (pro-page-complete).");
                     for (const audit of chosen) {
                         const open = audit.atoms.filter((a) => a.must && a.status !== "live");
-                        io.out(`${audit.slug.padEnd(24)} ${audit.page} · ${audit.atoms.length} atoms · ${open.length} open must-fix`);
+                        io.out("".concat(audit.slug.padEnd(24), " ", audit.page, " · ", audit.atoms.length, " atoms · ", open.length, " open must-fix"));
                         if (args[0])
                             for (const atom of open)
-                                io.out(`    ✗ ${atom.label} — ${atom.break ?? atom.status}${atom.fix ? ` → ${atom.fix}` : ""}`);
+                                io.out("    ✗ ".concat(atom.label, " — ", atom.break ?? atom.status, atom.fix ? " → ".concat(atom.fix) : ""));
                     }
                 });
                 return 0;
@@ -689,7 +581,7 @@ export async function run(argv, io = defaultIO) {
                 if (args[0] !== "install")
                     throw new UsageError("Usage: forge hooks install");
                 const installed = installGitHooks(forge().root);
-                print(installed, () => io.out(installed.length ? `Installed: ${installed.join(", ")}` : "forge git hooks already installed"));
+                print(installed, () => io.out(installed.length ? "Installed: ".concat(installed.join(", ")) : "forge git hooks already installed"));
                 return 0;
             }
             case "tasks": {
@@ -704,17 +596,17 @@ export async function run(argv, io = defaultIO) {
                     if (!["todo", "doing", "done", "blocked"].includes(status))
                         throw new UsageError("--status must be todo, doing, done or blocked");
                     const task = updateTask(root, need(args[1], "task id"), status, opts.note);
-                    print(task, () => io.out(`${task.id} → ${task.status}`));
+                    print(task, () => io.out("".concat(task.id, " → ", task.status)));
                     return 0;
                 }
                 const tasks = loadTasks(root);
                 if (view === "next") {
                     const ready = nextTasks(tasks);
-                    print(ready, () => io.out(ready.length ? ready.map((t) => `${t.id}  ${t.title}`).join("\n") : "No runnable tasks (all done, blocked, or waiting on dependencies)."));
+                    print(ready, () => io.out(ready.length ? ready.map((t) => "".concat(t.id, "  ", t.title)).join("\n") : "No runnable tasks (all done, blocked, or waiting on dependencies)."));
                     return 0;
                 }
                 const waves = planWaves(tasks);
-                print(waves, () => waves.forEach((wave, i) => io.out(`wave ${i + 1}: ${wave.map((id) => `${id} [${tasks.find((t) => t.id === id)?.status}]`).join("  ")}`)));
+                print(waves, () => waves.forEach((wave, i) => io.out("wave ".concat(i + 1, ": ", wave.map((id) => "".concat(id, " [", tasks.find((t) => t.id === id)?.status, "]")).join("  ")))));
                 return 0;
             }
             case "worktree": {
@@ -722,16 +614,16 @@ export async function run(argv, io = defaultIO) {
                 const view = args[0] ?? "list";
                 if (view === "create") {
                     const wt = createWorktree(root, need(args[1], "task id"));
-                    print(wt, () => io.out(`${wt.path} on ${wt.branch}`));
+                    print(wt, () => io.out("".concat(wt.path, " on ", wt.branch)));
                     return 0;
                 }
                 if (view === "remove") {
                     removeWorktree(root, need(args[1], "task id"), opts.force);
-                    print({ removed: args[1] }, () => io.out(`Removed worktree for ${args[1]}`));
+                    print({ removed: args[1] }, () => io.out("Removed worktree for ".concat(args[1])));
                     return 0;
                 }
                 const list = listWorktrees(root);
-                print(list, () => io.out(list.length ? list.map((w) => `${w.branch}  ${w.path}`).join("\n") : "No forge task worktrees."));
+                print(list, () => io.out(list.length ? list.map((w) => "".concat(w.branch, "  ", w.path)).join("\n") : "No forge task worktrees."));
                 return 0;
             }
             case "merge": {
@@ -741,7 +633,7 @@ export async function run(argv, io = defaultIO) {
                     if (!results.length)
                         io.out("Nothing to merge (no done tasks with a worktree).");
                     for (const r of results)
-                        io.out(`${r.status === "merged" ? "✓ merged" : "✗ blocked"} ${r.task}${r.reason ? ` — ${r.reason}` : ""}`);
+                        io.out("".concat(r.status === "merged" ? "✓ merged" : "✗ blocked", " ", r.task, r.reason ? " — ".concat(r.reason) : ""));
                 });
                 return results.every((r) => r.status === "merged") ? 0 : 1;
             }
@@ -758,7 +650,7 @@ export async function run(argv, io = defaultIO) {
                     if (!results.length)
                         io.out("No runnable tasks.");
                     for (const r of results)
-                        io.out(`${r.status === "done" ? "✓" : "✗"} ${r.task} (${r.seconds}s${r.timedOut ? ", timed out" : ""}) → ${r.worktree}`);
+                        io.out("".concat(r.status === "done" ? "✓" : "✗", " ", r.task, " (", r.seconds, "s", r.timedOut ? ", timed out" : "", ") → ", r.worktree));
                 });
                 return results.every((r) => r.status === "done") ? 0 : 1;
             }
@@ -774,15 +666,15 @@ export async function run(argv, io = defaultIO) {
                     return 0;
                 }
                 if (!opts.json) {
-                    io.out(`forge-engine setup — ${plan.action}`);
+                    io.out("forge-engine setup — ".concat(plan.action));
                     for (const h of plan.hosts)
-                        io.out(`  ${h.found ? "✓" : "–"} ${h.host === "claude" ? "Claude Code" : "Codex"}${h.found ? "" : " (not found)"}`);
+                        io.out("  ".concat(h.found ? "✓" : "–", " ", h.host === "claude" ? "Claude Code" : "Codex", h.found ? "" : " (not found)"));
                     if (plan.steps.length)
                         io.out("\nWill run:");
                     for (const step of plan.steps)
-                        io.out(`  ${quoteArgv(step.argv)}\n      ${step.label}`);
+                        io.out("  ".concat(quoteArgv(step.argv), "\n      ", step.label));
                     for (const note of plan.notes)
-                        io.out(`  ! ${note}`);
+                        io.out("  ! ".concat(note));
                 }
                 if (!plan.steps.length || opts["dry-run"])
                     return plan.steps.length || opts["dry-run"] ? 0 : 1;
@@ -800,14 +692,14 @@ export async function run(argv, io = defaultIO) {
                         return 0;
                     }
                 }
-                const result = runSetup(plan, (step) => !opts.json && io.out(`\n→ ${quoteArgv(step.argv)}`));
+                const result = runSetup(plan, (step) => !opts.json && io.out("\n→ ".concat(quoteArgv(step.argv))));
                 print(result, () => {
                     for (const r of result.results)
                         if (!r.ok)
-                            io.out(`  ✗ ${r.label} failed:\n${r.output.split("\n").slice(-6).map((l) => `      ${l}`).join("\n")}`);
+                            io.out("  ✗ ".concat(r.label, " failed:\n", r.output.split("\n").slice(-6).map((l) => "      ".concat(l)).join("\n")));
                     io.out("");
                     for (const v of result.verified)
-                        io.out(`${(plan.action === "install") === v.installed ? "✓" : "✗"} ${v.host === "claude" ? "Claude Code" : "Codex"}: ${v.detail}`);
+                        io.out("".concat((plan.action === "install") === v.installed ? "✓" : "✗", " ", v.host === "claude" ? "Claude Code" : "Codex", ": ", v.detail));
                     if (plan.action === "install" && result.verified.some((v) => v.installed))
                         io.out("\nRestart the host, then run /forge-engine:forge in Claude Code, or ask Codex to \"use forge\" (see INSTALL.md).");
                 });
@@ -820,8 +712,8 @@ export async function run(argv, io = defaultIO) {
                     const cases = qaPlan(root);
                     print(cases, () => {
                         for (const c of cases)
-                            io.out(`@${c.id.padEnd(12)} ${c.tool.padEnd(10)} ${c.suggestedFile}\n    ${c.text}`);
-                        io.out(`\n${cases.length} case(s). Put the tag in the test title (test("checks in @S-1/AC1", …)), a Maestro tags: entry, or a comment.`);
+                            io.out("@".concat(c.id.padEnd(12), " ", c.tool.padEnd(10), " ", c.suggestedFile, "\n    ", c.text));
+                        io.out("\n".concat(cases.length, " case(s). Put the tag in the test title (test(\"checks in @S-1/AC1\", …)), a Maestro tags: entry, or a comment."));
                     });
                     return 0;
                 }
@@ -830,12 +722,12 @@ export async function run(argv, io = defaultIO) {
                     const min = forge().config().gates.qa.minCoverage;
                     print(report, () => {
                         for (const c of report.covered)
-                            io.out(`  ✓ ${c.id.padEnd(12)} ${c.files.join(", ")}`);
+                            io.out("  ✓ ".concat(c.id.padEnd(12), " ", c.files.join(", ")));
                         for (const m of report.missing)
-                            io.out(`  ✗ ${m.id.padEnd(12)} ${m.text}\n      → ${m.tool} in ${m.suggestedFile}`);
+                            io.out("  ✗ ".concat(m.id.padEnd(12), " ", m.text, "\n      → ", m.tool, " in ", m.suggestedFile));
                         for (const u of report.unknownTags)
-                            io.out(`  ? @${u.tag} in ${u.file} matches no acceptance criterion`);
-                        io.out(`\n${report.required - report.missing.length}/${report.required} covered (${Math.round(report.ratio * 100)}%, needs ${Math.round(min * 100)}%) across ${report.testFiles} test files${opts.link ? " · trace links added" : ""}`);
+                            io.out("  ? @".concat(u.tag, " in ", u.file, " matches no acceptance criterion"));
+                        io.out("\n".concat(report.required - report.missing.length, "/", report.required, " covered (", Math.round(report.ratio * 100), "%, needs ", Math.round(min * 100), "%) across ", report.testFiles, " test files", opts.link ? " · trace links added" : ""));
                     });
                     return report.ratio >= min ? 0 : 1;
                 }
@@ -860,9 +752,9 @@ export async function run(argv, io = defaultIO) {
                 }
                 const result = writeWorkflow(forge().root, { force: opts.force });
                 print(result, () => {
-                    io.out(result.written ? `Wrote ${result.path} — jobs: ${result.jobs.join(", ")}` : `${result.path} unchanged — jobs: ${result.jobs.join(", ")}`);
+                    io.out(result.written ? "Wrote ".concat(result.path, " — jobs: ", result.jobs.join(", ")) : "".concat(result.path, " unchanged — jobs: ", result.jobs.join(", ")));
                     for (const n of result.notes)
-                        io.out(`  ! ${n}`);
+                        io.out("  ! ".concat(n));
                 });
                 return 0;
             }
@@ -874,9 +766,9 @@ export async function run(argv, io = defaultIO) {
                     const plan = deployPlan(root, env, only);
                     print(plan, () => {
                         for (const p of plan) {
-                            io.out(`${p.problems.length ? "✗" : "✓"} ${p.pack} (${p.dir}) → ${p.target?.name ?? "no target"}: ${p.command ?? `no ${env} deploy`}`);
+                            io.out("".concat(p.problems.length ? "✗" : "✓", " ", p.pack, " (", p.dir, ") → ", p.target?.name ?? "no target", ": ", p.command ?? "no ".concat(env, " deploy")));
                             for (const problem of p.problems)
-                                io.out(`    ${problem}`);
+                                io.out("    ".concat(problem));
                         }
                     });
                     return plan.every((p) => !p.problems.length) ? 0 : 1;
@@ -884,11 +776,11 @@ export async function run(argv, io = defaultIO) {
                 const result = await deploy(root, { env, only, onWait: () => io.err("forge: waiting for a free command slot…") });
                 print(result, () => {
                     for (const s of result.steps)
-                        io.out(`${s.status === "deployed" ? "✓" : s.status === "skipped" ? "–" : "✗"} ${s.pack} ${s.status}${s.url ? ` → ${s.url}` : ""}${s.status === "deployed" ? "" : `: ${s.detail.split("\n")[0]}`}`);
+                        io.out("".concat(s.status === "deployed" ? "✓" : s.status === "skipped" ? "–" : "✗", " ", s.pack, " ", s.status, s.url ? " → ".concat(s.url) : "", s.status === "deployed" ? "" : ": ".concat(s.detail.split("\n")[0])));
                     for (const c of result.checks)
-                        io.out(`  ${c.pass ? "✓" : "✗"} ${c.name}${c.detail && !c.pass ? ` — ${c.detail.split("\n")[0]}` : ""}`);
+                        io.out("  ".concat(c.pass ? "✓" : "✗", " ", c.name, c.detail && !c.pass ? " — ".concat(c.detail.split("\n")[0]) : ""));
                     if (result.release)
-                        io.out(`\nRelease ${result.release.version} (${result.env}) recorded · notes: ${result.notesFile}`);
+                        io.out("\nRelease ".concat(result.release.version, " (", result.env, ") recorded · notes: ", result.notesFile));
                     io.out(result.ok ? "PASSED" : "FAILED");
                 });
                 return result.ok ? 0 : 1;
@@ -912,17 +804,17 @@ export async function run(argv, io = defaultIO) {
                     const blockers = blocking(result, failOn);
                     print({ ...result, failOn, blocking: blockers.length, ...(recorded ? { recorded } : {}) }, () => {
                         for (const x of result.findings) {
-                            io.out(`${x.severity.toUpperCase().padEnd(8)} ${x.rule.padEnd(28)} ${x.file}:${x.line}  ${x.title} [${x.cwe}]`);
-                            io.out(`         ${x.snippet}`);
-                            io.out(`         fix: ${x.fix}`);
+                            io.out("".concat(x.severity.toUpperCase().padEnd(8), " ", x.rule.padEnd(28), " ", x.file, ":", x.line, "  ", x.title, " [", x.cwe, "]"));
+                            io.out("         ".concat(x.snippet));
+                            io.out("         fix: ".concat(x.fix));
                         }
                         for (const s of result.invalidSuppressions)
-                            io.out(`! ${s.file}:${s.line} ${s.text}`);
+                            io.out("! ".concat(s.file, ":", s.line, " ", s.text));
                         const c = result.counts;
-                        io.out(`\n${result.filesScanned} files · ${c.critical} critical · ${c.high} high · ${c.medium} medium · ${c.low} low · ${result.suppressed.length} suppressed with a reason`);
+                        io.out("\n".concat(result.filesScanned, " files · ", c.critical, " critical · ", c.high, " high · ", c.medium, " medium · ", c.low, " low · ", result.suppressed.length, " suppressed with a reason"));
                         if (recorded)
-                            io.out(`Recorded ${recorded.added} new finding(s) in the reviews artifact (${recorded.total} total).`);
-                        io.out(blockers.length ? `FAIL — ${blockers.length} at ${failOn} or above (security.failOn)` : `PASS — nothing at ${failOn} or above`);
+                            io.out("Recorded ".concat(recorded.added, " new finding(s) in the reviews artifact (", recorded.total, " total)."));
+                        io.out(blockers.length ? "FAIL — ".concat(blockers.length, " at ", failOn, " or above (security.failOn)") : "PASS — nothing at ".concat(failOn, " or above"));
                     });
                     return blockers.length ? 1 : 0;
                 }
@@ -931,11 +823,11 @@ export async function run(argv, io = defaultIO) {
                     const report = await checkHeaders(url);
                     const blockers = blockingHeaders(report, failOn);
                     print({ ...report, failOn, blocking: blockers.length }, () => {
-                        io.out(`${report.url} → ${report.status} ${report.contentType || "(no content-type)"} [${report.kind}]`);
+                        io.out("".concat(report.url, " → ", report.status, " ", report.contentType || "(no content-type)", " [", report.kind, "]"));
                         const icon = { pass: "✓", fail: "✗", warn: "!", info: "–" };
                         for (const c of report.checks)
-                            io.out(`  ${icon[c.status]} ${c.id.padEnd(20)} ${c.status === "pass" || c.status === "info" ? "" : `${c.severity} — `}${c.detail}${c.fix && c.status !== "pass" ? `\n      fix: ${c.fix}` : ""}`);
-                        io.out(blockers.length ? `\nFAIL — ${blockers.length} check(s) at ${failOn} or above` : `\nPASS — nothing failing at ${failOn} or above`);
+                            io.out("  ".concat(icon[c.status], " ", c.id.padEnd(20), " ", c.status === "pass" || c.status === "info" ? "" : "".concat(c.severity, " — "), c.detail, c.fix && c.status !== "pass" ? "\n      fix: ".concat(c.fix) : ""));
+                        io.out(blockers.length ? "\nFAIL — ".concat(blockers.length, " check(s) at ", failOn, " or above") : "\nPASS — nothing failing at ".concat(failOn, " or above"));
                     });
                     return blockers.length ? 1 : 0;
                 }
@@ -951,10 +843,10 @@ export async function run(argv, io = defaultIO) {
                     const configured = f.config().stacks;
                     print({ packs: packs.map((p) => ({ ...p.pack, source: p.source })), detected, configured }, () => {
                         for (const { pack, source } of packs)
-                            io.out(`${pack.id.padEnd(12)} ${pack.kind.padEnd(8)} ${pack.platforms.join("/").padEnd(16)} ${pack.name}${source === "project" ? " (project pack)" : ""}`);
+                            io.out("".concat(pack.id.padEnd(12), " ", pack.kind.padEnd(8), " ", pack.platforms.join("/").padEnd(16), " ", pack.name, source === "project" ? " (project pack)" : ""));
                         io.out("");
-                        io.out(`detected:   ${detected.map((d) => `${d.pack} (${d.dir})`).join(", ") || "none"}`);
-                        io.out(`configured: ${configured.map((s) => `${s.pack} (${s.dir})`).join(", ") || "none — run `forge stack use`"}`);
+                        io.out("detected:   ".concat(detected.map((d) => "".concat(d.pack, " (", d.dir, ")")).join(", ") || "none"));
+                        io.out("configured: ".concat(configured.map((s) => "".concat(s.pack, " (", s.dir, ")")).join(", ") || "none — run `forge stack use`"));
                     });
                     return 0;
                 }
@@ -964,11 +856,11 @@ export async function run(argv, io = defaultIO) {
                         if (!results.length)
                             io.out("No known stack found. `forge stack list` shows the packs; `forge stack scaffold <pack>` starts one.");
                         for (const r of results) {
-                            io.out(`${r.pack} in ${r.dir} (${r.packageManager}) — ${r.evidence.join(", ")}`);
+                            io.out("".concat(r.pack, " in ", r.dir, " (", r.packageManager, ") — ", r.evidence.join(", ")));
                             for (const [key, command] of Object.entries(r.commands))
-                                io.out(`  ✓ ${key.padEnd(6)} ${command}`);
+                                io.out("  ✓ ".concat(key.padEnd(6), " ", command));
                             for (const m of r.missing)
-                                io.out(`  – ${m.key.padEnd(6)} ${m.why}${m.fix ? `\n           fix: ${m.fix}` : ""}`);
+                                io.out("  – ".concat(m.key.padEnd(6), " ", m.why, m.fix ? "\n           fix: ".concat(m.fix) : ""));
                         }
                     });
                     return 0;
@@ -976,14 +868,14 @@ export async function run(argv, io = defaultIO) {
                 if (view === "use") {
                     const result = useStacks(root, { pack: args[1], dir: opts.dir, force: opts.force });
                     print(result, () => {
-                        io.out(`Stacks: ${result.stacks.map((s) => `${s.pack} (${s.dir})`).join(", ")}`);
+                        io.out("Stacks: ".concat(result.stacks.map((s) => "".concat(s.pack, " (", s.dir, ")")).join(", ")));
                         for (const [key, command] of Object.entries(result.set))
-                            io.out(`  ✓ commands.${key.padEnd(6)} ${command}`);
+                            io.out("  ✓ commands.".concat(key.padEnd(6), " ", command));
                         for (const [key, k] of Object.entries(result.kept))
-                            io.out(`  = commands.${key.padEnd(6)} kept "${k.current}" (suggested "${k.suggested}"; --force replaces)`);
+                            io.out("  = commands.".concat(key.padEnd(6), " kept \"", k.current, "\" (suggested \"", k.suggested, "\"; --force replaces)"));
                         for (const s of result.stacks)
                             for (const m of s.missing)
-                                io.out(`  – ${s.pack} ${m.key}: ${m.why}${m.fix ? ` — ${m.fix}` : ""}`);
+                                io.out("  – ".concat(s.pack, " ", m.key, ": ", m.why, m.fix ? " — ".concat(m.fix) : ""));
                     });
                     return 0;
                 }
@@ -992,9 +884,9 @@ export async function run(argv, io = defaultIO) {
                     const { pack, dir, source } = loadPack(id, root);
                     const lens = readLens(id, root);
                     print({ ...pack, source, dir, lens }, () => {
-                        io.out(`${pack.name} — ${pack.summary}`);
-                        io.out(`kind ${pack.kind} · platforms ${pack.platforms.join(", ")} · depts ${pack.depts.join(", ")} · tokens ${pack.tokens}`);
-                        io.out(`scaffold: ${pack.scaffold.command} (${pack.scaffold.docs})`);
+                        io.out("".concat(pack.name, " — ", pack.summary));
+                        io.out("kind ".concat(pack.kind, " · platforms ", pack.platforms.join(", "), " · depts ", pack.depts.join(", "), " · tokens ", pack.tokens));
+                        io.out("scaffold: ".concat(pack.scaffold.command, " (", pack.scaffold.docs, ")"));
                         io.out("");
                         io.out(lens || "(no review-lens.md)");
                     });
@@ -1005,10 +897,10 @@ export async function run(argv, io = defaultIO) {
                     if (!opts.run) {
                         const plan = scaffoldPlan(root, id, { dir: opts.dir, pm: opts.pm });
                         print(plan, () => {
-                            io.out(`# ${plan.pack} into ${plan.dir}/ (${plan.docs})`);
+                            io.out("# ".concat(plan.pack, " into ", plan.dir, "/ (", plan.docs, ")"));
                             io.out(plan.command);
                             for (const step of plan.then)
-                                io.out(`(cd ${plan.dir} && ${step})`);
+                                io.out("(cd ".concat(plan.dir, " && ", step, ")"));
                             io.out("");
                             io.out("Re-run with --run to execute it (network + dependency install), then forge records the stack.");
                         });
@@ -1021,10 +913,10 @@ export async function run(argv, io = defaultIO) {
                     });
                     print(result, () => {
                         io.out(result.output.trim());
-                        io.out(result.ok ? `\n✓ ${result.pack} scaffolded in ${result.dir}/ and recorded in forge.config.yaml` : `\n✗ failed at: ${result.failedStep}`);
+                        io.out(result.ok ? "\n✓ ".concat(result.pack, " scaffolded in ", result.dir, "/ and recorded in forge.config.yaml") : "\n✗ failed at: ".concat(result.failedStep));
                         if (result.use)
                             for (const [key, command] of Object.entries(result.use.set))
-                                io.out(`  ✓ commands.${key.padEnd(6)} ${command}`);
+                                io.out("  ✓ commands.".concat(key.padEnd(6), " ", command));
                     });
                     return result.ok ? 0 : 1;
                 }
@@ -1037,11 +929,11 @@ export async function run(argv, io = defaultIO) {
                     print(result, () => {
                         if (result.errors.length)
                             for (const e of result.errors)
-                                io.err(`  ✗ ${e}`);
+                                io.err("  ✗ ".concat(e));
                         else
-                            io.out(`Built ${result.tokens} tokens${result.themes.length ? ` (themes: ${result.themes.join(", ")})` : ""} → ${result.files.join(", ")}`);
+                            io.out("Built ".concat(result.tokens, " tokens", result.themes.length ? " (themes: ".concat(result.themes.join(", "), ")") : "", " → ", result.files.join(", ")));
                         for (const w of result.warnings)
-                            io.out(`  ! ${w}`);
+                            io.out("  ! ".concat(w));
                     });
                     return result.errors.length ? 1 : 0;
                 }
@@ -1051,30 +943,30 @@ export async function run(argv, io = defaultIO) {
                     const drift = auditDrift(root, forge().config().gates.gap.scanDirs);
                     const ok = !set.errors.length && contrast.declared && !contrast.errors.length && contrast.results.every((r) => r.pass) && !drift.length;
                     print({ tokens: { count: set.base.size, errors: set.errors, warnings: set.warnings }, contrast, drift }, () => {
-                        io.out(`tokens: ${set.base.size}${set.errors.length ? ` — ${set.errors.length} error(s)` : " ✓"}`);
+                        io.out("tokens: ".concat(set.base.size, set.errors.length ? " — ".concat(set.errors.length, " error(s)") : " ✓"));
                         for (const e of set.errors.slice(0, 10))
-                            io.out(`  ✗ ${e}`);
-                        io.out(`contrast: ${contrast.declared ? `${contrast.results.filter((r) => r.pass).length}/${contrast.results.length} pass` : "no pairs declared"}`);
+                            io.out("  ✗ ".concat(e));
+                        io.out("contrast: ".concat(contrast.declared ? "".concat(contrast.results.filter((r) => r.pass).length, "/", contrast.results.length, " pass") : "no pairs declared"));
                         for (const r of contrast.results.filter((x) => !x.pass))
-                            io.out(`  ✗ ${r.theme}: ${r.fg} on ${r.bg} = ${r.ratio ?? "?"} (min ${r.min})${r.note ? ` — ${r.note}` : ""}`);
+                            io.out("  ✗ ".concat(r.theme, ": ", r.fg, " on ", r.bg, " = ", r.ratio ?? "?", " (min ", r.min, ")", r.note ? " — ".concat(r.note) : ""));
                         for (const e of contrast.errors)
-                            io.out(`  ✗ ${e}`);
-                        io.out(`drift: ${drift.length} hard-coded colour(s)`);
+                            io.out("  ✗ ".concat(e));
+                        io.out("drift: ".concat(drift.length, " hard-coded colour(s)"));
                         for (const h of drift.slice(0, 20))
-                            io.out(`  ✗ ${h.file}:${h.line} ${h.value}${h.suggest ? ` → use ${h.suggest}` : ""}`);
+                            io.out("  ✗ ".concat(h.file, ":", h.line, " ", h.value, h.suggest ? " → use ".concat(h.suggest) : ""));
                     });
                     return ok ? 0 : 1;
                 }
                 if (args[0] === "prototype") {
                     const result = buildPrototype(root, { force: opts.force });
-                    print(result, () => io.out(`Wrote ${result.path} (${result.screens} screens · ?screen=<id>&state=empty|loading|error|success)`));
+                    print(result, () => io.out("Wrote ".concat(result.path, " (", result.screens, " screens · ?screen=<id>&state=empty|loading|error|success)")));
                     return 0;
                 }
                 if (args[0] === "shots") {
                     const viewports = opts.viewport ? opts.viewport.split(",").map((v) => v.trim()) : undefined;
                     const bad = viewports?.filter((v) => !(v in VIEWPORTS));
                     if (bad?.length)
-                        throw new UsageError(`--viewport must be among ${Object.keys(VIEWPORTS).join(", ")}`);
+                        throw new UsageError("--viewport must be among ".concat(Object.keys(VIEWPORTS).join(", ")));
                     const manifest = await captureShots(root, {
                         url: opts.url,
                         viewports: viewports,
@@ -1084,13 +976,13 @@ export async function run(argv, io = defaultIO) {
                     const problems = manifest.source === "prototype" ? shotProblems(root).filter((p) => !/critique predates/.test(p)) : [];
                     print({ ...manifest, problems }, () => {
                         for (const s of manifest.shots) {
-                            io.out(`${s.error ? "✗" : s.blank ? "!" : "✓"} ${s.file}${s.error ? ` — ${s.error}` : s.blank ? " — blank render" : ""}${s.changedRatio !== undefined ? ` (${(s.changedRatio * 100).toFixed(1)}% changed)` : ""}`);
+                            io.out("".concat(s.error ? "✗" : s.blank ? "!" : "✓", " ", s.file, s.error ? " — ".concat(s.error) : s.blank ? " — blank render" : "", s.changedRatio !== undefined ? " (".concat((s.changedRatio * 100).toFixed(1), "% changed)") : ""));
                         }
                         for (const skip of manifest.skipped)
-                            io.out(`– ${skip}`);
+                            io.out("– ".concat(skip));
                         for (const p of problems)
-                            io.out(`! ${p}`);
-                        io.out(`\n${manifest.shots.filter((s) => !s.error).length}/${manifest.shots.length} shots → design/shots/ · next: the design-critic scores them and writes .forge/gates/design.rubric.json`);
+                            io.out("! ".concat(p));
+                        io.out("\n".concat(manifest.shots.filter((s) => !s.error).length, "/", manifest.shots.length, " shots → design/shots/ · next: the design-critic scores them and writes .forge/gates/design.rubric.json"));
                     });
                     return manifest.shots.some((s) => s.error || s.blank) ? 1 : 0;
                 }
@@ -1101,33 +993,33 @@ export async function run(argv, io = defaultIO) {
                 if (args[0] === "init") {
                     const file = join(root, "AGENT_PROCESSES.md");
                     if (existsSync(file)) {
-                        print({ created: false, file }, () => io.out(`${file} already exists — left unchanged`));
+                        print({ created: false, file }, () => io.out("".concat(file, " already exists — left unchanged")));
                         return 0;
                     }
                     writeFileSync(file, registryTemplate(root));
                     print({ created: true, file }, () => {
-                        io.out(`Created ${file}`);
+                        io.out("Created ".concat(file));
                         io.out("Keep it out of version control: add AGENT_PROCESSES.md and .agent-runtime/ to .gitignore.");
                     });
                     return 0;
                 }
                 if (args[0])
-                    throw new UsageError(`Unknown procs subcommand "${args[0]}"`);
+                    throw new UsageError("Unknown procs subcommand \"".concat(args[0], "\""));
                 const processes = listProjectProcesses(root);
                 const memory = memorySnapshot();
                 const totalMb = processes.reduce((sum, p) => sum + p.rssKb, 0) / 1024;
                 print({ root, memory, totalRssMb: Math.round(totalMb), processes }, () => {
-                    io.out(`machine: ${memory.totalGb.toFixed(1)} GB RAM, ${memory.freePercent}% free (${memory.source})`);
+                    io.out("machine: ".concat(memory.totalGb.toFixed(1), " GB RAM, ", memory.freePercent, "% free (", memory.source, ")"));
                     if (!processes.length) {
-                        io.out(`no processes belong to ${root}`);
+                        io.out("no processes belong to ".concat(root));
                         return;
                     }
-                    io.out(`${"PID".padEnd(8)}${"PPID".padEnd(8)}${"PGID".padEnd(8)}${"RSS".padStart(9)}  ${"WHY".padEnd(11)}COMMAND`);
+                    io.out("".concat("PID".padEnd(8), "PPID".padEnd(8), "PGID".padEnd(8), "RSS".padStart(9), "  ", "WHY".padEnd(11), "COMMAND"));
                     for (const p of processes) {
-                        const rss = `${(p.rssKb / 1024).toFixed(1)} MB`;
-                        io.out(`${String(p.pid).padEnd(8)}${String(p.ppid).padEnd(8)}${String(p.pgid).padEnd(8)}${rss.padStart(9)}  ${p.reason.padEnd(11)}${p.command.slice(0, 110)}`);
+                        const rss = "".concat((p.rssKb / 1024).toFixed(1), " MB");
+                        io.out("".concat(String(p.pid).padEnd(8), String(p.ppid).padEnd(8), String(p.pgid).padEnd(8), rss.padStart(9), "  ", p.reason.padEnd(11), p.command.slice(0, 110)));
                     }
-                    io.out(`${processes.length} process(es) · ${totalMb.toFixed(1)} MB resident (RSS)`);
+                    io.out("".concat(processes.length, " process(es) · ", totalMb.toFixed(1), " MB resident (RSS)"));
                 });
                 return 0;
             }
@@ -1135,7 +1027,7 @@ export async function run(argv, io = defaultIO) {
                 const report = doctor(opts.root);
                 print(report, () => {
                     for (const item of report)
-                        io.out(`  ${item.ok ? "✓" : "·"} ${item.name.padEnd(14)} ${item.detail}`);
+                        io.out("  ".concat(item.ok ? "✓" : "·", " ", item.name.padEnd(14), " ", item.detail));
                 });
                 return 0;
             }
@@ -1145,11 +1037,11 @@ export async function run(argv, io = defaultIO) {
                 const out = resolve(opts.out ?? "schemas");
                 mkdirSync(out, { recursive: true });
                 const written = Object.entries(PUBLISHED_SCHEMAS).map(([name, schema]) => {
-                    const file = join(out, `${name}.schema.json`);
-                    writeFileSync(file, `${JSON.stringify(z.toJSONSchema(schema, { io: "input" }), null, 2)}\n`);
+                    const file = join(out, "".concat(name, ".schema.json"));
+                    writeFileSync(file, "".concat(JSON.stringify(z.toJSONSchema(schema, { io: "input" }), null, 2), "\n"));
                     return file;
                 });
-                print(written, () => io.out(`Wrote ${written.length} schemas to ${out}`));
+                print(written, () => io.out("Wrote ".concat(written.length, " schemas to ", out)));
                 return 0;
             }
             case "mcp": {
@@ -1158,11 +1050,11 @@ export async function run(argv, io = defaultIO) {
                 return -1; // keep the process alive; the transport owns stdio now
             }
             default:
-                throw new UsageError(`Unknown command "${command}". See \`forge --help\`.`);
+                throw new UsageError("Unknown command \"".concat(command, "\". See `forge --help`."));
         }
     }
     catch (error) {
-        io.err(`forge: ${errorMessage(error)}`);
+        io.err("forge: ".concat(errorMessage(error)));
         return error instanceof UsageError ? 2 : 1;
     }
 }
@@ -1178,24 +1070,24 @@ function doctor(rootOption) {
     const root = findRoot(rootOption ? resolve(rootOption) : undefined);
     const items = [];
     const major = Number(process.versions.node.split(".")[0]);
-    items.push({ name: "node", ok: major >= 20, detail: `v${process.versions.node}${major >= 20 ? "" : " (forge needs ≥ 20)"}` });
+    items.push({ name: "node", ok: major >= 20, detail: "v".concat(process.versions.node, major >= 20 ? "" : " (forge needs ≥ 20)") });
     const memory = memorySnapshot();
     items.push({
         name: "memory",
         ok: memory.freePercent >= 20,
-        detail: `${memory.totalGb.toFixed(1)} GB, ${memory.freePercent}% free (${memory.source})${memory.freePercent < 20 ? " — low: avoid heavy jobs" : ""}`,
+        detail: "".concat(memory.totalGb.toFixed(1), " GB, ", memory.freePercent, "% free (", memory.source, ")", memory.freePercent < 20 ? " — low: avoid heavy jobs" : ""),
     });
     const f = new Forge(root);
-    items.push({ name: "project", ok: f.initialized, detail: f.initialized ? root : `not initialised in ${root} — run \`forge init\`` });
+    items.push({ name: "project", ok: f.initialized, detail: f.initialized ? root : "not initialised in ".concat(root, " — run `forge init`") });
     try {
         const config = f.config();
-        items.push({ name: "config", ok: true, detail: `autonomy=${config.autonomy}, packs=[${config.packs.join(", ")}]` });
+        items.push({ name: "config", ok: true, detail: "autonomy=".concat(config.autonomy, ", packs=[", config.packs.join(", "), "]") });
     }
     catch (error) {
         items.push({ name: "config", ok: false, detail: errorMessage(error) });
     }
     const graphify = findGraphify();
-    items.push({ name: "graphify", ok: graphify !== null, detail: graphify ?? `optional — ${GRAPHIFY_INSTALL_HINT}` });
+    items.push({ name: "graphify", ok: graphify !== null, detail: graphify ?? "optional — ".concat(GRAPHIFY_INSTALL_HINT) });
     for (const [name, binary] of [["claude", "claude"], ["codex", "codex"], ["gemini", "gemini"], ["opencode", "opencode"], ["cursor-agent", "cursor-agent"]]) {
         const path = findOnPath(binary);
         items.push({ name, ok: path !== null, detail: path ?? "not found (optional headless worker)" });

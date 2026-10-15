@@ -12,13 +12,13 @@ export function addLearning(root, text, options = {}) {
     const trimmed = text.trim().replace(/\s+/g, " ");
     if (!trimmed)
         throw new Error("A learning needs text");
-    const line = `- ${nowIso().slice(0, 10)} — ${trimmed}${options.source ? ` _(source: ${options.source})_` : ""}`;
+    const line = "- ".concat(nowIso().slice(0, 10), " — ", trimmed, options.source ? " _(source: ".concat(options.source, ")_") : "");
     assertNoSecrets(line, "learning");
     const file = learningsFile(root, scope);
     withLockAt(dirname(file), () => {
         if (!existsSync(file))
             writeTextAtomic(file, "# Learnings\n\n");
-        appendFileSync(file, `${line}\n`, "utf8");
+        appendFileSync(file, "".concat(line, "\n"), "utf8");
     });
     return { scope, text: line };
 }

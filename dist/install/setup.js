@@ -28,7 +28,7 @@ export function setupPlan(options = {}) {
     const notes = [];
     for (const { host, found } of hosts) {
         if (!found) {
-            notes.push(`${host === "claude" ? "Claude Code (`claude`)" : "Codex (`codex`)"} is not installed — skipped`);
+            notes.push("".concat(host === "claude" ? "Claude Code (`claude`)" : "Codex (`codex`)", " is not installed — skipped"));
             continue;
         }
         if (host === "claude") {
@@ -38,17 +38,17 @@ export function setupPlan(options = {}) {
             else {
                 // The GitHub marketplace works for every account; `forge-engine@npm` installs are not enabled for all accounts.
                 const from = source ?? REPO;
-                steps.push({ host, label: `Install the Claude Code plugin from the ${from} marketplace (${scope} scope)`, argv: ["claude", "plugin", "install", PLUGIN, "--marketplace", from, "--scope", scope] });
+                steps.push({ host, label: "Install the Claude Code plugin from the ".concat(from, " marketplace (", scope, " scope)"), argv: ["claude", "plugin", "install", PLUGIN, "--marketplace", from, "--scope", scope] });
             }
         }
         else if (options.remove) {
-            steps.push({ host, label: "Remove the Codex plugin", argv: ["codex", "plugin", "remove", `${PLUGIN}@${PLUGIN}`] });
+            steps.push({ host, label: "Remove the Codex plugin", argv: ["codex", "plugin", "remove", "".concat(PLUGIN, "@", PLUGIN)] });
             steps.push({ host, label: "Remove the forge-engine Codex marketplace", argv: ["codex", "plugin", "marketplace", "remove", PLUGIN] });
         }
         else {
             const from = source ?? REPO;
-            steps.push({ host, label: `Add the forge-engine Codex marketplace (${from})`, argv: ["codex", "plugin", "marketplace", "add", from] });
-            steps.push({ host, label: "Install the Codex plugin", argv: ["codex", "plugin", "add", `${PLUGIN}@${PLUGIN}`] });
+            steps.push({ host, label: "Add the forge-engine Codex marketplace (".concat(from, ")"), argv: ["codex", "plugin", "marketplace", "add", from] });
+            steps.push({ host, label: "Install the Codex plugin", argv: ["codex", "plugin", "add", "".concat(PLUGIN, "@", PLUGIN)] });
             if (options.scope && options.scope !== "user")
                 notes.push("Codex has no install scopes — the plugin is enabled for every Codex session using this CODEX_HOME");
         }
@@ -62,7 +62,7 @@ function runArgv(argv, timeout = 300_000) {
     if (!command)
         return { ok: false, output: "empty command" };
     const result = spawnSync(command, args, { encoding: "utf8", timeout, stdio: ["ignore", "pipe", "pipe"] });
-    const output = `${result.stdout ?? ""}${result.stderr ?? ""}${result.error ? String(result.error) : ""}`.trim();
+    const output = "".concat(result.stdout ?? "", result.stderr ?? "", result.error ? String(result.error) : "").trim();
     return { ok: result.status === 0, output };
 }
 /** Is the plugin installed (and enabled) according to the host's own CLI? */
@@ -71,19 +71,19 @@ export function verifyHost(host) {
         const { ok, output } = runArgv(["claude", "plugin", "list", "--json"], 60_000);
         if (!ok)
             return { installed: false, detail: output.slice(0, 300) };
-        const found = new RegExp(`"(?:id|name|plugin|pluginId)"\\s*:\\s*"${PLUGIN}(?:@[\\w.-]+)?"`).test(output);
-        return { installed: found, detail: found ? `${PLUGIN} is listed by \`claude plugin list\`` : `${PLUGIN} is not listed by \`claude plugin list\`` };
+        const found = new RegExp("\"(?:id|name|plugin|pluginId)\"\\s*:\\s*\"".concat(PLUGIN, "(?:@[\\w.-]+)?\"")).test(output);
+        return { installed: found, detail: found ? "".concat(PLUGIN, " is listed by `claude plugin list`") : "".concat(PLUGIN, " is not listed by `claude plugin list`") };
     }
     const { ok, output } = runArgv(["codex", "plugin", "list", "--json"], 60_000);
     if (!ok)
         return { installed: false, detail: output.slice(0, 300) };
     try {
         const list = JSON.parse(output);
-        const entry = list.installed?.find((p) => p.pluginId === `${PLUGIN}@${PLUGIN}`);
-        return { installed: Boolean(entry?.enabled), detail: entry ? `${entry.pluginId} installed${entry.enabled ? " and enabled" : " but disabled"}` : `${PLUGIN}@${PLUGIN} is not installed` };
+        const entry = list.installed?.find((p) => p.pluginId === "".concat(PLUGIN, "@", PLUGIN));
+        return { installed: Boolean(entry?.enabled), detail: entry ? "".concat(entry.pluginId, " installed", entry.enabled ? " and enabled" : " but disabled") : "".concat(PLUGIN, "@", PLUGIN, " is not installed") };
     }
     catch {
-        return { installed: output.includes(`${PLUGIN}@${PLUGIN}`), detail: output.slice(0, 200) };
+        return { installed: output.includes("".concat(PLUGIN, "@", PLUGIN)), detail: output.slice(0, 200) };
     }
 }
 /** Run every step in order; a failed step stops that host's remaining steps. Then verify each host. */
@@ -105,8 +105,8 @@ export function runSetup(plan, onStep) {
     const verified = touched.map((host) => {
         const state = verifyHost(host);
         const expected = plan.action === "install";
-        return { host, installed: state.installed, detail: expected === state.installed ? state.detail : `${state.detail} (expected it to be ${expected ? "installed" : "removed"})` };
+        return { host, installed: state.installed, detail: expected === state.installed ? state.detail : "".concat(state.detail, " (expected it to be ", expected ? "installed" : "removed", ")") };
     });
     return { plan, results, verified };
 }
-export const quoteArgv = (argv) => argv.map((a) => (/^[\w@./:=-]+$/.test(a) ? a : `'${a.replace(/'/g, `'\\''`)}'`)).join(" ");
+export const quoteArgv = (argv) => argv.map((a) => (/^[\w@./:=-]+$/.test(a) ? a : "'".concat(a.replace(/'/g, `'\\''`), "'"))).join(" ");

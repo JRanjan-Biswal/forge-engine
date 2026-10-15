@@ -14,7 +14,7 @@ function flatten(node, path, inheritedType, file, out, errors) {
     if ("$value" in record) {
         const tokenPath = path.join(".");
         if (!type)
-            errors.push(`${file}: ${tokenPath} has no $type (set it on the token or a parent group)`);
+            errors.push("".concat(file, ": ", tokenPath, " has no $type (set it on the token or a parent group)"));
         out.set(tokenPath, {
             path: tokenPath,
             type: type ?? "unknown",
@@ -36,12 +36,12 @@ function resolveValue(value, tokens, stack, errors, at) {
             return value;
         const target = alias[1];
         if (stack.includes(target)) {
-            errors.push(`alias cycle: ${[...stack, target].join(" → ")}`);
+            errors.push("alias cycle: ".concat([...stack, target].join(" → ")));
             return value;
         }
         const token = tokens.get(target);
         if (!token) {
-            errors.push(`${at}: {${target}} does not resolve to a token`);
+            errors.push("".concat(at, ": {", target, "} does not resolve to a token"));
             return value;
         }
         return resolveValue(token.value, tokens, [...stack, target], errors, at);
@@ -61,16 +61,16 @@ function validate(token, value) {
         (typeof v === "object" && v !== null && typeof v.value === "number" && typeof v.unit === "string");
     switch (token.type) {
         case "color":
-            return typeof value === "string" && COLOR.test(value.trim()) ? null : `color expected, got ${JSON.stringify(value)}`;
+            return typeof value === "string" && COLOR.test(value.trim()) ? null : "color expected, got ".concat(JSON.stringify(value));
         case "dimension":
-            return unitValue(value, LENGTH) ? null : `dimension expected (e.g. "16px" or {value, unit}), got ${JSON.stringify(value)}`;
+            return unitValue(value, LENGTH) ? null : "dimension expected (e.g. \"16px\" or {value, unit}), got ".concat(JSON.stringify(value));
         case "duration":
-            return unitValue(value, TIME) ? null : `duration expected (e.g. "200ms"), got ${JSON.stringify(value)}`;
+            return unitValue(value, TIME) ? null : "duration expected (e.g. \"200ms\"), got ".concat(JSON.stringify(value));
         case "cubicBezier":
             return Array.isArray(value) && value.length === 4 && value.every((n) => typeof n === "number") ? null : "cubicBezier expects [x1, y1, x2, y2]";
         case "number":
         case "fontWeight":
-            return typeof value === "number" || typeof value === "string" ? null : `${token.type} expected`;
+            return typeof value === "number" || typeof value === "string" ? null : "".concat(token.type, " expected");
         case "fontFamily":
             return typeof value === "string" || (Array.isArray(value) && value.every((f) => typeof f === "string")) ? null : "fontFamily expects a string or string[]";
         case "spring": {
@@ -87,7 +87,7 @@ function resolveAll(raw, errors) {
         const value = resolveValue(token.value, raw, [token.path], errors, token.path);
         const problem = validate(token, value);
         if (problem)
-            errors.push(`${token.file}: ${token.path} — ${problem}`);
+            errors.push("".concat(token.file, ": ", token.path, " — ", problem));
         resolved.set(token.path, { ...token, value });
     }
     return resolved;
@@ -108,7 +108,7 @@ export function loadTokens(root) {
             parsed = JSON.parse(readFileSync(join(dir, name), "utf8"));
         }
         catch (error) {
-            errors.push(`${name}: invalid JSON (${error.message})`);
+            errors.push("".concat(name, ": invalid JSON (", error.message, ")"));
             continue;
         }
         const theme = TOKEN_FILE.exec(name)?.[2];
@@ -120,7 +120,7 @@ export function loadTokens(root) {
     for (const [theme, map] of Object.entries(overrides)) {
         for (const path of map.keys())
             if (!base.has(path))
-                warnings.push(`theme "${theme}" defines ${path}, which has no base token`);
+                warnings.push("theme \"".concat(theme, "\" defines ", path, ", which has no base token"));
     }
     const resolvedBase = resolveAll(base, errors);
     const themes = {};
@@ -139,12 +139,12 @@ const kebab = (path) => path
 function cssValue(token) {
     const v = token.value;
     if (typeof v === "object" && v !== null && "value" in v && "unit" in v)
-        return `${v.value}${v.unit}`;
+        return "".concat(v.value, v.unit);
     switch (token.type) {
         case "cubicBezier":
-            return `cubic-bezier(${v.join(", ")})`;
+            return "cubic-bezier(".concat(v.join(", "), ")");
         case "fontFamily":
-            return (Array.isArray(v) ? v : [v]).map((f) => (/\s/.test(String(f)) ? `"${f}"` : String(f))).join(", ");
+            return (Array.isArray(v) ? v : [v]).map((f) => (/\s/.test(String(f)) ? "\"".concat(f, "\"") : String(f))).join(", ");
         case "spring":
             return null; // no CSS equivalent — exported to theme.ts for Motion/Reanimated/SwiftUI
         default:
@@ -156,25 +156,25 @@ function cssBlock(selector, tokens, only) {
         .filter((t) => !only || only.has(t.path))
         .map((t) => [t, cssValue(t)])
         .filter(([, value]) => value !== null)
-        .map(([t, value]) => `  --${kebab(t.path)}: ${value};`);
-    return `${selector} {\n${lines.join("\n")}\n}\n`;
+        .map(([t, value]) => "  --".concat(kebab(t.path), ": ", value, ";"));
+    return "".concat(selector, " {\n", lines.join("\n"), "\n}\n");
 }
 /** Tailwind v4 theme namespaces by token type / top-level group. */
 function tailwindName(token) {
     const [group, ...rest] = token.path.split(".");
     const name = kebab(rest.join(".") || group || "");
     if (token.type === "color")
-        return `--color-${kebab(token.path.replace(/^colou?r\./, ""))}`;
+        return "--color-".concat(kebab(token.path.replace(/^colou?r\./, "")));
     if (token.type === "dimension" && /^(space|spacing)$/.test(group ?? ""))
-        return `--spacing-${name}`;
+        return "--spacing-".concat(name);
     if (token.type === "dimension" && /^radius|radii$/.test(group ?? ""))
-        return `--radius-${name}`;
+        return "--radius-".concat(name);
     if (token.type === "fontFamily")
-        return `--font-${name}`;
+        return "--font-".concat(name);
     if (token.type === "cubicBezier")
-        return `--ease-${name}`;
+        return "--ease-".concat(name);
     if (token.type === "shadow")
-        return `--shadow-${name}`;
+        return "--shadow-".concat(name);
     return null;
 }
 function nest(tokens, only) {
@@ -201,23 +201,23 @@ export function buildDesign(root, outDir = join(root, "design", "dist")) {
         const themed = set.themes[theme] ?? new Map();
         return new Set([...themed.values()].filter((t) => JSON.stringify(t.value) !== JSON.stringify(set.base.get(t.path)?.value)).map((t) => t.path));
     };
-    let css = `${header}${cssBlock(":root", set.base)}`;
+    let css = "".concat(header, cssBlock(":root", set.base));
     for (const theme of Object.keys(set.themes)) {
         const changed = changedIn(theme);
-        css += `\n${cssBlock(`[data-theme="${theme}"]`, set.themes[theme] ?? new Map(), changed)}`;
+        css += "\n".concat(cssBlock("[data-theme=\"".concat(theme, "\"]"), set.themes[theme] ?? new Map(), changed));
         if (theme === "dark") {
-            css += `\n@media (prefers-color-scheme: dark) {\n${cssBlock(':root:not([data-theme="light"])', set.themes.dark ?? new Map(), changed)
+            css += "\n@media (prefers-color-scheme: dark) {\n".concat(cssBlock(':root:not([data-theme="light"])', set.themes.dark ?? new Map(), changed)
                 .split("\n")
-                .map((line) => (line ? `  ${line}` : line))
-                .join("\n")}}\n`;
+                .map((line) => (line ? "  ".concat(line) : line))
+                .join("\n"), "}\n");
         }
     }
-    const tailwind = `${header}@theme {\n${[...set.base.values()]
+    const tailwind = "".concat(header, "@theme {\n", [...set.base.values()]
         .map((t) => [tailwindName(t), cssValue(t)])
         .filter(([name, value]) => name && value !== null)
-        .map(([name, value]) => `  ${name}: ${value};`)
-        .join("\n")}\n}\n`;
-    const ts = `// Generated by forge from design/tokens — do not edit. Run \`forge design build\`.\nexport const tokens = ${JSON.stringify(nest(set.base), null, 2)} as const;\n\nexport const themes = ${JSON.stringify(Object.fromEntries(Object.keys(set.themes).map((theme) => [theme, nest(set.themes[theme] ?? new Map(), changedIn(theme))])), null, 2)} as const;\n\nexport type Tokens = typeof tokens;\n`;
+        .map(([name, value]) => "  ".concat(name, ": ", value, ";"))
+        .join("\n"), "\n}\n");
+    const ts = "// Generated by forge from design/tokens — do not edit. Run `forge design build`.\nexport const tokens = ".concat(JSON.stringify(nest(set.base), null, 2), " as const;\n\nexport const themes = ", JSON.stringify(Object.fromEntries(Object.keys(set.themes).map((theme) => [theme, nest(set.themes[theme] ?? new Map(), changedIn(theme))])), null, 2), " as const;\n\nexport type Tokens = typeof tokens;\n");
     const json = JSON.stringify({
         base: Object.fromEntries([...set.base.values()].map((t) => [t.path, t.value])),
         themes: Object.fromEntries(Object.entries(set.themes).map(([theme, map]) => [theme, Object.fromEntries([...map.values()].map((t) => [t.path, t.value]))])),
@@ -232,13 +232,13 @@ export function buildDesign(root, outDir = join(root, "design", "dist")) {
         ["tokens.css", css],
         ["tailwind.css", tailwind],
         ["theme.ts", ts],
-        ["tokens.json", `${json}\n`],
+        ["tokens.json", "".concat(json, "\n")],
         ["tokens.dart", native.dart],
         ["ForgeTokens.swift", native.swift],
         ["ForgeTokens.kt", native.kotlin],
     ]) {
         writeFileSync(join(outDir, name), content);
-        written.push(`design/dist/${name}`);
+        written.push("design/dist/".concat(name));
     }
     return { tokens: set.base.size, themes: Object.keys(set.themes), files: written, errors: [], warnings: set.warnings };
 }

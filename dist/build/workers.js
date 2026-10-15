@@ -17,21 +17,21 @@ export function worktreesDir(root) {
 function git(root, args) {
     const result = spawnSync("git", ["-C", root, ...args], { encoding: "utf8" });
     if (result.status !== 0)
-        throw new Error(`git ${args.join(" ")} failed: ${(result.stderr || result.stdout).trim()}`);
+        throw new Error("git ".concat(args.join(" "), " failed: ", (result.stderr || result.stdout).trim()));
     return result.stdout.trim();
 }
 export function createWorktree(root, id) {
     if (!/^[A-Za-z0-9._-]+$/.test(id))
-        throw new Error(`Invalid task id "${id}"`);
+        throw new Error("Invalid task id \"".concat(id, "\""));
     const path = join(worktreesDir(root), id);
-    const branch = `forge/task-${id}`;
+    const branch = "forge/task-".concat(id);
     if (existsSync(path))
         return { path, branch };
     mkdirSync(worktreesDir(root), { recursive: true });
     const ignore = join(layout(root).forge, ".gitignore");
     const current = existsSync(ignore) ? readFileSync(ignore, "utf8") : "";
     if (!/^worktrees\/$/m.test(current))
-        writeFileSync(ignore, `${current}${current.endsWith("\n") || !current ? "" : "\n"}worktrees/\n`);
+        writeFileSync(ignore, "".concat(current, current.endsWith("\n") || !current ? "" : "\n", "worktrees/\n"));
     const exists = spawnSync("git", ["-C", root, "rev-parse", "--verify", "--quiet", branch]).status === 0;
     git(root, exists ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path]);
     return { path, branch };
@@ -50,10 +50,10 @@ export function listWorktrees(root) {
         .filter((w) => w.branch.startsWith("forge/task-"));
 }
 const HOST_COMMANDS = {
-    claude: (f, extra) => `claude -p "$(cat '${f}')" --output-format json ${extra || "--permission-mode acceptEdits"}`,
-    codex: (f, extra) => `codex exec --skip-git-repo-check ${extra || "-s workspace-write"} "$(cat '${f}')"`,
-    gemini: (f, extra) => `gemini ${extra} -p "$(cat '${f}')"`,
-    opencode: (f, extra) => `opencode run ${extra} "$(cat '${f}')"`,
+    claude: (f, extra) => "claude -p \"$(cat '".concat(f, "')\" --output-format json ", extra || "--permission-mode acceptEdits"),
+    codex: (f, extra) => "codex exec --skip-git-repo-check ".concat(extra || "-s workspace-write", " \"$(cat '", f, "')\""),
+    gemini: (f, extra) => "gemini ".concat(extra, " -p \"$(cat '", f, "')\""),
+    opencode: (f, extra) => "opencode run ".concat(extra, " \"$(cat '", f, "')\""),
 };
 /**
  * Run the next wave of ready tasks through headless agent workers. A worker that
@@ -65,7 +65,7 @@ export async function runWorkers(root, config, options = {}) {
     const host = options.host ?? config.workers.host;
     const template = setting("FORGE_WORKER_COMMAND");
     if (!template && !HOST_COMMANDS[host])
-        throw new Error(`Unknown worker host "${host}". Hosts: ${Object.keys(HOST_COMMANDS).join(", ")}`);
+        throw new Error("Unknown worker host \"".concat(host, "\". Hosts: ", Object.keys(HOST_COMMANDS).join(", ")));
     const max = Math.max(1, options.max ?? config.workers.maxConcurrent);
     const all = loadTasks(root);
     const queue = options.tasks ? all.filter((t) => options.tasks?.includes(t.id)) : nextTasks(all);
@@ -73,15 +73,15 @@ export async function runWorkers(root, config, options = {}) {
     const runOne = async (id) => {
         const started = Date.now();
         const { path } = createWorktree(root, id);
-        const briefFile = join(worktreesDir(root), `${id}.brief.md`);
+        const briefFile = join(worktreesDir(root), "".concat(id, ".brief.md"));
         writeFileSync(briefFile, taskBrief(root, id));
-        updateTask(root, id, "doing", `worker (${template ? "custom" : host}) started in .forge/worktrees/${id}`);
+        updateTask(root, id, "doing", "worker (".concat(template ? "custom" : host, ") started in .forge/worktrees/", id));
         const command = template ? template.replaceAll("{brief}", briefFile) : HOST_COMMANDS[host](briefFile, config.workers.args);
         const result = await runCommand(command, path, { timeoutMs: config.workers.timeoutMs });
-        const log = join(worktreesDir(root), `${id}.log`);
+        const log = join(worktreesDir(root), "".concat(id, ".log"));
         writeFileSync(log, result.output);
         const ok = result.code === 0 && !result.timedOut;
-        updateTask(root, id, ok ? "done" : "blocked", ok ? "worker finished — review and merge next" : `worker ${result.timedOut ? "timed out" : `exited ${result.code}`}; see .forge/worktrees/${id}.log`);
+        updateTask(root, id, ok ? "done" : "blocked", ok ? "worker finished — review and merge next" : "worker ".concat(result.timedOut ? "timed out" : "exited ".concat(result.code), "; see .forge/worktrees/", id, ".log"));
         results.push({ task: id, status: ok ? "done" : "blocked", code: result.code, timedOut: result.timedOut, worktree: path, log, seconds: Math.round((Date.now() - started) / 1000) });
     };
     // Bounded pool: at most `max` workers alive at once.
@@ -105,28 +105,28 @@ export async function mergeTasks(root, config, ids) {
     const results = [];
     for (const id of candidates) {
         const path = join(worktreesDir(root), id);
-        const branch = `forge/task-${id}`;
+        const branch = "forge/task-".concat(id);
         const block = (reason) => {
-            updateTask(root, id, "blocked", `merge: ${reason}`);
+            updateTask(root, id, "blocked", "merge: ".concat(reason));
             results.push({ task: id, status: "blocked", reason });
         };
         const inTree = (args) => spawnSync("git", ["-C", path, "-c", "user.email=forge@localhost", "-c", "user.name=forge", ...args], { encoding: "utf8" });
         if (inTree(["status", "--porcelain"]).stdout.trim()) {
             inTree(["add", "-A"]);
-            inTree(["commit", "-qm", `forge: task ${id}`]);
+            inTree(["commit", "-qm", "forge: task ".concat(id)]);
         }
         const test = config.commands.test;
         if (test) {
-            const run = await withCommandSlot(root, { max: config.resources.maxConcurrentCommands, waitMs: config.resources.commandWaitMs, task: `forge merge ${id}` }, () => runCommand(test, path, { timeoutMs: 600_000 }));
+            const run = await withCommandSlot(root, { max: config.resources.maxConcurrentCommands, waitMs: config.resources.commandWaitMs, task: "forge merge ".concat(id) }, () => runCommand(test, path, { timeoutMs: 600_000 }));
             if (run.code !== 0 || run.timedOut) {
-                block(`tests failed in the worktree (${run.timedOut ? "timeout" : `exit ${run.code}`}); not merged`);
+                block("tests failed in the worktree (".concat(run.timedOut ? "timeout" : "exit ".concat(run.code), "); not merged"));
                 continue;
             }
         }
-        const merge = spawnSync("git", ["-C", root, "-c", "user.email=forge@localhost", "-c", "user.name=forge", "merge", "--no-ff", "-m", `forge: merge task ${id}`, branch], { encoding: "utf8" });
+        const merge = spawnSync("git", ["-C", root, "-c", "user.email=forge@localhost", "-c", "user.name=forge", "merge", "--no-ff", "-m", "forge: merge task ".concat(id), branch], { encoding: "utf8" });
         if (merge.status !== 0) {
             spawnSync("git", ["-C", root, "merge", "--abort"]);
-            block(`merge conflict with the current branch — resolve in .forge/worktrees/${id}, then retry (${(merge.stdout + merge.stderr).trim().split("\n")[0]})`);
+            block("merge conflict with the current branch — resolve in .forge/worktrees/".concat(id, ", then retry (", (merge.stdout + merge.stderr).trim().split("\n")[0], ")"));
             continue;
         }
         removeWorktree(root, id, true);

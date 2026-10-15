@@ -6,8 +6,8 @@ const human = {
 };
 const artifact = (name) => ({
     type: "artifact",
-    id: `${name}-valid`,
-    description: `${name} artifact exists and matches its schema`,
+    id: "".concat(name, "-valid"),
+    description: "".concat(name, " artifact exists and matches its schema"),
     artifact: name,
 });
 const builtin = (name, description) => ({
@@ -254,7 +254,7 @@ const STAGE_INPUTS = [
 export const STAGES = STAGE_INPUTS.map((stage) => ({
     ...stage,
     // Every stage is driven through the one shipped command until per-stage commands exist.
-    command: `/forge ${stage.id}`,
+    command: "/forge ".concat(stage.id),
     checkpoint: stage.checkpoint ?? false,
     gate: stage.gate.map((check) => GateCheck.parse(check)),
 }));

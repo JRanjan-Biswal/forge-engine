@@ -25,11 +25,11 @@ export function planWaves(tasks) {
         if (known !== undefined)
             return known;
         if (visiting.has(id))
-            throw new Error(`dependency cycle through ${id}`);
+            throw new Error("dependency cycle through ".concat(id));
         visiting.add(id);
         const task = byId.get(id);
         if (!task)
-            throw new Error(`unknown task ${id}`);
+            throw new Error("unknown task ".concat(id));
         const value = task.deps.length ? Math.max(...task.deps.map((dep) => depth(dep) + 1)) : 0;
         visiting.delete(id);
         level.set(id, value);
@@ -64,10 +64,10 @@ export function updateTask(root, id, status, note) {
         const tasks = loadTasks(root);
         const task = tasks.find((t) => t.id === id);
         if (!task)
-            throw new Error(`No task ${id}`);
+            throw new Error("No task ".concat(id));
         task.status = status;
         writeArtifact(root, "tasks", { tasks });
-        appendLedger(root, { kind: "note", summary: `Task ${id} → ${status}${note ? `: ${note}` : ""}`.slice(0, 1_000) });
+        appendLedger(root, { kind: "note", summary: "Task ".concat(id, " → ", status, note ? ": ".concat(note) : "").slice(0, 1_000) });
         return task;
     });
 }
@@ -76,7 +76,7 @@ export function taskBrief(root, id) {
     const tasks = loadTasks(root);
     const task = tasks.find((t) => t.id === id);
     if (!task)
-        throw new Error(`No task ${id}`);
+        throw new Error("No task ".concat(id));
     const prd = safe(() => loadArtifact(root, "prd"));
     const screens = safe(() => loadArtifact(root, "screens"));
     const motion = safe(() => loadArtifact(root, "motion"));
@@ -85,32 +85,32 @@ export function taskBrief(root, id) {
     const taskMotion = (motion?.specs ?? []).filter((m) => m.storyIds.some((id) => task.storyIds.includes(id)));
     const contractFile = join(root, "contracts", "openapi.yaml");
     const contract = existsSync(contractFile) ? readFileSync(contractFile, "utf8") : "";
-    const words = new Set(`${task.title} ${task.files.join(" ")}`.toLowerCase().split(/\W+/).filter((w) => w.length > 3));
+    const words = new Set("".concat(task.title, " ", task.files.join(" ")).toLowerCase().split(/\W+/).filter((w) => w.length > 3));
     const decisions = readLedger(root)
-        .filter((e) => e.kind === "decision" && [...words].some((w) => `${e.summary} ${e.why ?? ""}`.toLowerCase().includes(w)))
+        .filter((e) => e.kind === "decision" && [...words].some((w) => "".concat(e.summary, " ", e.why ?? "").toLowerCase().includes(w)))
         .slice(-6);
-    const deps = task.deps.map((dep) => `${dep} (${tasks.find((t) => t.id === dep)?.status ?? "?"})`);
+    const deps = task.deps.map((dep) => "".concat(dep, " (", tasks.find((t) => t.id === dep)?.status ?? "?", ")"));
     const lines = [
-        `# Task ${task.id}: ${task.title}`,
+        "# Task ".concat(task.id, ": ", task.title),
         "",
-        `Department: ${task.dept}${task.agent ? ` · agent: ${task.agent}` : ""} · dependencies: ${deps.join(", ") || "none"}`,
-        task.files.length ? `Files you own for this task: ${task.files.join(", ")} — do not edit files owned by other tasks in this wave.` : "",
+        "Department: ".concat(task.dept, task.agent ? " · agent: ".concat(task.agent) : "", " · dependencies: ", deps.join(", ") || "none"),
+        task.files.length ? "Files you own for this task: ".concat(task.files.join(", "), " — do not edit files owned by other tasks in this wave.") : "",
         "",
         "## Acceptance",
-        ...(task.acceptance.length ? task.acceptance.map((a) => `- ${a}`) : ["- (see stories below)"]),
+        ...(task.acceptance.length ? task.acceptance.map((a) => "- ".concat(a)) : ["- (see stories below)"]),
         ...stories.flatMap((s) => [
             "",
-            `## Story ${s.id}: as ${s.as}, I want ${s.iWant}, so that ${s.soThat}`,
-            ...s.acceptance.map((a) => `- Given ${a.given}, when ${a.when}, then ${a.then}`),
+            "## Story ".concat(s.id, ": as ", s.as, ", I want ", s.iWant, ", so that ", s.soThat),
+            ...s.acceptance.map((a) => "- Given ".concat(a.given, ", when ", a.when, ", then ", a.then)),
         ]),
         ...(taskScreens.length
-            ? ["", "## Screens", ...taskScreens.map((s) => `- ${s.id} (${s.route}, ${s.platform}): states ${s.states.join("/") || "—"}; components ${s.components.join(", ") || "—"}`)]
+            ? ["", "## Screens", ...taskScreens.map((s) => "- ".concat(s.id, " (", s.route, ", ", s.platform, "): states ", s.states.join("/") || "—", "; components ", s.components.join(", ") || "—"))]
             : []),
         ...(taskMotion.length
-            ? ["", "## Motion specs", ...taskMotion.map((m) => `- ${m.id}: ${m.trigger} → ${m.targets.join(", ")} (${m.kind}; reduced motion: ${m.reducedMotion?.kind ?? "MISSING"})`)]
+            ? ["", "## Motion specs", ...taskMotion.map((m) => "- ".concat(m.id, ": ", m.trigger, " → ", m.targets.join(", "), " (", m.kind, "; reduced motion: ", m.reducedMotion?.kind ?? "MISSING", ")"))]
             : []),
         ...(contract ? ["", "## API contract (contracts/openapi.yaml)", "```yaml", contract.slice(0, 6_000), "```"] : []),
-        ...(decisions.length ? ["", "## Related decisions", ...decisions.map((d) => `- ${d.id}: ${d.summary}${d.why ? ` — ${d.why}` : ""}`)] : []),
+        ...(decisions.length ? ["", "## Related decisions", ...decisions.map((d) => "- ".concat(d.id, ": ", d.summary, d.why ? " — ".concat(d.why) : ""))] : []),
         ...safe(() => stackBrief(root, task)) ?? [],
         ...((() => {
             const learnings = listLearnings(root).slice(-5);

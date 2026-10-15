@@ -43,7 +43,7 @@ export function loadEvidence(root) {
         return [];
     const parsed = EvidenceStore.safeParse(readJson(file));
     if (!parsed.success)
-        throw new Error(`.forge/evidence/evidence.json is invalid:\n${formatIssues(parsed.error)}`);
+        throw new Error(".forge/evidence/evidence.json is invalid:\n".concat(formatIssues(parsed.error)));
     return parsed.data.items;
 }
 export async function saveEvidence(root, input, options = {}) {
@@ -55,7 +55,7 @@ export async function saveEvidence(root, input, options = {}) {
     assertNoSecrets(quote, "evidence quote");
     const checkedAt = nowIso();
     // 1. A result returned by an evidence search (no refetch needed).
-    const fromSearch = cachedResults(root).find((result) => sameUrl(result.url, url) && quoteAppears(quote, `${result.title} ${result.text}`));
+    const fromSearch = cachedResults(root).find((result) => sameUrl(result.url, url) && quoteAppears(quote, "".concat(result.title, " ", result.text)));
     let verification;
     let source = input.source;
     let title = input.title;
@@ -69,7 +69,7 @@ export async function saveEvidence(root, input, options = {}) {
         const page = await fetchPageText(url, options);
         if (page.ok) {
             if (!quoteAppears(quote, page.text)) {
-                throw new EvidenceMismatchError(`The quote does not appear on ${url}. Copy the source's exact words (use … between fragments), or record the claim as unknown.`);
+                throw new EvidenceMismatchError("The quote does not appear on ".concat(url, ". Copy the source's exact words (use … between fragments), or record the claim as unknown."));
             }
             verification = { status: "verified", method: "page-fetch", checkedAt };
         }
@@ -84,7 +84,7 @@ export async function saveEvidence(root, input, options = {}) {
             return existing;
         const lastId = items.reduce((max, item) => Math.max(max, Number(item.id.slice(2))), 0);
         const item = EvidenceItem.parse({
-            id: `E-${lastId + 1}`,
+            id: "E-".concat(lastId + 1),
             url,
             quote,
             source: source ?? new URL(url).hostname,

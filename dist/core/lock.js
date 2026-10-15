@@ -105,7 +105,7 @@ export function withLockAt(dir, fn) {
     mkdirSync(dir, { recursive: true });
     const deadline = Date.now() + TIMEOUT_MS;
     let delay = 2;
-    while (!tryAcquire(file, `forge ${process.argv.slice(2, 4).join(" ")}`.trim())) {
+    while (!tryAcquire(file, "forge ".concat(process.argv.slice(2, 4).join(" ")).trim())) {
         if (Date.now() > deadline) {
             const owner = (() => {
                 try {
@@ -115,7 +115,7 @@ export function withLockAt(dir, fn) {
                     return null;
                 }
             })();
-            throw new LockTimeoutError(`Timed out waiting for ${file}, held by pid ${owner?.pid ?? "?"} on ${owner?.host ?? "?"} (${owner?.task ?? "unknown task"}). ` +
+            throw new LockTimeoutError("Timed out waiting for ".concat(file, ", held by pid ", owner?.pid ?? "?", " on ", owner?.host ?? "?", " (", owner?.task ?? "unknown task", "). ") +
                 "If that process is not running, delete the file.");
         }
         Atomics.wait(sleeper, 0, 0, delay);

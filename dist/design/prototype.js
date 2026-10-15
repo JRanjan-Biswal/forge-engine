@@ -20,55 +20,12 @@ export function buildPrototype(root, options = {}) {
     const sections = screens.screens
         .map((screen) => {
         const states = screen.stateless ? ["success"] : STATES;
-        return `<section data-screen="${escape(screen.id)}" hidden>
-  <header class="fp-meta"><h1>${escape(screen.id)}</h1><p>${escape(screen.route)} · ${escape(screen.platform)} · stories ${escape(screen.storyIds.join(", "))}</p></header>
-${states
-            .map((state) => `  <div data-state="${state}" hidden>
-    <!-- forge: design the "${state}" state of ${escape(screen.id)} here, using token classes / CSS variables only.${screen.components.length ? ` Components: ${escape(screen.components.join(", "))}.` : ""} -->
-  </div>`)
-            .join("\n")}
-</section>`;
+        return "<section data-screen=\"".concat(escape(screen.id), "\" hidden>\n  <header class=\"fp-meta\"><h1>", escape(screen.id), "</h1><p>", escape(screen.route), " · ", escape(screen.platform), " · stories ", escape(screen.storyIds.join(", ")), "</p></header>\n", states
+            .map((state) => "  <div data-state=\"".concat(state, "\" hidden>\n    <!-- forge: design the \"", state, "\" state of ", escape(screen.id), " here, using token classes / CSS variables only.", screen.components.length ? " Components: ".concat(escape(screen.components.join(", ")), ".") : "", " -->\n  </div>"))
+            .join("\n"), "\n</section>");
     })
         .join("\n");
-    const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prototype</title>
-${hasTokens ? '<link rel="stylesheet" href="../dist/tokens.css">' : "<!-- run `forge design build` to generate ../dist/tokens.css -->"}
-<style>
-  body { margin: 0; font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg-default, Canvas); color: var(--color-text-default, CanvasText); }
-  .fp-bar { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1rem; border-bottom: 1px solid currentColor; font-size: .875rem; }
-  .fp-bar a { color: inherit; } .fp-bar a[aria-current="true"] { font-weight: 700; }
-  .fp-meta { opacity: .7; font-size: .8rem; padding: 0 1rem; } .fp-meta h1 { font-size: 1rem; margin: .75rem 0 0; }
-  main { padding: 1rem; }
-  [hidden] { display: none !important; } /* the hidden attribute must win over display rules (chrome=0 screenshots) */
-</style>
-</head>
-<body>
-<nav class="fp-bar" aria-label="Screens">${screens.screens.map((s) => `<a href="?screen=${encodeURIComponent(s.id)}">${escape(s.id)}</a>`).join("")}</nav>
-<nav class="fp-bar" aria-label="States">${STATES.map((state) => `<a data-state-link="${state}" href="#">${state}</a>`).join("")}</nav>
-<main>
-${sections}
-</main>
-<script>
-  const params = new URLSearchParams(location.search);
-  const screen = params.get("screen") || ${JSON.stringify(screens.screens[0]?.id ?? "")};
-  const state = params.get("state") || "success";
-  // chrome=0: only the design (used by \`forge design shots\` for the critique screenshots).
-  if (params.get("chrome") === "0") for (const el of document.querySelectorAll(".fp-bar, .fp-meta")) el.hidden = true;
-  for (const el of document.querySelectorAll("[data-screen]")) el.hidden = el.dataset.screen !== screen;
-  for (const el of document.querySelectorAll("[data-screen='" + CSS.escape(screen) + "'] [data-state]")) el.hidden = el.dataset.state !== state;
-  for (const a of document.querySelectorAll("nav a[href^='?screen=']")) a.setAttribute("aria-current", String(a.getAttribute("href") === "?screen=" + encodeURIComponent(screen)));
-  for (const a of document.querySelectorAll("[data-state-link]")) {
-    a.href = "?screen=" + encodeURIComponent(screen) + "&state=" + a.dataset.stateLink;
-    a.setAttribute("aria-current", String(a.dataset.stateLink === state));
-  }
-</script>
-</body>
-</html>
-`;
+    const html = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Prototype</title>\n".concat(hasTokens ? '<link rel="stylesheet" href="../dist/tokens.css">' : "<!-- run `forge design build` to generate ../dist/tokens.css -->", "\n<style>\n  body { margin: 0; font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg-default, Canvas); color: var(--color-text-default, CanvasText); }\n  .fp-bar { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1rem; border-bottom: 1px solid currentColor; font-size: .875rem; }\n  .fp-bar a { color: inherit; } .fp-bar a[aria-current=\"true\"] { font-weight: 700; }\n  .fp-meta { opacity: .7; font-size: .8rem; padding: 0 1rem; } .fp-meta h1 { font-size: 1rem; margin: .75rem 0 0; }\n  main { padding: 1rem; }\n  [hidden] { display: none !important; } /* the hidden attribute must win over display rules (chrome=0 screenshots) */\n</style>\n</head>\n<body>\n<nav class=\"fp-bar\" aria-label=\"Screens\">", screens.screens.map((s) => "<a href=\"?screen=".concat(encodeURIComponent(s.id), "\">", escape(s.id), "</a>")).join(""), "</nav>\n<nav class=\"fp-bar\" aria-label=\"States\">", STATES.map((state) => "<a data-state-link=\"".concat(state, "\" href=\"#\">", state, "</a>")).join(""), "</nav>\n<main>\n", sections, "\n</main>\n<script>\n  const params = new URLSearchParams(location.search);\n  const screen = params.get(\"screen\") || ", JSON.stringify(screens.screens[0]?.id ?? ""), ";\n  const state = params.get(\"state\") || \"success\";\n  // chrome=0: only the design (used by `forge design shots` for the critique screenshots).\n  if (params.get(\"chrome\") === \"0\") for (const el of document.querySelectorAll(\".fp-bar, .fp-meta\")) el.hidden = true;\n  for (const el of document.querySelectorAll(\"[data-screen]\")) el.hidden = el.dataset.screen !== screen;\n  for (const el of document.querySelectorAll(\"[data-screen='\" + CSS.escape(screen) + \"'] [data-state]\")) el.hidden = el.dataset.state !== state;\n  for (const a of document.querySelectorAll(\"nav a[href^='?screen=']\")) a.setAttribute(\"aria-current\", String(a.getAttribute(\"href\") === \"?screen=\" + encodeURIComponent(screen)));\n  for (const a of document.querySelectorAll(\"[data-state-link]\")) {\n    a.href = \"?screen=\" + encodeURIComponent(screen) + \"&state=\" + a.dataset.stateLink;\n    a.setAttribute(\"aria-current\", String(a.dataset.stateLink === state));\n  }\n</script>\n</body>\n</html>\n");
     const dir = join(root, "design", "prototype");
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "index.html"), html);

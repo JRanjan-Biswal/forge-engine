@@ -23,7 +23,7 @@ function initUnlocked(root, options) {
     for (const dir of [paths.artifacts, paths.gates, paths.episodes, paths.graphDir, paths.reviews, paths.releases, paths.adr]) {
         if (!existsSync(dir)) {
             mkdirSync(dir, { recursive: true });
-            created.push(`${relative(root, dir)}/`);
+            created.push("".concat(relative(root, dir), "/"));
         }
     }
     const config = loadConfig(root);
@@ -48,11 +48,11 @@ function initUnlocked(root, options) {
         writeTextAtomic(paths.learnings, "# Learnings\n\n");
         created.push(".forge/learnings.md");
     }
-    const gitignore = `${paths.forge}/.gitignore`;
+    const gitignore = "".concat(paths.forge, "/.gitignore");
     if (!existsSync(gitignore)) {
         writeTextAtomic(gitignore, "# local-only forge files\nindex.db\ncache/\n*.tmp\nworktrees/\n");
         created.push(".forge/.gitignore");
     }
-    appendLedger(root, { kind: "init", summary: `Initialized forge project "${state.project}"`, by: "forge" });
+    appendLedger(root, { kind: "init", summary: "Initialized forge project \"".concat(state.project, "\""), by: "forge" });
     return { root, created, alreadyInitialized: false };
 }

@@ -1,6 +1,6 @@
 export function formatIssues(error) {
     return error.issues
-        .map((issue) => `  - ${issue.path.length ? issue.path.join(".") : "(root)"}: ${issue.message}`)
+        .map((issue) => "  - ".concat(issue.path.length ? issue.path.join(".") : "(root)", ": ", issue.message))
         .join("\n");
 }
 export function errorMessage(error) {
@@ -34,5 +34,5 @@ export function firstLine(text) {
     return text.split("\n", 1)[0] ?? "";
 }
 export function tail(text, maxChars) {
-    return text.length <= maxChars ? text : `…${text.slice(-maxChars)}`;
+    return text.length <= maxChars ? text : "…".concat(text.slice(-maxChars));
 }

@@ -24,7 +24,7 @@ async function getJson(url, options, headers = {}) {
     });
     if (!response.ok) {
         const hint = response.status === 403 || response.status === 429 ? " (rate limited or blocked — try again later)" : "";
-        throw new EvidenceSourceError(`${new URL(url).host} answered HTTP ${response.status}${hint}`);
+        throw new EvidenceSourceError("".concat(new URL(url).host, " answered HTTP ", response.status, hint));
     }
     return (await response.json());
 }
@@ -32,11 +32,11 @@ const clip = (text, max = 1_500) => htmlToText(text ?? "").slice(0, max);
 const CONNECTORS = {
     hackernews: async (query, options) => {
         const base = options.baseUrl ?? "https://hn.algolia.com";
-        const data = await getJson(`${base}/api/v1/search?query=${encodeURIComponent(query)}&tags=(story,comment)&hitsPerPage=${options.limit}`, options);
+        const data = await getJson("".concat(base, "/api/v1/search?query=", encodeURIComponent(query), "&tags=(story,comment)&hitsPerPage=", options.limit), options);
         return data.hits.map((hit) => ({
             source: "hackernews",
             title: hit.title ?? hit.story_title ?? "(comment)",
-            url: `https://news.ycombinator.com/item?id=${hit.objectID}`,
+            url: "https://news.ycombinator.com/item?id=".concat(hit.objectID),
             text: clip([hit.title, hit.story_text, hit.comment_text].filter(Boolean).join(" ")),
             metrics: { points: hit.points ?? 0, comments: hit.num_comments ?? 0, author: hit.author ?? "" },
             publishedAt: hit.created_at,
@@ -45,24 +45,24 @@ const CONNECTORS = {
     github: async (query, options) => {
         const base = options.baseUrl ?? "https://api.github.com";
         // Anonymous GitHub search: forge sends no account data with evidence queries.
-        const data = await getJson(`${base}/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${options.limit}`, options, { accept: "application/vnd.github+json" });
+        const data = await getJson("".concat(base, "/search/repositories?q=", encodeURIComponent(query), "&sort=stars&order=desc&per_page=", options.limit), options, { accept: "application/vnd.github+json" });
         return data.items.map((repo) => ({
             source: "github",
             title: repo.full_name,
             url: repo.html_url,
-            text: clip(`${repo.full_name} — ${repo.description ?? ""}`),
+            text: clip("".concat(repo.full_name, " — ", repo.description ?? "")),
             metrics: { stars: repo.stargazers_count, forks: repo.forks_count, openIssues: repo.open_issues_count, pushedAt: repo.pushed_at },
             publishedAt: repo.created_at,
         }));
     },
     npm: async (query, options) => {
         const base = options.baseUrl ?? "https://registry.npmjs.org";
-        const data = await getJson(`${base}/-/v1/search?text=${encodeURIComponent(query)}&size=${options.limit}`, options);
+        const data = await getJson("".concat(base, "/-/v1/search?text=", encodeURIComponent(query), "&size=", options.limit), options);
         return data.objects.map(({ package: pkg, score, downloads }) => ({
             source: "npm",
             title: pkg.name,
-            url: pkg.links?.npm ?? `https://www.npmjs.com/package/${pkg.name}`,
-            text: clip(`${pkg.name} — ${pkg.description ?? ""}`),
+            url: pkg.links?.npm ?? "https://www.npmjs.com/package/".concat(pkg.name),
+            text: clip("".concat(pkg.name, " — ", pkg.description ?? "")),
             metrics: {
                 weeklyDownloads: downloads?.weekly ?? "n/a",
                 score: score?.final !== undefined ? Math.round(score.final * 100) / 100 : "n/a",
@@ -72,12 +72,12 @@ const CONNECTORS = {
     },
     appstore: async (query, options) => {
         const base = options.baseUrl ?? "https://itunes.apple.com";
-        const data = await getJson(`${base}/search?term=${encodeURIComponent(query)}&entity=software&country=us&limit=${options.limit}`, options);
+        const data = await getJson("".concat(base, "/search?term=", encodeURIComponent(query), "&entity=software&country=us&limit=", options.limit), options);
         return data.results.map((app) => ({
             source: "appstore",
             title: app.trackName,
             url: app.trackViewUrl,
-            text: clip(`${app.trackName} — ${app.description ?? ""}`),
+            text: clip("".concat(app.trackName, " — ", app.description ?? "")),
             metrics: {
                 rating: app.averageUserRating ?? "n/a",
                 ratings: app.userRatingCount ?? 0,
@@ -89,12 +89,12 @@ const CONNECTORS = {
     },
     reddit: async (query, options) => {
         const base = options.baseUrl ?? "https://www.reddit.com";
-        const data = await getJson(`${base}/search.json?q=${encodeURIComponent(query)}&limit=${options.limit}&sort=relevance&type=link`, options);
+        const data = await getJson("".concat(base, "/search.json?q=", encodeURIComponent(query), "&limit=", options.limit, "&sort=relevance&type=link"), options);
         return data.data.children.map(({ data: post }) => ({
             source: "reddit",
             title: post.title,
-            url: `https://www.reddit.com${post.permalink}`,
-            text: clip(`${post.title} ${post.selftext ?? ""}`),
+            url: "https://www.reddit.com".concat(post.permalink),
+            text: clip("".concat(post.title, " ", post.selftext ?? "")),
             metrics: { subreddit: post.subreddit, score: post.score, comments: post.num_comments },
             publishedAt: post.created_utc ? new Date(post.created_utc * 1000).toISOString() : undefined,
         }));
@@ -109,12 +109,12 @@ export function isSource(value) {
 /** Search a source (24h on-disk cache per source+query+limit). */
 export async function searchEvidence(root, source, query, options = {}) {
     if (!isSource(source))
-        throw new EvidenceSourceError(`Unknown evidence source "${source}". Sources: ${SOURCES.join(", ")}`);
+        throw new EvidenceSourceError("Unknown evidence source \"".concat(source, "\". Sources: ", SOURCES.join(", ")));
     if (!query.trim())
         throw new EvidenceSourceError("A search query is required");
     const limit = Math.min(Math.max(options.limit ?? 10, 1), 30);
-    const cacheId = createHash("sha1").update(`${source}\n${query.trim()}\n${limit}`).digest("hex");
-    const file = join(cacheDir(root), `${cacheId}.json`);
+    const cacheId = createHash("sha1").update("".concat(source, "\n", query.trim(), "\n", limit)).digest("hex");
+    const file = join(cacheDir(root), "".concat(cacheId, ".json"));
     if (!options.fresh && existsSync(file)) {
         const cached = JSON.parse(readFileSync(file, "utf8"));
         if (Date.now() - Date.parse(cached.fetchedAt) < CACHE_TTL_MS)

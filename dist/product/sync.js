@@ -27,7 +27,7 @@ export function loadProductMap(root) {
         return undefined;
     const parsed = ProductMap.safeParse(readJson(file));
     if (!parsed.success)
-        throw new Error(`.forge/product/map.json is invalid:\n${formatIssues(parsed.error)}`);
+        throw new Error(".forge/product/map.json is invalid:\n".concat(formatIssues(parsed.error)));
     return parsed.data;
 }
 /** Fast staleness check (no extraction): has any code, doc or manifest changed since the last sync? */
@@ -41,11 +41,11 @@ export function checkProduct(root) {
         return {
             mapExists: true,
             stale: true,
-            reason: `code changed since the last sync (${delta >= 0 ? "+" : ""}${delta} files, contents or timestamps differ) — run \`forge sync\``,
+            reason: "code changed since the last sync (".concat(delta >= 0 ? "+" : "", delta, " files, contents or timestamps differ) — run `forge sync`"),
             files: current.files,
         };
     }
-    return { mapExists: true, stale: false, reason: `in sync (${current.files} files)`, files: current.files };
+    return { mapExists: true, stale: false, reason: "in sync (".concat(current.files, " files)"), files: current.files };
 }
 /** Map each source file to its earliest graphify node (usually the module/file node). */
 function graphNodesByFile(root) {
@@ -131,9 +131,9 @@ export async function syncProduct(root, options = {}) {
             const pages = surfaces.filter((s) => s.kind === "page").length;
             appendLedger(root, {
                 kind: "note",
-                summary: `Product map synced: ${pages} pages, ${surfaces.length - pages} endpoints` +
-                    (diff.firstSync ? " (first sync)" : ` (+${diff.added.length} / -${diff.removed.length})`) +
-                    (staleFeatures.length ? `; ${staleFeatures.length} product-model feature(s) reference removed code` : ""),
+                summary: "Product map synced: ".concat(pages, " pages, ", surfaces.length - pages, " endpoints") +
+                    (diff.firstSync ? " (first sync)" : " (+".concat(diff.added.length, " / -", diff.removed.length, ")")) +
+                    (staleFeatures.length ? "; ".concat(staleFeatures.length, " product-model feature(s) reference removed code") : ""),
                 links: [".forge/product/map.json"],
             });
         }
@@ -153,21 +153,21 @@ function upsertTrace(root, map) {
         nodes.push({ id, type, origin: MAP_ORIGIN, ...(graphifyNode ? { graphifyNode } : {}) });
     };
     const edge = (from, to, type) => edges.push({ from, to, type, origin: MAP_ORIGIN });
-    const pageFiles = new Map(map.surfaces.filter((s) => s.kind === "page").map((s) => [s.file, `screen:${s.route}`]));
+    const pageFiles = new Map(map.surfaces.filter((s) => s.kind === "page").map((s) => [s.file, "screen:".concat(s.route)]));
     for (const surface of map.surfaces) {
-        const code = `code:${surface.file}`;
+        const code = "code:".concat(surface.file);
         node(code, "code", surface.graphifyNode);
         if (surface.kind === "page") {
-            node(`screen:${surface.route}`, "screen");
-            edge(`screen:${surface.route}`, code, "implementedBy");
+            node("screen:".concat(surface.route), "screen");
+            edge("screen:".concat(surface.route), code, "implementedBy");
         }
         else {
-            node(`endpoint:${surface.method} ${surface.route}`, "endpoint");
-            edge(`endpoint:${surface.method} ${surface.route}`, code, "implementedBy");
+            node("endpoint:".concat(surface.method, " ", surface.route), "endpoint");
+            edge("endpoint:".concat(surface.method, " ", surface.route), code, "implementedBy");
         }
     }
     for (const call of map.calls) {
-        const from = pageFiles.get(call.from) ?? `code:${call.from}`;
+        const from = pageFiles.get(call.from) ?? "code:".concat(call.from);
         if (from.startsWith("code:"))
             node(from, "code");
         edge(from, call.to, "calls");
@@ -180,16 +180,16 @@ export function savePageAudit(root, slug, data) {
         throw new Error("slug must be lowercase letters, digits and dashes (e.g. settings-billing)");
     const parsed = PageAudit.safeParse(typeof data === "string" ? JSON.parse(data) : data);
     if (!parsed.success)
-        throw new Error(`page audit does not match its schema:\n${formatIssues(parsed.error)}`);
-    const file = join(pagesDir(root), `${slug}.json`);
+        throw new Error("page audit does not match its schema:\n".concat(formatIssues(parsed.error)));
+    const file = join(pagesDir(root), "".concat(slug, ".json"));
     writeJsonAtomic(file, parsed.data);
     const open = parsed.data.atoms.filter((atom) => atom.must && atom.status !== "live").length;
     appendLedger(root, {
         kind: "note",
-        summary: `Page audit ${parsed.data.page}: ${parsed.data.atoms.length} atoms, ${open} open must-fix`,
-        links: [`.forge/pages/${slug}.json`],
+        summary: "Page audit ".concat(parsed.data.page, ": ", parsed.data.atoms.length, " atoms, ", open, " open must-fix"),
+        links: [".forge/pages/".concat(slug, ".json")],
     });
-    return { path: `.forge/pages/${slug}.json`, open };
+    return { path: ".forge/pages/".concat(slug, ".json"), open };
 }
 export function listPageAudits(root) {
     const dir = pagesDir(root);
@@ -207,18 +207,18 @@ const HOOK_MARK = "# forge: keep the product map in sync";
 export function installGitHooks(root) {
     const hooksDir = join(root, ".git", "hooks");
     if (!existsSync(hooksDir))
-        throw new Error(`${root} is not a git repository (no .git/hooks)`);
+        throw new Error("".concat(root, " is not a git repository (no .git/hooks)"));
     const cli = fileURLToPath(new URL("../cli.js", import.meta.url));
-    const line = `"${process.execPath}" "${cli}" sync --quiet --no-graph --root "${root}" >/dev/null 2>&1 || true`;
+    const line = "\"".concat(process.execPath, "\" \"", cli, "\" sync --quiet --no-graph --root \"", root, "\" >/dev/null 2>&1 || true");
     const installed = [];
     for (const hook of ["post-commit", "post-merge", "post-checkout"]) {
         const file = join(hooksDir, hook);
         const current = existsSync(file) ? readFileSync(file, "utf8") : "#!/bin/sh\n";
         if (current.includes(HOOK_MARK))
             continue;
-        writeFileSync(file, `${current.trimEnd()}\n${HOOK_MARK}\n${line}\n`);
+        writeFileSync(file, "".concat(current.trimEnd(), "\n", HOOK_MARK, "\n", line, "\n"));
         chmodSync(file, 0o755);
-        installed.push(`.git/hooks/${hook}`);
+        installed.push(".git/hooks/".concat(hook));
     }
     return installed;
 }

@@ -29,11 +29,11 @@ function rgba(value) {
         return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), rgb[4] === undefined ? 255 : Math.round(Number(rgb[4]) * 255)];
     return null;
 }
-const argbHex = ([r, g, b, a]) => `0x${[a, r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+const argbHex = ([r, g, b, a]) => "0x".concat([a, r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("").toUpperCase());
 /** px / rem / dp / pt → logical points (1rem = 16). */
 function points(value) {
     if (typeof value === "object" && value !== null && "value" in value && "unit" in value) {
-        return points(`${value.value}${value.unit}`);
+        return points("".concat(value.value, value.unit));
     }
     const m = /^(-?\d*\.?\d+)(px|rem|em|dp|pt)?$/.exec(String(value).trim());
     if (!m)
@@ -43,41 +43,41 @@ function points(value) {
 }
 function millis(value) {
     if (typeof value === "object" && value !== null && "value" in value && "unit" in value) {
-        return millis(`${value.value}${value.unit}`);
+        return millis("".concat(value.value, value.unit));
     }
     const m = /^(\d*\.?\d+)(ms|s)$/.exec(String(value).trim());
     return m ? Number(m[1]) * (m[2] === "s" ? 1000 : 1) : null;
 }
-const num = (n) => (Number.isInteger(n) ? `${n}.0` : `${n}`);
+const num = (n) => (Number.isInteger(n) ? "".concat(n, ".0") : "".concat(n));
 function emit(tokens, line) {
-    return [...tokens.values()].map((token) => line(token) ?? `  // ${token.path}: ${token.type} not expressible here — skipped`);
+    return [...tokens.values()].map((token) => line(token) ?? "  // ".concat(token.path, ": ", token.type, " not expressible here — skipped"));
 }
 const dartLine = (t) => {
     const name = camel(t.path);
     switch (t.type) {
         case "color": {
             const c = rgba(t.value);
-            return c ? `  static const ${name} = Color(${argbHex(c)});` : null;
+            return c ? "  static const ".concat(name, " = Color(", argbHex(c), ");") : null;
         }
         case "dimension": {
             const p = points(t.value);
-            return p === null ? null : `  static const double ${name} = ${num(p)};`;
+            return p === null ? null : "  static const double ".concat(name, " = ", num(p), ";");
         }
         case "duration": {
             const ms = millis(t.value);
-            return ms === null ? null : `  static const ${name} = Duration(milliseconds: ${Math.round(ms)});`;
+            return ms === null ? null : "  static const ".concat(name, " = Duration(milliseconds: ", Math.round(ms), ");");
         }
         case "cubicBezier":
-            return `  static const ${name} = Cubic(${t.value.map(num).join(", ")});`;
+            return "  static const ".concat(name, " = Cubic(", t.value.map(num).join(", "), ");");
         case "spring": {
             const s = t.value;
-            return `  static const ${name} = SpringDescription(mass: ${num(s.mass ?? 1)}, stiffness: ${num(s.stiffness)}, damping: ${num(s.damping)});`;
+            return "  static const ".concat(name, " = SpringDescription(mass: ", num(s.mass ?? 1), ", stiffness: ", num(s.stiffness), ", damping: ", num(s.damping), ");");
         }
         case "number":
         case "fontWeight":
-            return typeof t.value === "number" ? `  static const double ${name} = ${num(t.value)};` : null;
+            return typeof t.value === "number" ? "  static const double ".concat(name, " = ", num(t.value), ";") : null;
         case "fontFamily":
-            return `  static const String ${name} = ${JSON.stringify(Array.isArray(t.value) ? t.value[0] : t.value)};`;
+            return "  static const String ".concat(name, " = ", JSON.stringify(Array.isArray(t.value) ? t.value[0] : t.value), ";");
         default:
             return null;
     }
@@ -90,29 +90,29 @@ const swiftLine = (t) => {
             if (!c)
                 return null;
             const [r, g, b, a] = c.map((n) => Math.round((n / 255) * 1000) / 1000);
-            return `  static let ${name} = Color(.sRGB, red: ${r}, green: ${g}, blue: ${b}, opacity: ${a})`;
+            return "  static let ".concat(name, " = Color(.sRGB, red: ", r, ", green: ", g, ", blue: ", b, ", opacity: ", a, ")");
         }
         case "dimension": {
             const p = points(t.value);
-            return p === null ? null : `  static let ${name}: CGFloat = ${p}`;
+            return p === null ? null : "  static let ".concat(name, ": CGFloat = ", p);
         }
         case "duration": {
             const ms = millis(t.value);
-            return ms === null ? null : `  static let ${name}: Double = ${ms / 1000}`;
+            return ms === null ? null : "  static let ".concat(name, ": Double = ", ms / 1000);
         }
         case "cubicBezier": {
             const [x1, y1, x2, y2] = t.value;
-            return `  static let ${name} = Animation.timingCurve(${x1}, ${y1}, ${x2}, ${y2})`;
+            return "  static let ".concat(name, " = Animation.timingCurve(", x1, ", ", y1, ", ", x2, ", ", y2, ")");
         }
         case "spring": {
             const s = t.value;
-            return `  static let ${name} = Animation.interpolatingSpring(mass: ${s.mass ?? 1}, stiffness: ${s.stiffness}, damping: ${s.damping})`;
+            return "  static let ".concat(name, " = Animation.interpolatingSpring(mass: ", s.mass ?? 1, ", stiffness: ", s.stiffness, ", damping: ", s.damping, ")");
         }
         case "number":
         case "fontWeight":
-            return typeof t.value === "number" ? `  static let ${name}: Double = ${t.value}` : null;
+            return typeof t.value === "number" ? "  static let ".concat(name, ": Double = ", t.value) : null;
         case "fontFamily":
-            return `  static let ${name} = ${JSON.stringify(Array.isArray(t.value) ? t.value[0] : t.value)}`;
+            return "  static let ".concat(name, " = ", JSON.stringify(Array.isArray(t.value) ? t.value[0] : t.value));
         default:
             return null;
     }
@@ -122,28 +122,28 @@ const kotlinLine = (t) => {
     switch (t.type) {
         case "color": {
             const c = rgba(t.value);
-            return c ? `  val ${name} = Color(${argbHex(c)})` : null;
+            return c ? "  val ".concat(name, " = Color(", argbHex(c), ")") : null;
         }
         case "dimension": {
             const p = points(t.value);
-            return p === null ? null : `  val ${name} = ${p}.dp`;
+            return p === null ? null : "  val ".concat(name, " = ", p, ".dp");
         }
         case "duration": {
             const ms = millis(t.value);
-            return ms === null ? null : `  const val ${name}Ms = ${Math.round(ms)}`;
+            return ms === null ? null : "  const val ".concat(name, "Ms = ", Math.round(ms));
         }
         case "cubicBezier":
-            return `  val ${name} = CubicBezierEasing(${t.value.map((n) => `${n}f`).join(", ")})`;
+            return "  val ".concat(name, " = CubicBezierEasing(", t.value.map((n) => "".concat(n, "f")).join(", "), ")");
         case "spring": {
             const s = t.value;
             const ratio = Math.round((s.damping / (2 * Math.sqrt(s.stiffness * (s.mass ?? 1)))) * 1000) / 1000;
-            return `  val ${name} = spring<Float>(dampingRatio = ${ratio}f, stiffness = ${s.stiffness}f)`;
+            return "  val ".concat(name, " = spring<Float>(dampingRatio = ", ratio, "f, stiffness = ", s.stiffness, "f)");
         }
         case "number":
         case "fontWeight":
-            return typeof t.value === "number" ? `  const val ${name} = ${t.value}f` : null;
+            return typeof t.value === "number" ? "  const val ".concat(name, " = ", t.value, "f") : null;
         case "fontFamily":
-            return `  const val ${name} = ${JSON.stringify(Array.isArray(t.value) ? t.value[0] : t.value)}`;
+            return "  const val ".concat(name, " = ", JSON.stringify(Array.isArray(t.value) ? t.value[0] : t.value));
         default:
             return null;
     }
@@ -153,7 +153,7 @@ const themeName = (theme) => pascal(theme);
 export function exportNative(base, themes) {
     const themeEntries = Object.entries(themes);
     const dart = [
-        `// ${HEADER}`,
+        "// ".concat(HEADER),
         "import 'package:flutter/animation.dart';",
         "import 'package:flutter/painting.dart';",
         "import 'package:flutter/physics.dart';",
@@ -162,21 +162,21 @@ export function exportNative(base, themes) {
         "  ForgeTokens._();",
         ...emit(base, dartLine),
         "}",
-        ...themeEntries.flatMap(([theme, tokens]) => ["", `/// Overrides for the "${theme}" theme.`, `class ForgeTokens${themeName(theme)} {`, `  ForgeTokens${themeName(theme)}._();`, ...emit(tokens, dartLine), "}"]),
+        ...themeEntries.flatMap(([theme, tokens]) => ["", "/// Overrides for the \"".concat(theme, "\" theme."), "class ForgeTokens".concat(themeName(theme), " {"), "  ForgeTokens".concat(themeName(theme), "._();"), ...emit(tokens, dartLine), "}"]),
         "",
     ].join("\n");
     const swift = [
-        `// ${HEADER}`,
+        "// ".concat(HEADER),
         "import SwiftUI",
         "",
         "enum ForgeTokens {",
         ...emit(base, swiftLine),
         "}",
-        ...themeEntries.flatMap(([theme, tokens]) => ["", `/// Overrides for the "${theme}" theme.`, `enum ForgeTokens${themeName(theme)} {`, ...emit(tokens, swiftLine), "}"]),
+        ...themeEntries.flatMap(([theme, tokens]) => ["", "/// Overrides for the \"".concat(theme, "\" theme."), "enum ForgeTokens".concat(themeName(theme), " {"), ...emit(tokens, swiftLine), "}"]),
         "",
     ].join("\n");
     const kotlin = [
-        `// ${HEADER}`,
+        "// ".concat(HEADER),
         "package forge.tokens",
         "",
         "import androidx.compose.animation.core.CubicBezierEasing",
@@ -187,7 +187,7 @@ export function exportNative(base, themes) {
         "object ForgeTokens {",
         ...emit(base, kotlinLine),
         "}",
-        ...themeEntries.flatMap(([theme, tokens]) => ["", `/** Overrides for the "${theme}" theme. */`, `object ForgeTokens${themeName(theme)} {`, ...emit(tokens, kotlinLine), "}"]),
+        ...themeEntries.flatMap(([theme, tokens]) => ["", "/** Overrides for the \"".concat(theme, "\" theme. */"), "object ForgeTokens".concat(themeName(theme), " {"), ...emit(tokens, kotlinLine), "}"]),
         "",
     ].join("\n");
     return { dart, swift, kotlin };

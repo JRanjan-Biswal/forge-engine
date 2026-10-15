@@ -29,7 +29,7 @@ export function findSecrets(text) {
 export function assertNoSecrets(text, where) {
     const found = findSecrets(text);
     if (found.length) {
-        throw new SecretError(`Refusing to write ${where}: it looks like it contains a secret (${found.join(", ")}). ` +
+        throw new SecretError("Refusing to write ".concat(where, ": it looks like it contains a secret (", found.join(", "), "). ") +
             "Keep secrets in environment variables or your host's secret store.");
     }
 }

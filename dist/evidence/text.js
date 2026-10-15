@@ -1,6 +1,6 @@
 import { VERSION } from "../version.js";
 import { errorMessage } from "../core/util.js";
-export const USER_AGENT = `forge-engine/${VERSION} (+https://www.npmjs.com/package/forge-engine)`;
+export const USER_AGENT = "forge-engine/".concat(VERSION, " (+https://www.npmjs.com/package/forge-engine)");
 const ENTITIES = {
     amp: "&",
     lt: "<",
@@ -97,10 +97,10 @@ export async function fetchPageText(url, options = {}) {
             signal: AbortSignal.timeout(options.timeoutMs ?? 15_000),
         });
         if (!response.ok)
-            return { ok: false, reason: `HTTP ${response.status}` };
+            return { ok: false, reason: "HTTP ".concat(response.status) };
         const type = response.headers.get("content-type") ?? "";
         if (type && !/text|json|xml/.test(type))
-            return { ok: false, reason: `unsupported content-type ${type}` };
+            return { ok: false, reason: "unsupported content-type ".concat(type) };
         const bytes = new Uint8Array(await response.arrayBuffer()).slice(0, maxBytes);
         const body = new TextDecoder().decode(bytes);
         if (/json/.test(type)) {

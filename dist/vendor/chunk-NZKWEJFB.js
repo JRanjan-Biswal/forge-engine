@@ -1,5 +1,6 @@
 import { createRequire as __forgeRequire } from "node:module"; const require = __forgeRequire(import.meta.url);
 var __create = Object.create;
+var __freeze = Object.freeze;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -38,10 +39,12 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+var __template = (cooked, raw) => __freeze(__defProp(cooked, "raw", { value: __freeze(raw || cooked.slice()) }));
 
 export {
   __require,
   __commonJS,
   __export,
-  __toESM
+  __toESM,
+  __template
 };

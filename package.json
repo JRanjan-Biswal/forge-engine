@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "acorn": "^8.19.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "esbuild": "^0.28.2",

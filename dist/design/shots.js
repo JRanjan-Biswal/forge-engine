@@ -25,7 +25,7 @@ export const VIEWPORTS = {
     phone: { width: 390, height: 844 },
 };
 const SHOTS_DIR = "design/shots";
-export const MANIFEST = `${SHOTS_DIR}/manifest.json`;
+export const MANIFEST = "".concat(SHOTS_DIR, "/manifest.json");
 const PROTOTYPE = join("design", "prototype", "index.html");
 /** Viewports a screen is judged at, by platform. */
 export function viewportsFor(platform) {
@@ -73,7 +73,7 @@ export function findBrowser() {
     return ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "microsoft-edge", "brave-browser"].find((bin) => onPath(bin));
 }
 export const BROWSER_HINT = "No Chromium-family browser found — install one (`npx playwright install chromium-headless-shell`, or Chrome) or set FORGE_BROWSER to its executable";
-const quote = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
+const quote = (value) => "'".concat(value.replace(/'/g, `'\\''`), "'");
 /** Prototype states whose container still holds nothing but forge's placeholder comment. */
 export function unfilledStates(root) {
     const file = join(root, PROTOTYPE);
@@ -121,11 +121,11 @@ export async function captureShots(root, options = {}) {
         const allowed = viewportsFor(screen.platform);
         const viewports = options.viewports && allowed.length ? options.viewports : allowed;
         if (!viewports.length) {
-            skipped.push(`${screen.id}: no visual viewport for platform ${screen.platform}`);
+            skipped.push("".concat(screen.id, ": no visual viewport for platform ", screen.platform));
             continue;
         }
         if (source === "url" && /[[\]:*]/.test(screen.route)) {
-            skipped.push(`${screen.id}: route ${screen.route} has parameters — screenshot it from the prototype or a concrete URL`);
+            skipped.push("".concat(screen.id, ": route ", screen.route, " has parameters — screenshot it from the prototype or a concrete URL"));
             continue;
         }
         const states = source === "url" ? ["rendered"] : screen.stateless ? ["success"] : [...STATES];
@@ -133,7 +133,7 @@ export async function captureShots(root, options = {}) {
             for (const viewport of viewports) {
                 const url = source === "url"
                     ? new URL(screen.route, options.url).href
-                    : `${pathToFileURL(prototype).href}?screen=${encodeURIComponent(screen.id)}&state=${state}&chrome=0`;
+                    : "".concat(pathToFileURL(prototype).href, "?screen=", encodeURIComponent(screen.id), "&state=", state, "&chrome=0");
                 jobs.push({ screen: screen.id, state, viewport, url });
             }
         }
@@ -141,9 +141,9 @@ export async function captureShots(root, options = {}) {
     await withCommandSlot(root, { max: config.resources.maxConcurrentCommands, waitMs: config.resources.commandWaitMs, task: "forge design shots", onWait: options.onWait }, async () => {
         try {
             for (const job of jobs) {
-                const name = `${job.screen}--${job.state}--${job.viewport}.png`.replace(/[^\w.-]/g, "_");
+                const name = "".concat(job.screen, "--", job.state, "--", job.viewport, ".png").replace(/[^\w.-]/g, "_");
                 const file = join(dir, name);
-                const rel = `${SHOTS_DIR}/${name}`;
+                const rel = "".concat(SHOTS_DIR, "/", name);
                 const before = existsSync(file) ? readFileSync(file) : undefined;
                 rmSync(file, { force: true });
                 const { width, height } = VIEWPORTS[job.viewport];
@@ -155,15 +155,15 @@ export async function captureShots(root, options = {}) {
                     "--no-default-browser-check",
                     "--disable-extensions",
                     "--mute-audio",
-                    `--user-data-dir=${profile}`,
-                    `--window-size=${width},${height}`,
+                    "--user-data-dir=".concat(profile),
+                    "--window-size=".concat(width, ",", height),
                     "--virtual-time-budget=2500",
-                    `--screenshot=${file}`,
+                    "--screenshot=".concat(file),
                     job.url,
                 ];
-                const result = await runCommand(`${quote(browser)} ${args.map(quote).join(" ")}`, root, { timeoutMs });
+                const result = await runCommand("".concat(quote(browser), " ", args.map(quote).join(" ")), root, { timeoutMs });
                 if (!existsSync(file)) {
-                    const reason = result.timedOut ? `timed out after ${timeoutMs}ms` : result.output.trim().split("\n").slice(-2).join(" ").slice(0, 300) || `exited ${result.code}`;
+                    const reason = result.timedOut ? "timed out after ".concat(timeoutMs, "ms") : result.output.trim().split("\n").slice(-2).join(" ").slice(0, 300) || "exited ".concat(result.code);
                     shots.push({ ...job, file: rel, sha256: "", blank: true, error: reason });
                     continue;
                 }
@@ -189,11 +189,11 @@ export async function captureShots(root, options = {}) {
     const manifest = { generatedAt: nowIso(), source, ...(options.url ? { url: options.url } : {}), browser, shots, skipped };
     // A filtered run (some screens or viewports) keeps the other shots of the previous manifest.
     if (previous && previous.source === source && (options.screens?.length || options.viewports?.length)) {
-        const key = (s) => `${s.screen}|${s.state}|${s.viewport}`;
+        const key = (s) => "".concat(s.screen, "|", s.state, "|", s.viewport);
         const fresh = new Set(shots.map(key));
         manifest.shots = [...previous.shots.filter((s) => !fresh.has(key(s))), ...shots];
     }
-    writeFileSync(join(root, MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`);
+    writeFileSync(join(root, MANIFEST), "".concat(JSON.stringify(manifest, null, 2), "\n"));
     return manifest;
 }
 export function readManifest(root) {
@@ -218,22 +218,22 @@ export function shotProblems(root) {
     const problems = [];
     const unfilled = unfilledStates(root);
     if (unfilled.length)
-        problems.push(`${unfilled.length} prototype state(s) not designed yet: ${unfilled.slice(0, 8).map((u) => `${u.screen}/${u.state}`).join(", ")}`);
+        problems.push("".concat(unfilled.length, " prototype state(s) not designed yet: ", unfilled.slice(0, 8).map((u) => "".concat(u.screen, "/", u.state)).join(", ")));
     const manifest = readManifest(root);
     if (!manifest || manifest.source !== "prototype")
         return [...problems, "no screenshots of the prototype — run `forge design shots`"];
-    const taken = new Set(manifest.shots.filter((s) => !s.error).map((s) => `${s.screen}|${s.state}|${s.viewport}`));
+    const taken = new Set(manifest.shots.filter((s) => !s.error).map((s) => "".concat(s.screen, "|", s.state, "|", s.viewport)));
     const missing = screens.screens.flatMap((screen) => (screen.stateless ? ["success"] : [...STATES]).flatMap((state) => viewportsFor(screen.platform)
-        .filter((viewport) => !taken.has(`${screen.id}|${state}|${viewport}`))
-        .map((viewport) => `${screen.id}/${state}@${viewport}`)));
+        .filter((viewport) => !taken.has("".concat(screen.id, "|", state, "|", viewport)))
+        .map((viewport) => "".concat(screen.id, "/", state, "@", viewport))));
     if (missing.length)
-        problems.push(`${missing.length} shot(s) missing: ${missing.slice(0, 8).join(", ")}`);
+        problems.push("".concat(missing.length, " shot(s) missing: ", missing.slice(0, 8).join(", ")));
     const failed = manifest.shots.filter((s) => s.error);
     if (failed.length)
-        problems.push(`${failed.length} shot(s) failed: ${failed.slice(0, 4).map((s) => `${s.screen}/${s.state}@${s.viewport} (${s.error})`).join("; ")}`);
+        problems.push("".concat(failed.length, " shot(s) failed: ", failed.slice(0, 4).map((s) => "".concat(s.screen, "/", s.state, "@", s.viewport, " (", s.error, ")")).join("; ")));
     const blank = manifest.shots.filter((s) => s.blank && !s.error);
     if (blank.length)
-        problems.push(`${blank.length} blank render(s): ${blank.slice(0, 8).map((s) => `${s.screen}/${s.state}@${s.viewport}`).join(", ")}`);
+        problems.push("".concat(blank.length, " blank render(s): ", blank.slice(0, 8).map((s) => "".concat(s.screen, "/", s.state, "@", s.viewport)).join(", ")));
     const shotsAt = Date.parse(manifest.generatedAt);
     const inputs = [prototype, join(root, "design", "dist", "tokens.css")].filter((f) => existsSync(f));
     if (Math.max(...inputs.map((f) => statSync(f).mtimeMs)) > shotsAt)

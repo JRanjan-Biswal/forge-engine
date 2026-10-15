@@ -21,7 +21,7 @@ export function contractOperations(root, file) {
     const text = readFileSync(join(root, file), "utf8");
     const doc = (file.endsWith(".json") ? JSON.parse(text) : parse(text));
     if (!doc?.paths)
-        throw new Error(`${file} has no paths`);
+        throw new Error("".concat(file, " has no paths"));
     let base = "";
     const server = doc.servers?.[0]?.url;
     if (server) {
@@ -37,7 +37,7 @@ export function contractOperations(root, file) {
         for (const method of Object.keys(item ?? {})) {
             if (!METHODS.includes(method))
                 continue;
-            ops.push({ method: method.toUpperCase(), path: `${base}${path}`, key: routeKey(`${base}${path}`.replace(/\{[^}]+\}/g, ":p")) });
+            ops.push({ method: method.toUpperCase(), path: "".concat(base, path), key: routeKey("".concat(base, path).replace(/\{[^}]+\}/g, ":p")) });
         }
     }
     return ops;
@@ -61,13 +61,13 @@ export function contractDrift(root) {
         // FastAPI/Express routers mounted under a prefix declare only the tail of the path.
         const tail = endpoints.find((e) => methodOk(e.method, op.method) && literalTail(e.key) && op.key.endsWith(e.key));
         if (tail) {
-            suffixMatches.push({ operation: `${op.method} ${op.path}`, route: tail.route, file: tail.file });
+            suffixMatches.push({ operation: "".concat(op.method, " ", op.path), route: tail.route, file: tail.file });
             return false;
         }
         return true;
     });
     const undocumented = endpoints
-        .filter((e) => !ignore.has(`${e.method} ${e.route}`.toUpperCase()) && !ignore.has(`${e.method} ${e.key}`.toUpperCase()))
+        .filter((e) => !ignore.has("".concat(e.method, " ", e.route).toUpperCase()) && !ignore.has("".concat(e.method, " ", e.key).toUpperCase()))
         .filter((e) => !ops.some((op) => methodOk(e.method, op.method) && (op.key === e.key || (literalTail(e.key) && op.key.endsWith(e.key)))))
         .map(({ method, route, file }) => ({ method, route, file }));
     return { contract, operations: ops.length, endpoints: endpoints.length, missing, undocumented, suffixMatches };

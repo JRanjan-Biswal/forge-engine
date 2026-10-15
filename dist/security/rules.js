@@ -11,7 +11,7 @@ const INPUT_PY = String.raw `request\.(?:args|form|values|json|GET|POST|data|que
 const SQL = String.raw `\b(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|WHERE|ORDER\s+BY)\b`;
 const re = (source, flags = "") => new RegExp(source, flags);
 /** A "…" or '…' string literal containing `inner` (quote-matched, so the other quote may appear inside). */
-const quoted = (inner, prefix = "") => `(?:${prefix}"[^"]*${inner}[^"]*"|${prefix}'[^']*${inner}[^']*')`;
+const quoted = (inner, prefix = "") => "(?:".concat(prefix, "\"[^\"]*", inner, "[^\"]*\"|", prefix, "'[^']*", inner, "[^']*')");
 export const RULES = [
     // ── Code injection ────────────────────────────────────────────────────────
     {
@@ -145,7 +145,7 @@ export const RULES = [
         cwe: "CWE-89",
         langs: ["py"],
         pattern: re(String.raw `\b(?:execute|executemany|executescript|raw|text|exec_driver_sql)\s*\(\s*(?:` +
-            `f"[^"]*${SQL}[^"]*\\{|f'[^']*${SQL}[^']*\\{|` +
+            "f\"[^\"]*".concat(SQL, "[^\"]*\\{|f'[^']*", SQL, "[^']*\\{|") +
             quoted(SQL) +
             String.raw `\s*(?:%|\.format\s*\(|\+))`, "i"),
         fix: "Use bound parameters (cursor.execute(sql, params) / text(...).bindparams / ORM filters).",

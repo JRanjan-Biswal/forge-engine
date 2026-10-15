@@ -30,7 +30,7 @@ export class ArtifactError extends Error {
 export function getArtifactDef(name) {
     const def = ARTIFACTS[name];
     if (!def) {
-        throw new ArtifactError(`Unknown artifact "${name}". Known: ${Object.keys(ARTIFACTS).join(", ")}`);
+        throw new ArtifactError("Unknown artifact \"".concat(name, "\". Known: ", Object.keys(ARTIFACTS).join(", ")));
     }
     return def;
 }
@@ -54,7 +54,7 @@ export function checkArtifact(root, name) {
         data = readJson(file);
     }
     catch (error) {
-        return result(false, [`invalid JSON: ${errorMessage(error)}`]);
+        return result(false, ["invalid JSON: ".concat(errorMessage(error))]);
     }
     if (!def.schema)
         return result(true);
@@ -77,13 +77,13 @@ export function loadArtifact(root, name) {
         data = readJson(file);
     }
     catch (error) {
-        throw new ArtifactError(`${def.path} is not valid JSON: ${errorMessage(error)}`);
+        throw new ArtifactError("".concat(def.path, " is not valid JSON: ", errorMessage(error)));
     }
     if (!def.schema)
         return data;
     const parsed = def.schema.safeParse(data);
     if (!parsed.success)
-        throw new ArtifactError(`${def.path} is invalid:\n${formatIssues(parsed.error)}`);
+        throw new ArtifactError("".concat(def.path, " is invalid:\n", formatIssues(parsed.error)));
     return parsed.data;
 }
 export function readArtifactText(root, name) {
@@ -96,10 +96,10 @@ export function writeArtifact(root, name, data) {
     const file = join(root, def.path);
     if (def.format === "text") {
         if (typeof data !== "string" || !data.trim()) {
-            throw new ArtifactError(`${name} is a text artifact; pass non-empty text`);
+            throw new ArtifactError("".concat(name, " is a text artifact; pass non-empty text"));
         }
         assertNoSecrets(data, def.path);
-        writeTextAtomic(file, data.endsWith("\n") ? data : `${data}\n`);
+        writeTextAtomic(file, data.endsWith("\n") ? data : "".concat(data, "\n"));
         return { path: def.path };
     }
     let value = data;
@@ -108,17 +108,17 @@ export function writeArtifact(root, name, data) {
             value = JSON.parse(value);
         }
         catch {
-            throw new ArtifactError(`${name} expects JSON`);
+            throw new ArtifactError("".concat(name, " expects JSON"));
         }
     }
     if (def.schema) {
         const parsed = def.schema.safeParse(value);
         if (!parsed.success) {
-            throw new ArtifactError(`${name} does not match its schema:\n${formatIssues(parsed.error)}`);
+            throw new ArtifactError("".concat(name, " does not match its schema:\n", formatIssues(parsed.error)));
         }
         value = parsed.data;
     }
-    const text = `${JSON.stringify(value, null, 2)}\n`;
+    const text = "".concat(JSON.stringify(value, null, 2), "\n");
     assertNoSecrets(text, def.path);
     writeJsonAtomic(file, value);
     return { path: def.path };

@@ -38,19 +38,19 @@ export function scoreValidation(criteria, minScore = 65) {
     let reason;
     if (unknownShare > 0.4) {
         suggestedVerdict = "needs-experiment";
-        reason = `${unknown.length}/${criteria.length} criteria are unknown — run the cheapest experiment before deciding`;
+        reason = "".concat(unknown.length, "/", criteria.length, " criteria are unknown — run the cheapest experiment before deciding");
     }
     else if (score >= minScore) {
         suggestedVerdict = "go";
-        reason = `score ${score} ≥ ${minScore}`;
+        reason = "score ".concat(score, " ≥ ", minScore);
     }
     else if (score >= 40) {
         suggestedVerdict = "pivot";
-        reason = `score ${score} is below ${minScore} but above 40 — look for a better segment, problem or channel`;
+        reason = "score ".concat(score, " is below ", minScore, " but above 40 — look for a better segment, problem or channel");
     }
     else {
         suggestedVerdict = "kill";
-        reason = `score ${score} < 40`;
+        reason = "score ".concat(score, " < 40");
     }
     return { score, yes: ids("yes"), no: ids("no"), unknown, unsupportedYes, suggestedVerdict, reason };
 }

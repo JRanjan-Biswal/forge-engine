@@ -46,22 +46,22 @@ export class Forge {
             return stage;
         const known = findStage(id);
         throw new ForgeError(known
-            ? `Stage "${id}" is disabled for this project (${known.pack ? `enable pack "${known.pack}"` : "remove it from stages.skip"} in forge.config.yaml)`
-            : `Unknown stage "${id}". Stages: ${this.stages().map((s) => s.id).join(", ")}`);
+            ? "Stage \"".concat(id, "\" is disabled for this project (", known.pack ? "enable pack \"".concat(known.pack, "\"") : "remove it from stages.skip", " in forge.config.yaml)")
+            : "Unknown stage \"".concat(id, "\". Stages: ", this.stages().map((s) => s.id).join(", ")));
     }
     readState() {
         if (!this.initialized)
-            throw new ForgeError(`No forge project at ${this.root}. Run \`forge init\` first.`);
+            throw new ForgeError("No forge project at ".concat(this.root, ". Run `forge init` first."));
         let raw;
         try {
             raw = readJson(this.paths.state);
         }
         catch (error) {
-            throw new ForgeError(`.forge/state.json is not valid JSON (${errorMessage(error)}). Restore it from git, or run \`forge init --force\` to reset progress (the ledger is kept).`);
+            throw new ForgeError(".forge/state.json is not valid JSON (".concat(errorMessage(error), "). Restore it from git, or run `forge init --force` to reset progress (the ledger is kept)."));
         }
         const parsed = State.safeParse(raw);
         if (!parsed.success)
-            throw new ForgeError(`.forge/state.json is corrupt:\n${formatIssues(parsed.error)}`);
+            throw new ForgeError(".forge/state.json is corrupt:\n".concat(formatIssues(parsed.error)));
         // Stages from packs enabled after init start out pending.
         for (const stage of this.stages())
             parsed.data.stages[stage.id] ??= StageState.parse({});
@@ -83,12 +83,12 @@ export class Forge {
     stageState(state, id) {
         const stageState = state.stages[id];
         if (!stageState)
-            throw new ForgeError(`Stage "${id}" is missing from state.json`);
+            throw new ForgeError("Stage \"".concat(id, "\" is missing from state.json"));
         return stageState;
     }
     assertOpen(state) {
         if (state.archived) {
-            throw new ForgeError(`Project is archived (${state.archived.reason}). Reopen a stage to continue.`);
+            throw new ForgeError("Project is archived (".concat(state.archived.reason, "). Reopen a stage to continue."));
         }
     }
     /** Earlier enabled stages that are not yet passed, skipped or overridden. */
@@ -136,11 +136,11 @@ export class Forge {
             this.stage(id);
             const stageState = this.stageState(state, id);
             if (isTerminal(stageState.status)) {
-                throw new ForgeError(`Stage "${id}" is already ${stageState.status}. Use \`forge reopen ${id}\` to work on it again.`);
+                throw new ForgeError("Stage \"".concat(id, "\" is already ", stageState.status, ". Use `forge reopen ", id, "` to work on it again."));
             }
             const unfinished = this.unfinishedBefore(state, id);
             if (unfinished.length && !options.force) {
-                throw new ForgeError(`Earlier stages are not finished: ${unfinished.join(", ")}. Complete, skip or override them first, or pass --force.`);
+                throw new ForgeError("Earlier stages are not finished: ".concat(unfinished.join(", "), ". Complete, skip or override them first, or pass --force."));
             }
             if (stageState.status === "pending")
                 stageState.startedAt = nowIso();
@@ -149,7 +149,7 @@ export class Forge {
             appendLedger(this.root, {
                 kind: "stage",
                 stage: id,
-                summary: `Started stage ${id}${unfinished.length ? ` (forced past unfinished: ${unfinished.join(", ")})` : ""}`,
+                summary: "Started stage ".concat(id, unfinished.length ? " (forced past unfinished: ".concat(unfinished.join(", "), ")") : ""),
             });
             return stageState;
         });
@@ -158,9 +158,9 @@ export class Forge {
         this.assertOpen(state);
         const stageState = this.stageState(state, id);
         if (stageState.status === "pending")
-            throw new ForgeError(`Stage "${id}" has not been started. Run \`forge start ${id}\`.`);
+            throw new ForgeError("Stage \"".concat(id, "\" has not been started. Run `forge start ", id, "`."));
         if (isTerminal(stageState.status))
-            throw new ForgeError(`Stage "${id}" is already ${stageState.status}.`);
+            throw new ForgeError("Stage \"".concat(id, "\" is already ", stageState.status, "."));
         return stageState;
     }
     /**
@@ -175,7 +175,7 @@ export class Forge {
         const result = await runGate({ root: this.root, config: this.config(), stage, state: snapshot }, run);
         const failures = result.checks
             .filter((check) => check.status === "fail")
-            .map((check) => `${check.id}: ${firstLine(check.message)}`);
+            .map((check) => "".concat(check.id, ": ", firstLine(check.message)));
         return this.mutate((state) => {
             const stageState = this.assertCompletable(state, id);
             result.run = stageState.gateRuns + 1; // another process may have run the gate meanwhile
@@ -190,14 +190,14 @@ export class Forge {
             else {
                 stageState.status = result.escalate ? "blocked" : "failed";
             }
-            writeJsonAtomic(join(this.paths.gates, `${id}-${result.run}.json`), result);
+            writeJsonAtomic(join(this.paths.gates, "".concat(id, "-", result.run, ".json")), result);
             appendLedger(this.root, {
                 kind: "gate",
                 stage: id,
                 summary: redactSecrets(result.passed
-                    ? `Gate passed for ${id} (run ${result.run})`
-                    : `Gate failed for ${id} (run ${result.run})${result.escalate ? ", escalated" : ""}: ${failures.join("; ")}`).slice(0, 2000),
-                links: [`.forge/gates/${id}-${result.run}.json`],
+                    ? "Gate passed for ".concat(id, " (run ", result.run, ")")
+                    : "Gate failed for ".concat(id, " (run ", result.run, ")", result.escalate ? ", escalated" : "", ": ", failures.join("; "))).slice(0, 2000),
+                links: [".forge/gates/".concat(id, "-", result.run, ".json")],
             });
             return result;
         });
@@ -211,13 +211,13 @@ export class Forge {
     }
     settle(id, status, reason, by) {
         if (!reason.trim())
-            throw new ForgeError(`A reason is required to ${status === "skipped" ? "skip" : "override"} a stage`);
+            throw new ForgeError("A reason is required to ".concat(status === "skipped" ? "skip" : "override", " a stage"));
         return this.mutate((state) => {
             this.assertOpen(state);
             this.stage(id);
             const stageState = this.stageState(state, id);
             if (stageState.status === "passed")
-                throw new ForgeError(`Stage "${id}" already passed`);
+                throw new ForgeError("Stage \"".concat(id, "\" already passed"));
             stageState.status = status;
             stageState.completedAt = nowIso();
             if (state.current === id)
@@ -225,7 +225,7 @@ export class Forge {
             appendLedger(this.root, {
                 kind: status === "skipped" ? "skip" : "override",
                 stage: id,
-                summary: status === "skipped" ? `Skipped stage ${id}` : `Overrode the gate for ${id}`,
+                summary: status === "skipped" ? "Skipped stage ".concat(id) : "Overrode the gate for ".concat(id),
                 why: reason,
                 by,
             });
@@ -236,7 +236,7 @@ export class Forge {
         this.mutate((state) => {
             this.stage(id);
             state.approvals[id] = { by, at: nowIso(), ...(note ? { note } : {}) };
-            appendLedger(this.root, { kind: "approval", stage: id, summary: `Approved stage ${id}`, why: note, by });
+            appendLedger(this.root, { kind: "approval", stage: id, summary: "Approved stage ".concat(id), why: note, by });
         });
     }
     /** Re-open a stage (and optionally every later stage) for another iteration. */
@@ -255,7 +255,7 @@ export class Forge {
             if (state.current && reopened.includes(state.current))
                 state.current = null;
             delete state.archived;
-            appendLedger(this.root, { kind: "reopen", stage: id, summary: `Reopened ${reopened.join(", ")}`, why: reason });
+            appendLedger(this.root, { kind: "reopen", stage: id, summary: "Reopened ".concat(reopened.join(", ")), why: reason });
             return reopened;
         });
     }
@@ -275,9 +275,9 @@ export class Forge {
             this.stage(stage);
         return this.mutate((state) => {
             const lastId = state.blockers.reduce((max, blocker) => Math.max(max, Number(blocker.id.slice(2))), 0);
-            const blocker = { id: `B-${lastId + 1}`, need, since: nowIso(), ...(stage ? { stage } : {}) };
+            const blocker = { id: "B-".concat(lastId + 1), need, since: nowIso(), ...(stage ? { stage } : {}) };
             state.blockers.push(blocker);
-            appendLedger(this.root, { kind: "blocker", stage, summary: `Blocked (${blocker.id}): ${need}` });
+            appendLedger(this.root, { kind: "blocker", stage, summary: "Blocked (".concat(blocker.id, "): ", need) });
             return blocker;
         });
     }
@@ -285,9 +285,9 @@ export class Forge {
         return this.mutate((state) => {
             const blocker = state.blockers.find((candidate) => candidate.id === id);
             if (!blocker)
-                throw new ForgeError(`No open blocker ${id}`);
+                throw new ForgeError("No open blocker ".concat(id));
             state.blockers = state.blockers.filter((candidate) => candidate.id !== id);
-            appendLedger(this.root, { kind: "blocker", stage: blocker.stage, summary: `Resolved ${id}: ${blocker.need}`, why: note });
+            appendLedger(this.root, { kind: "blocker", stage: blocker.stage, summary: "Resolved ".concat(id, ": ", blocker.need), why: note });
             return blocker;
         });
     }

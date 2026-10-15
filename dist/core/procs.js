@@ -9,7 +9,7 @@ function readProcessTable() {
         maxBuffer: 64 * 1024 * 1024,
     });
     if (ps.status !== 0)
-        throw new Error(`ps failed: ${ps.stderr || ps.error?.message}`);
+        throw new Error("ps failed: ".concat(ps.stderr || ps.error?.message));
     const rows = [];
     for (const line of ps.stdout.split("\n")) {
         const tokens = line.trim().split(/\s+/);
@@ -34,7 +34,7 @@ function readCwds(pids) {
     if (process.platform === "linux") {
         for (const pid of pids) {
             try {
-                cwds.set(pid, readlinkSync(`/proc/${pid}/cwd`));
+                cwds.set(pid, readlinkSync("/proc/".concat(pid, "/cwd")));
             }
             catch {
                 // gone, or not ours to read
@@ -105,27 +105,5 @@ export function memorySnapshot() {
 /** Starter AGENT_PROCESSES.md for a project (see rules/process-lifecycle.md). */
 export function registryTemplate(root, at = new Date().toISOString()) {
     const memory = memorySnapshot();
-    return `# Agent process registry
-
-Local process-control record shared by every agent working in this project. Keep it out of version control. Protocol: forge \`rules/process-lifecycle.md\`.
-
-## 1. Process rules
-
-- **Project root:** \`${root}\`
-- **Host budget (measured ${at}):** ${hostname()}, user ${userInfo().username}, ${memory.totalGb.toFixed(1)} GB RAM, ${memory.freePercent}% free (${memory.source}).
-- **Concurrency budget:** one heavy job (build, typecheck, test suite, e2e) at a time; test runners capped at 2 workers; no watchers or dev servers unless the task needs one.
-- **Before launching** a server, watcher, test runner or browser: run \`forge procs\` and reuse what is already running.
-- **Cleanup:** whoever starts a process stops it — and its children — and records the verified exit below.
-
-## 2. Active processes
-
-| Resource ID | Host/user | Task/session owner | Purpose | State | Started UTC | Verified UTC | PID/PPID/PGID + start-time fingerprint | Executable and redacted command | CWD/root | Bind/port | Children/count | Observed memory + metric | Log/snapshot | Cleanup or handoff |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-## 3. Lifecycle history
-
-| Timestamp UTC | Resource ID | Agent/task | Transition/event | Live evidence or result |
-| --- | --- | --- | --- | --- |
-| ${at} | registry | forge procs init | Registry created | — |
-`;
+    return "# Agent process registry\n\nLocal process-control record shared by every agent working in this project. Keep it out of version control. Protocol: forge `rules/process-lifecycle.md`.\n\n## 1. Process rules\n\n- **Project root:** `".concat(root, "`\n- **Host budget (measured ", at, "):** ", hostname(), ", user ", userInfo().username, ", ", memory.totalGb.toFixed(1), " GB RAM, ", memory.freePercent, "% free (", memory.source, ").\n- **Concurrency budget:** one heavy job (build, typecheck, test suite, e2e) at a time; test runners capped at 2 workers; no watchers or dev servers unless the task needs one.\n- **Before launching** a server, watcher, test runner or browser: run `forge procs` and reuse what is already running.\n- **Cleanup:** whoever starts a process stops it — and its children — and records the verified exit below.\n\n## 2. Active processes\n\n| Resource ID | Host/user | Task/session owner | Purpose | State | Started UTC | Verified UTC | PID/PPID/PGID + start-time fingerprint | Executable and redacted command | CWD/root | Bind/port | Children/count | Observed memory + metric | Log/snapshot | Cleanup or handoff |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n\n## 3. Lifecycle history\n\n| Timestamp UTC | Resource ID | Agent/task | Transition/event | Live evidence or result |\n| --- | --- | --- | --- | --- |\n| ", at, " | registry | forge procs init | Registry created | — |\n");
 }

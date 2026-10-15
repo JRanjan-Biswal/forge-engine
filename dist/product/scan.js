@@ -59,7 +59,7 @@ export function fingerprint(root, files) {
     for (const file of [...files].filter(relevant).sort()) {
         try {
             const stat = statSync(join(root, file));
-            hash.update(`${file}\0${stat.size}\0${Math.floor(stat.mtimeMs)}\n`);
+            hash.update("".concat(file, "\u0000", stat.size, "\u0000", Math.floor(stat.mtimeMs), "\n"));
             count++;
         }
         catch {
@@ -102,11 +102,11 @@ function fsRoute(segments) {
         .replace(/^\[\[\.\.\.(.+)\]\]$/, "*$1")
         .replace(/^\[\.\.\.(.+)\]$/, "*$1")
         .replace(/^\[(.+)\]$/, ":$1"));
-    return `/${parts.join("/")}`;
+    return "/".concat(parts.join("/"));
 }
-const page = (route, file, framework) => ({ id: `page:${route}`, kind: "page", route, file, framework });
+const page = (route, file, framework) => ({ id: "page:".concat(route), kind: "page", route, file, framework });
 const endpoint = (method, route, file, framework) => ({
-    id: `endpoint:${method} ${route}`,
+    id: "endpoint:".concat(method, " ", route),
     kind: "endpoint",
     route,
     method,
@@ -116,7 +116,7 @@ const endpoint = (method, route, file, framework) => ({
 const HTTP_METHODS = "GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS";
 function exportedMethods(source) {
     const methods = new Set();
-    const pattern = new RegExp(`export\\s+(?:async\\s+)?(?:function|const)\\s+(${HTTP_METHODS})\\b`, "g");
+    const pattern = new RegExp("export\\s+(?:async\\s+)?(?:function|const)\\s+(".concat(HTTP_METHODS, ")\\b"), "g");
     for (const match of source.matchAll(pattern))
         if (match[1])
             methods.add(match[1]);
@@ -133,7 +133,7 @@ export function routeKey(route) {
 }
 /** Join a mount prefix and a route: ("/books", "/") → "/books", ("", "/x") → "/x". */
 function joinRoute(prefix, route) {
-    const joined = `${prefix.replace(/\/+$/, "")}${route === "/" || route === "" ? "" : route.startsWith("/") ? route : `/${route}`}`;
+    const joined = "".concat(prefix.replace(/\/+$/, ""), route === "/" || route === "" ? "" : route.startsWith("/") ? route : "/".concat(route));
     return joined || "/";
 }
 const JS_FILE = /\.(?:tsx?|jsx?|mjs|cjs)$/;
@@ -154,8 +154,8 @@ function mountPrefixes(codeFiles, read) {
         const dots = /^\.+/.exec(module)?.[0].length ?? 0;
         const dir = from.split("/").slice(0, -1);
         const pkg = dots ? [...dir.slice(0, dir.length - (dots - 1)), ...module.slice(dots).split(".").filter(Boolean)] : module.split(".");
-        const candidates = [`${pkg.join("/")}/${name}.py`, `${pkg.join("/")}.py`];
-        return [...known].find((f) => candidates.some((c) => f === c || f.endsWith(`/${c}`)));
+        const candidates = ["".concat(pkg.join("/"), "/", name, ".py"), "".concat(pkg.join("/"), ".py")];
+        return [...known].find((f) => candidates.some((c) => f === c || f.endsWith("/".concat(c))));
     };
     /** child file → [parent file, mount path] */
     const edges = [];
@@ -329,14 +329,14 @@ export function extractProduct(root, files) {
                 if (m[1])
                     receivers.add(m[1]);
             const routerFile = /new\s+(?:Hono|Elysia|Router)\b|(?:express\.)?Router\s*\(/.test(source);
-            const pattern = new RegExp(`(?:\\b(${[...receivers].join("|")})|${routerFile ? "\\)" : "(?!)"})\\s*\\.(get|post|put|patch|delete|all)\\(\\s*["'\`](\\/[^"'\`]*)["'\`]`, "g");
+            const pattern = new RegExp("(?:\\b(".concat([...receivers].join("|"), ")|", routerFile ? "\\)" : "(?!)", ")\\s*\\.(get|post|put|patch|delete|all)\\(\\s*[\"'`](\\/[^\"'`]*)[\"'`]"), "g");
             for (const m of source.matchAll(pattern)) {
                 if (!m[2] || !m[3])
                     continue;
                 for (const prefix of prefixes)
                     add(endpoint(m[2] === "all" ? "ANY" : m[2].toUpperCase(), joinRoute(prefix, m[3]), posix, "node-http"));
             }
-            for (const m of source.matchAll(new RegExp(`method\\s*===\\s*["'](${HTTP_METHODS})["']\\s*&&\\s*[\\w.]+\\s*===\\s*["'](\\/[^"']*)["']`, "g"))) {
+            for (const m of source.matchAll(new RegExp("method\\s*===\\s*[\"'](".concat(HTTP_METHODS, ")[\"']\\s*&&\\s*[\\w.]+\\s*===\\s*[\"'](\\/[^\"']*)[\"']"), "g"))) {
                 if (m[1] && m[2])
                     add(endpoint(m[1], m[2], posix, "node-http"));
             }
@@ -379,7 +379,7 @@ export function extractProduct(root, files) {
         for (const literal of literals) {
             const key = routeKey(literal);
             for (const target of endpoints.filter((e) => routeKey(e.route) === key)) {
-                const id = `${toPosix(file)}→${target.id}`;
+                const id = "".concat(toPosix(file), "→", target.id);
                 if (!seen.has(id)) {
                     seen.add(id);
                     calls.push({ from: toPosix(file), to: target.id, literal });

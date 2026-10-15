@@ -19,10 +19,10 @@ function enableAdoptPack(root) {
         const packs = (match[1] ?? "").split(",").map((p) => p.trim()).filter(Boolean);
         if (packs.includes("adopt"))
             return;
-        writeFileSync(file, text.replace(match[0], `packs: [${[...packs, "adopt"].join(", ")}]`));
+        writeFileSync(file, text.replace(match[0], "packs: [".concat([...packs, "adopt"].join(", "), "]")));
     }
     else {
-        writeFileSync(file, `${text.trimEnd()}\npacks: [adopt]\n`);
+        writeFileSync(file, "".concat(text.trimEnd(), "\npacks: [adopt]\n"));
     }
 }
 export async function adoptProject(rootInput, options = {}) {

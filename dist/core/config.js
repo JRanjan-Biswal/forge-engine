@@ -117,63 +117,9 @@ export function loadConfig(root) {
     const raw = parse(readFileSync(path, "utf8")) ?? {};
     const result = ForgeConfig.safeParse(raw);
     if (!result.success)
-        throw new Error(`Invalid ${path}:\n${formatIssues(result.error)}`);
+        throw new Error("Invalid ".concat(path, ":\n", formatIssues(result.error)));
     return result.data;
 }
 export function defaultConfigYaml(project) {
-    return `# forge project configuration
-project: ${JSON.stringify(project)}
-platforms: [web]          # web | ios | android | desktop | api
-packs: []                 # optional departments, e.g. [motion, mobile, growth]
-stacks: []                # stack packs and their directories; \`forge stack use\` detects and fills these
-autonomy: checkpoint      # auto | checkpoint (human approves key stages) | strict (every stage)
-maxIterations: 3          # gate failures before forge escalates with a decision memo
-
-# Commands used by the build and verify gates. Leave them empty until the app exists:
-# forge fails a gate whose command is not configured rather than assuming it passed.
-commands:
-  build:
-  test:
-  e2e:
-  lint:
-  audit:                  # dependency vulnerabilities, e.g. pnpm audit --audit-level high
-
-gates:
-  validate:
-    minScore: 65          # weighted share of "yes" answers, 0-100
-    minEvidence: 10       # distinct cited sources across criteria and competitors
-    minCompetitors: 5
-    requireEvidenceStore: true  # cited quotes must go through evidence_save (checked against the source)
-    minVerifiedShare: 0.6       # share of cited quotes verified against their page or search result
-  design:
-    rubricMinPass: 0.9    # share of design-critic rubric criteria that must pass
-    screenshots: true     # require fresh \`forge design shots\` of every screen × state, critiqued after they were taken
-  qa:
-    minCoverage: 1        # share of MVP acceptance criteria with a tagged test (@S-1/AC1) — forge qa coverage
-  gap:
-    minCoverage: 0.95     # share of MVP story requirements traced to design, code and tests
-    scanDirs: [src, app, lib, packages]
-    contractIgnore: [GET /health, GET /healthz, GET /readyz, GET /livez]  # endpoints allowed outside contracts/openapi.yaml
-    parityExempt: []      # MVP stories deliberately on one platform (web vs mobile parity)
-
-security:
-  failOn: high            # critical | high | medium | low — static scan + header check severity that fails verify
-  url:                    # running app (local or preview) to check headers, cookies and CORS; empty skips that check
-  ignore: []              # globs the static scan skips, e.g. [vendor/**]
-
-deploy:
-  targets: {}             # per stack pack, e.g. { nextjs: vercel, fastapi: fly }; default: first installed CLI
-  healthPath: /           # smoke-tested after every deploy
-  e2e: true               # run commands.e2e against the deployed URL (BASE_URL / PLAYWRIGHT_BASE_URL)
-
-stages:
-  skip: []                # stage ids to leave out of this project's pipeline
-
-# RAM protection: gate commands run in their own process group (stopped on exit,
-# timeout or Ctrl-C) and share a per-project slot, so parallel agents cannot stack
-# builds or test suites. Raise maxConcurrentCommands only on a machine with headroom.
-resources:
-  maxConcurrentCommands: 1
-  commandWaitMs: 900000   # wait up to 15 min for a free slot
-`;
+    return "# forge project configuration\nproject: ".concat(JSON.stringify(project), "\nplatforms: [web]          # web | ios | android | desktop | api\npacks: []                 # optional departments, e.g. [motion, mobile, growth]\nstacks: []                # stack packs and their directories; `forge stack use` detects and fills these\nautonomy: checkpoint      # auto | checkpoint (human approves key stages) | strict (every stage)\nmaxIterations: 3          # gate failures before forge escalates with a decision memo\n\n# Commands used by the build and verify gates. Leave them empty until the app exists:\n# forge fails a gate whose command is not configured rather than assuming it passed.\ncommands:\n  build:\n  test:\n  e2e:\n  lint:\n  audit:                  # dependency vulnerabilities, e.g. pnpm audit --audit-level high\n\ngates:\n  validate:\n    minScore: 65          # weighted share of \"yes\" answers, 0-100\n    minEvidence: 10       # distinct cited sources across criteria and competitors\n    minCompetitors: 5\n    requireEvidenceStore: true  # cited quotes must go through evidence_save (checked against the source)\n    minVerifiedShare: 0.6       # share of cited quotes verified against their page or search result\n  design:\n    rubricMinPass: 0.9    # share of design-critic rubric criteria that must pass\n    screenshots: true     # require fresh `forge design shots` of every screen × state, critiqued after they were taken\n  qa:\n    minCoverage: 1        # share of MVP acceptance criteria with a tagged test (@S-1/AC1) — forge qa coverage\n  gap:\n    minCoverage: 0.95     # share of MVP story requirements traced to design, code and tests\n    scanDirs: [src, app, lib, packages]\n    contractIgnore: [GET /health, GET /healthz, GET /readyz, GET /livez]  # endpoints allowed outside contracts/openapi.yaml\n    parityExempt: []      # MVP stories deliberately on one platform (web vs mobile parity)\n\nsecurity:\n  failOn: high            # critical | high | medium | low — static scan + header check severity that fails verify\n  url:                    # running app (local or preview) to check headers, cookies and CORS; empty skips that check\n  ignore: []              # globs the static scan skips, e.g. [vendor/**]\n\ndeploy:\n  targets: {}             # per stack pack, e.g. { nextjs: vercel, fastapi: fly }; default: first installed CLI\n  healthPath: /           # smoke-tested after every deploy\n  e2e: true               # run commands.e2e against the deployed URL (BASE_URL / PLAYWRIGHT_BASE_URL)\n\nstages:\n  skip: []                # stage ids to leave out of this project's pipeline\n\n# RAM protection: gate commands run in their own process group (stopped on exit,\n# timeout or Ctrl-C) and share a per-project slot, so parallel agents cannot stack\n# builds or test suites. Raise maxConcurrentCommands only on a machine with headroom.\nresources:\n  maxConcurrentCommands: 1\n  commandWaitMs: 900000   # wait up to 15 min for a free slot\n");
 }

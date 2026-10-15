@@ -1,11 +1,11 @@
 import { createRequire as __forgeRequire } from "node:module"; const require = __forgeRequire(import.meta.url);
 import {
   JSONRPCMessageSchema
-} from "./chunk-SRIZ4QNK.js";
-import "./chunk-PESWS66E.js";
+} from "./chunk-BHFO3I3U.js";
+import "./chunk-NFMB5KLF.js";
 import {
   __export
-} from "./chunk-QTEWTOGR.js";
+} from "./chunk-NZKWEJFB.js";
 
 // node_modules/.pnpm/@modelcontextprotocol+sdk@1.32.1_zod@4.6.7/node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 var stdio_exports = {};
@@ -24,7 +24,7 @@ var ReadBuffer = class {
     const newSize = (this._buffer?.length ?? 0) + chunk.length;
     if (newSize > this._maxBufferSize) {
       this.clear();
-      throw new Error(`ReadBuffer exceeded maximum size of ${this._maxBufferSize} bytes`);
+      throw new Error("ReadBuffer exceeded maximum size of ".concat(this._maxBufferSize, " bytes"));
     }
     this._buffer = this._buffer ? Buffer.concat([this._buffer, chunk]) : chunk;
   }

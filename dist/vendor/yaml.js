@@ -3,7 +3,7 @@ import {
   __commonJS,
   __require,
   __toESM
-} from "./chunk-QTEWTOGR.js";
+} from "./chunk-NZKWEJFB.js";
 
 // node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/dist/nodes/identity.js
 var require_identity = __commonJS({
@@ -212,7 +212,7 @@ var require_visit = __commonJS({
         parent.contents = node;
       } else {
         const pt = identity.isAlias(parent) ? "alias" : "scalar";
-        throw new Error(`Cannot replace node with ${pt} parent`);
+        throw new Error("Cannot replace node with ".concat(pt, " parent"));
       }
     }
     exports.visit = visit2;
@@ -303,12 +303,12 @@ var require_directives = __commonJS({
               return true;
             } else {
               const isValid = /^\d+\.\d+$/.test(version);
-              onError(6, `Unsupported YAML version ${version}`, isValid);
+              onError(6, "Unsupported YAML version ".concat(version), isValid);
               return false;
             }
           }
           default:
-            onError(0, `Unknown directive ${name}`, true);
+            onError(0, "Unknown directive ".concat(name), true);
             return false;
         }
       }
@@ -322,13 +322,13 @@ var require_directives = __commonJS({
         if (source === "!")
           return "!";
         if (source[0] !== "!") {
-          onError(`Not a valid tag: ${source}`);
+          onError("Not a valid tag: ".concat(source));
           return null;
         }
         if (source[1] === "<") {
           const verbatim = source.slice(2, -1);
           if (verbatim === "!" || verbatim === "!!") {
-            onError(`Verbatim tags aren't resolved, so ${source} is invalid.`);
+            onError("Verbatim tags aren't resolved, so ".concat(source, " is invalid."));
             return null;
           }
           if (source[source.length - 1] !== ">")
@@ -337,7 +337,7 @@ var require_directives = __commonJS({
         }
         const [, handle, suffix] = source.match(/^(.*!)([^!]*)$/s);
         if (!suffix)
-          onError(`The ${source} tag has no suffix`);
+          onError("The ".concat(source, " tag has no suffix"));
         const prefix = this.tags[handle];
         if (prefix) {
           try {
@@ -349,7 +349,7 @@ var require_directives = __commonJS({
         }
         if (handle === "!")
           return source;
-        onError(`Could not resolve tag: ${source}`);
+        onError("Could not resolve tag: ".concat(source));
         return null;
       }
       /**
@@ -361,10 +361,10 @@ var require_directives = __commonJS({
           if (tag.startsWith(prefix))
             return handle + escapeTagName(tag.substring(prefix.length));
         }
-        return tag[0] === "!" ? tag : `!<${tag}>`;
+        return tag[0] === "!" ? tag : "!<".concat(tag, ">");
       }
       toString(doc) {
-        const lines = this.yaml.explicit ? [`%YAML ${this.yaml.version || "1.2"}`] : [];
+        const lines = this.yaml.explicit ? ["%YAML ".concat(this.yaml.version || "1.2")] : [];
         const tagEntries = Object.entries(this.tags);
         let tagNames;
         if (doc && tagEntries.length > 0 && identity.isNode(doc.contents)) {
@@ -380,7 +380,7 @@ var require_directives = __commonJS({
           if (handle === "!!" && prefix === "tag:yaml.org,2002:")
             continue;
           if (!doc || tagNames.some((tn) => tn.startsWith(prefix)))
-            lines.push(`%TAG ${handle} ${prefix}`);
+            lines.push("%TAG ".concat(handle, " ").concat(prefix));
         }
         return lines.join("\n");
       }
@@ -400,7 +400,7 @@ var require_anchors = __commonJS({
     function anchorIsValid(anchor) {
       if (/[\x00-\x19\s,[\]{}]/.test(anchor)) {
         const sa = JSON.stringify(anchor);
-        const msg = `Anchor must not contain whitespace or control characters: ${sa}`;
+        const msg = "Anchor must not contain whitespace or control characters: ".concat(sa);
         throw new Error(msg);
       }
       return true;
@@ -417,7 +417,7 @@ var require_anchors = __commonJS({
     }
     function findNewAnchor(prefix, exclude) {
       for (let i = 1; true; ++i) {
-        const name = `${prefix}${i}`;
+        const name = "".concat(prefix).concat(i);
         if (!exclude.has(name))
           return name;
       }
@@ -657,21 +657,21 @@ var require_Alias = __commonJS({
           return { source: this.source };
         const source = this.resolve(ctx.doc, ctx);
         if (!source) {
-          const msg = `Unresolved alias (the anchor must be set before the alias): ${this.source}`;
+          const msg = "Unresolved alias (the anchor must be set before the alias): ".concat(this.source);
           throw new ReferenceError(msg);
         }
         return ctx.anchors.get(source).res;
       }
       toString(ctx, _onComment, _onChompKeep) {
-        const src = `*${this.source}`;
+        const src = "*".concat(this.source);
         if (ctx) {
           anchors.anchorIsValid(this.source);
           if (ctx.options.verifyAliasOrder && !ctx.anchors.has(this.source)) {
-            const msg = `Unresolved alias (the anchor must be set before the alias): ${this.source}`;
+            const msg = "Unresolved alias (the anchor must be set before the alias): ".concat(this.source);
             throw new Error(msg);
           }
           if (ctx.implicitKey)
-            return `${src} `;
+            return "".concat(src, " ");
         }
         return src;
       }
@@ -743,7 +743,7 @@ var require_createNode = __commonJS({
         const match = tags.filter((t) => t.tag === tagName);
         const tagObj = match.find((t) => !t.format) ?? match[0];
         if (!tagObj)
-          throw new Error(`Tag ${tagName} not found`);
+          throw new Error("Tag ".concat(tagName, " not found"));
         return tagObj;
       }
       return tags.find((t) => t.identify?.(value) && !t.format);
@@ -875,7 +875,7 @@ var require_Collection = __commonJS({
           else if (node === void 0 && this.schema)
             this.set(key, collectionFromPath(this.schema, rest, value));
           else
-            throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
+            throw new Error("Expected YAML collection at ".concat(key, ". Remaining path: ").concat(rest));
         }
       }
       /**
@@ -890,7 +890,7 @@ var require_Collection = __commonJS({
         if (identity.isCollection(node))
           return node.deleteIn(rest);
         else
-          throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
+          throw new Error("Expected YAML collection at ".concat(key, ". Remaining path: ").concat(rest));
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -938,7 +938,7 @@ var require_Collection = __commonJS({
           else if (node === void 0 && this.schema)
             this.set(key, collectionFromPath(this.schema, rest, value));
           else
-            throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
+            throw new Error("Expected YAML collection at ".concat(key, ". Remaining path: ").concat(rest));
         }
       }
     };
@@ -1065,13 +1065,11 @@ var require_foldFlowLines = __commonJS({
         const fold = folds[i2];
         const end2 = folds[i2 + 1] || text.length;
         if (fold === 0)
-          res = `
-${indent}${text.slice(0, end2)}`;
+          res = "\n".concat(indent).concat(text.slice(0, end2));
         else {
           if (mode === FOLD_QUOTED && escapedFolds[fold])
-            res += `${text[fold]}\\`;
-          res += `
-${indent}${text.slice(fold + 1, end2)}`;
+            res += "".concat(text[fold], "\\");
+          res += "\n".concat(indent).concat(text.slice(fold + 1, end2));
         }
       }
       return res;
@@ -1215,8 +1213,7 @@ var require_stringifyString = __commonJS({
       if (ctx.options.singleQuote === false || ctx.implicitKey && value.includes("\n") || /[ \t]\n|\n[ \t]/.test(value))
         return doubleQuotedString(value, ctx);
       const indent = ctx.indent || (containsDocumentMarker(value) ? "  " : "");
-      const res = "'" + value.replace(/'/g, "''").replace(/\n+/g, `$&
-${indent}`) + "'";
+      const res = "'" + value.replace(/'/g, "''").replace(/\n+/g, "$&\n".concat(indent)) + "'";
       return ctx.implicitKey ? res : foldFlowLines.foldFlowLines(res, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
     }
     function quotedString(value, ctx) {
@@ -1273,7 +1270,7 @@ ${indent}`) + "'";
         value = value.slice(0, -end.length);
         if (end[end.length - 1] === "\n")
           end = end.slice(0, -1);
-        end = end.replace(blockEndNewlines, `$&${indent}`);
+        end = end.replace(blockEndNewlines, "$&".concat(indent));
       }
       let startWithSpace = false;
       let startEnd;
@@ -1290,7 +1287,7 @@ ${indent}`) + "'";
       let start = value.substring(0, startNlPos < startEnd ? startNlPos + 1 : startEnd);
       if (start) {
         value = value.substring(start.length);
-        start = start.replace(/\n+/g, `$&${indent}`);
+        start = start.replace(/\n+/g, "$&".concat(indent));
       }
       const indentSize = indent ? "2" : "1";
       let header = (startWithSpace ? indentSize : "") + chomp;
@@ -1300,7 +1297,7 @@ ${indent}`) + "'";
           onComment();
       }
       if (!literal) {
-        const foldedValue = value.replace(/\n+/g, "\n$&").replace(/(?:^|\n)([\t ].*)(?:([\n\t ]*)\n(?![\n\t ]))?/g, "$1$2").replace(/\n+/g, `$&${indent}`);
+        const foldedValue = value.replace(/\n+/g, "\n$&").replace(/(?:^|\n)([\t ].*)(?:([\n\t ]*)\n(?![\n\t ]))?/g, "$1$2").replace(/\n+/g, "$&".concat(indent));
         let literalFallback = false;
         const foldOptions = getFoldOptions(ctx, true);
         if (blockQuote !== "folded" && type !== Scalar2.Scalar.BLOCK_FOLDED) {
@@ -1308,14 +1305,12 @@ ${indent}`) + "'";
             literalFallback = true;
           };
         }
-        const body = foldFlowLines.foldFlowLines(`${start}${foldedValue}${end}`, indent, foldFlowLines.FOLD_BLOCK, foldOptions);
+        const body = foldFlowLines.foldFlowLines("".concat(start).concat(foldedValue).concat(end), indent, foldFlowLines.FOLD_BLOCK, foldOptions);
         if (!literalFallback)
-          return `>${header}
-${indent}${body}`;
+          return ">".concat(header, "\n").concat(indent).concat(body);
       }
-      value = value.replace(/\n+/g, `$&${indent}`);
-      return `|${header}
-${indent}${start}${value}${end}`;
+      value = value.replace(/\n+/g, "$&".concat(indent));
+      return "|".concat(header, "\n").concat(indent).concat(start).concat(value).concat(end);
     }
     function plainString(item, ctx, onComment, onChompKeep) {
       const { type, value } = item;
@@ -1337,8 +1332,7 @@ ${indent}${start}${value}${end}`;
           return quotedString(value, ctx);
         }
       }
-      const str = value.replace(/\n+/g, `$&
-${indent}`);
+      const str = value.replace(/\n+/g, "$&\n".concat(indent));
       if (actualString) {
         const test = (tag) => tag.default && tag.tag !== "tag:yaml.org,2002:str" && tag.test?.test(str);
         const { compat, tags } = ctx.doc.schema;
@@ -1376,7 +1370,7 @@ ${indent}`);
         const t = implicitKey && defaultKeyType || defaultStringType;
         res = _stringify(t);
         if (res === null)
-          throw new Error(`Unsupported default string type ${t}`);
+          throw new Error("Unsupported default string type ".concat(t));
       }
       return res;
     }
@@ -1457,7 +1451,7 @@ var require_stringify = __commonJS({
       }
       if (!tagObj) {
         const name = obj?.constructor?.name ?? (obj === null ? "null" : typeof obj);
-        throw new Error(`Tag not resolved for ${name} value`);
+        throw new Error("Tag not resolved for ".concat(name, " value"));
       }
       return tagObj;
     }
@@ -1468,7 +1462,7 @@ var require_stringify = __commonJS({
       const anchor = (identity.isScalar(node) || identity.isCollection(node)) && node.anchor;
       if (anchor && anchors.anchorIsValid(anchor)) {
         anchors$1.add(anchor);
-        props.push(`&${anchor}`);
+        props.push("&".concat(anchor));
       }
       const tag = node.tag ?? (tagObj.default ? null : tagObj.tag);
       if (tag)
@@ -1482,7 +1476,7 @@ var require_stringify = __commonJS({
         if (ctx.doc.directives)
           return item.toString(ctx);
         if (ctx.resolvedAliases?.has(item)) {
-          throw new TypeError(`Cannot stringify circular structure without alias nodes`);
+          throw new TypeError("Cannot stringify circular structure without alias nodes");
         } else {
           if (ctx.resolvedAliases)
             ctx.resolvedAliases.add(item);
@@ -1500,8 +1494,7 @@ var require_stringify = __commonJS({
       const str = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
       if (!props)
         return str;
-      return identity.isScalar(node) || str[0] === "{" || str[0] === "[" ? `${props} ${str}` : `${props}
-${ctx.indent}${str}`;
+      return identity.isScalar(node) || str[0] === "{" || str[0] === "[" ? "".concat(props, " ").concat(str) : "".concat(props, "\n").concat(ctx.indent).concat(str);
     }
     exports.createStringifyContext = createStringifyContext;
     exports.stringify = stringify2;
@@ -1546,10 +1539,10 @@ var require_stringifyPair = __commonJS({
         if (allNullValues || value == null) {
           if (keyCommentDone && onComment)
             onComment();
-          return str === "" ? "?" : explicitKey ? `? ${str}` : str;
+          return str === "" ? "?" : explicitKey ? "? ".concat(str) : str;
         }
       } else if (allNullValues && !simpleKeys || value == null && explicitKey) {
-        str = `? ${str}`;
+        str = "? ".concat(str);
         if (keyComment && !keyCommentDone) {
           str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
         } else if (chompKeep && onChompKeep)
@@ -1561,10 +1554,9 @@ var require_stringifyPair = __commonJS({
       if (explicitKey) {
         if (keyComment)
           str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
-        str = `? ${str}
-${indent}:`;
+        str = "? ".concat(str, "\n").concat(indent, ":");
       } else {
-        str = `${str}:`;
+        str = "".concat(str, ":");
         if (keyComment)
           str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
       }
@@ -1594,15 +1586,13 @@ ${indent}:`;
         ws = vsb ? "\n" : "";
         if (vcb) {
           const cs = commentString(vcb);
-          ws += `
-${stringifyComment.indentComment(cs, ctx.indent)}`;
+          ws += "\n".concat(stringifyComment.indentComment(cs, ctx.indent));
         }
         if (valueStr === "" && !ctx.inFlow) {
           if (ws === "\n" && valueComment)
             ws = "\n\n";
         } else {
-          ws += `
-${ctx.indent}`;
+          ws += "\n".concat(ctx.indent);
         }
       } else if (!explicitKey && identity.isCollection(value)) {
         const vs0 = valueStr[0];
@@ -1620,8 +1610,7 @@ ${ctx.indent}`;
               hasPropsLine = true;
           }
           if (!hasPropsLine)
-            ws = `
-${ctx.indent}`;
+            ws = "\n".concat(ctx.indent);
         }
       } else if (valueStr === "" || valueStr[0] === "\n") {
         ws = "";
@@ -1776,7 +1765,7 @@ var require_addPairToJSMap = __commonJS({
           let jsonStr = JSON.stringify(strKey);
           if (jsonStr.length > 40)
             jsonStr = jsonStr.substring(0, 36) + '..."';
-          log.warn(ctx.doc.options.logLevel, `Keys with collection values will be stringified due to JS Object restrictions: ${jsonStr}. Set mapAsMap: true to use object keys.`);
+          log.warn(ctx.doc.options.logLevel, "Keys with collection values will be stringified due to JS Object restrictions: ".concat(jsonStr, ". Set mapAsMap: true to use object keys."));
           ctx.mapKeyWarned = true;
         }
         return strKey;
@@ -1876,8 +1865,7 @@ var require_stringifyCollection = __commonJS({
         str = lines[0];
         for (let i = 1; i < lines.length; ++i) {
           const line = lines[i];
-          str += line ? `
-${indent}${line}` : "\n";
+          str += line ? "\n".concat(indent).concat(line) : "\n";
         }
       }
       if (comment) {
@@ -1957,12 +1945,10 @@ ${indent}${line}` : "\n";
         if (reqNewline) {
           let str = start;
           for (const line of lines)
-            str += line ? `
-${indentStep}${indent}${line}` : "\n";
-          return `${str}
-${indent}${end}`;
+            str += line ? "\n".concat(indentStep).concat(indent).concat(line) : "\n";
+          return "".concat(str, "\n").concat(indent).concat(end);
         } else {
-          return `${start}${fcPadding}${lines.join(" ")}${fcPadding}${end}`;
+          return "".concat(start).concat(fcPadding).concat(lines.join(" ")).concat(fcPadding).concat(end);
         }
       }
     }
@@ -2053,7 +2039,7 @@ var require_YAMLMap = __commonJS({
         const sortEntries = this.schema?.sortMapEntries;
         if (prev) {
           if (!overwrite)
-            throw new Error(`Key ${_pair.key} already set`);
+            throw new Error("Key ".concat(_pair.key, " already set"));
           if (identity.isScalar(prev.value) && Scalar2.isScalarValue(_pair.value))
             prev.value.value = _pair.value;
           else
@@ -2104,7 +2090,7 @@ var require_YAMLMap = __commonJS({
           return JSON.stringify(this);
         for (const item of this.items) {
           if (!identity.isPair(item))
-            throw new Error(`Map items must all be pairs; found ${JSON.stringify(item)} instead`);
+            throw new Error("Map items must all be pairs; found ".concat(JSON.stringify(item), " instead"));
         }
         if (!ctx.allNullValues && this.hasAllNullValues(false))
           ctx = Object.assign({}, ctx, { allNullValues: true });
@@ -2207,7 +2193,7 @@ var require_YAMLSeq = __commonJS({
       set(key, value) {
         const idx = asItemIndex(key);
         if (typeof idx !== "number")
-          throw new Error(`Expected a valid index, not ${key}.`);
+          throw new Error("Expected a valid index, not ".concat(key, "."));
         const prev = this.items[idx];
         if (identity.isScalar(prev) && Scalar2.isScalarValue(value))
           prev.value = value;
@@ -2547,7 +2533,7 @@ var require_schema2 = __commonJS({
       tag: "",
       test: /^/,
       resolve(str, onError) {
-        onError(`Unresolved plain scalar ${JSON.stringify(str)}`);
+        onError("Unresolved plain scalar ".concat(JSON.stringify(str)));
         return str;
       }
     };
@@ -2641,12 +2627,10 @@ var require_pairs = __commonJS({
               onError("Each pair must have its own sequence indicator");
             const pair = item.items[0] || new Pair2.Pair(new Scalar2.Scalar(null));
             if (item.commentBefore)
-              pair.key.commentBefore = pair.key.commentBefore ? `${item.commentBefore}
-${pair.key.commentBefore}` : item.commentBefore;
+              pair.key.commentBefore = pair.key.commentBefore ? "".concat(item.commentBefore, "\n").concat(pair.key.commentBefore) : item.commentBefore;
             if (item.comment) {
               const cn = pair.value ?? pair.key;
-              cn.comment = cn.comment ? `${item.comment}
-${cn.comment}` : item.comment;
+              cn.comment = cn.comment ? "".concat(item.comment, "\n").concat(cn.comment) : item.comment;
             }
             item = pair;
           }
@@ -2671,14 +2655,14 @@ ${cn.comment}` : item.comment;
               key = it[0];
               value = it[1];
             } else
-              throw new TypeError(`Expected [key, value] tuple: ${it}`);
+              throw new TypeError("Expected [key, value] tuple: ".concat(it));
           } else if (it && it instanceof Object) {
             const keys = Object.keys(it);
             if (keys.length === 1) {
               key = keys[0];
               value = it[key];
             } else {
-              throw new TypeError(`Expected tuple with one key, not ${keys.length} keys`);
+              throw new TypeError("Expected tuple with one key, not ".concat(keys.length, " keys"));
             }
           } else {
             key = it;
@@ -2763,7 +2747,7 @@ var require_omap = __commonJS({
         for (const { key } of pairs$1.items) {
           if (identity.isScalar(key)) {
             if (seenKeys.includes(key.value)) {
-              onError(`Ordered maps must not include duplicate keys: ${key.value}`);
+              onError("Ordered maps must not include duplicate keys: ".concat(key.value));
             } else {
               seenKeys.push(key.value);
             }
@@ -2873,13 +2857,13 @@ var require_int2 = __commonJS({
       if (intAsBigInt) {
         switch (radix) {
           case 2:
-            str = `0b${str}`;
+            str = "0b".concat(str);
             break;
           case 8:
-            str = `0o${str}`;
+            str = "0o".concat(str);
             break;
           case 16:
-            str = `0x${str}`;
+            str = "0x".concat(str);
             break;
         }
         const n2 = BigInt(str);
@@ -2972,7 +2956,7 @@ var require_set = __commonJS({
       }
       set(key, value) {
         if (typeof value !== "boolean")
-          throw new Error(`Expected boolean value for set(key, value) in a YAML set, not ${typeof value}`);
+          throw new Error("Expected boolean value for set(key, value) in a YAML set, not ".concat(typeof value));
         const prev = YAMLMap2.findPair(this.items, key);
         if (prev && !value) {
           this.items.splice(this.items.indexOf(prev), 1);
@@ -3225,7 +3209,7 @@ var require_tags = __commonJS({
           tags = [];
         else {
           const keys = Array.from(schemas.keys()).filter((key) => key !== "yaml11").map((key) => JSON.stringify(key)).join(", ");
-          throw new Error(`Unknown schema "${schemaName}"; use one of ${keys} or define customTags array`);
+          throw new Error('Unknown schema "'.concat(schemaName, '"; use one of ').concat(keys, " or define customTags array"));
         }
       }
       if (Array.isArray(customTags)) {
@@ -3241,7 +3225,7 @@ var require_tags = __commonJS({
         if (!tagObj) {
           const tagName = JSON.stringify(tag);
           const keys = Object.keys(tagsByName).map((key) => JSON.stringify(key)).join(", ");
-          throw new Error(`Unknown custom tag ${tagName}; use one of ${keys}`);
+          throw new Error("Unknown custom tag ".concat(tagName, "; use one of ").concat(keys));
         }
         if (!tags2.includes(tagObj))
           tags2.push(tagObj);
@@ -3331,7 +3315,7 @@ var require_stringifyDocument = __commonJS({
         if (contentComment)
           body += stringifyComment.lineComment(body, "", commentString(contentComment));
         if ((body[0] === "|" || body[0] === ">") && lines[lines.length - 1] === "---") {
-          lines[lines.length - 1] = `--- ${body}`;
+          lines[lines.length - 1] = "--- ".concat(body);
         } else
           lines.push(body);
       } else {
@@ -3344,7 +3328,7 @@ var require_stringifyDocument = __commonJS({
             lines.push("...");
             lines.push(stringifyComment.indentComment(cs, ""));
           } else {
-            lines.push(`... ${cs}`);
+            lines.push("... ".concat(cs));
           }
         } else {
           lines.push("...");
@@ -3619,7 +3603,7 @@ var require_Document = __commonJS({
             break;
           default: {
             const sv = JSON.stringify(version);
-            throw new Error(`Expected '1.1', '1.2' or null as first argument, but found: ${sv}`);
+            throw new Error("Expected '1.1', '1.2' or null as first argument, but found: ".concat(sv));
           }
         }
         if (options.schema instanceof Object)
@@ -3627,7 +3611,7 @@ var require_Document = __commonJS({
         else if (opt)
           this.schema = new Schema2.Schema(Object.assign(opt, options));
         else
-          throw new Error(`With a null YAML version, the { schema: Schema } option is required`);
+          throw new Error("With a null YAML version, the { schema: Schema } option is required");
       }
       // json & jsonArg are only used from toJSON()
       toJS({ json, jsonArg, mapAsMap, maxAliasCount, onAnchor, reviver } = {}) {
@@ -3660,7 +3644,7 @@ var require_Document = __commonJS({
           throw new Error("Document with errors cannot be stringified");
         if ("indent" in options && (!Number.isInteger(options.indent) || Number(options.indent) <= 0)) {
           const s = JSON.stringify(options.indent);
-          throw new Error(`"indent" option must be a positive integer, not ${s}`);
+          throw new Error('"indent" option must be a positive integer, not '.concat(s));
         }
         return stringifyDocument.stringifyDocument(this, options);
       }
@@ -3702,7 +3686,7 @@ var require_errors = __commonJS({
         return;
       error.linePos = error.pos.map((pos) => lc.linePos(pos));
       const { line, col } = error.linePos[0];
-      error.message += ` at line ${line}, column ${col}`;
+      error.message += " at line ".concat(line, ", column ").concat(col);
       let ci = col - 1;
       let lineStr = src.substring(lc.lineStarts[line - 1], lc.lineStarts[line]).replace(/[\n\r]+$/, "");
       if (ci >= 60 && lineStr.length > 80) {
@@ -3725,11 +3709,7 @@ var require_errors = __commonJS({
           count = Math.max(1, Math.min(end.col - col, 80 - ci));
         }
         const pointer = " ".repeat(ci) + "^".repeat(count);
-        error.message += `:
-
-${lineStr}
-${pointer}
-`;
+        error.message += ":\n\n".concat(lineStr, "\n").concat(pointer, "\n");
       }
     };
     exports.YAMLError = YAMLError2;
@@ -3826,9 +3806,9 @@ var require_resolve_props = __commonJS({
           }
           case indicator:
             if (anchor || tag)
-              onError(token, "BAD_PROP_ORDER", `Anchors and tags must be after the ${token.source} indicator`);
+              onError(token, "BAD_PROP_ORDER", "Anchors and tags must be after the ".concat(token.source, " indicator"));
             if (found)
-              onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow ?? "collection"}`);
+              onError(token, "UNEXPECTED_TOKEN", "Unexpected ".concat(token.source, " in ").concat(flow ?? "collection"));
             found = token;
             atNewline = indicator === "seq-item-ind" || indicator === "explicit-key-ind";
             hasSpace = false;
@@ -3836,7 +3816,7 @@ var require_resolve_props = __commonJS({
           case "comma":
             if (flow) {
               if (comma)
-                onError(token, "UNEXPECTED_TOKEN", `Unexpected , in ${flow}`);
+                onError(token, "UNEXPECTED_TOKEN", "Unexpected , in ".concat(flow));
               comma = token;
               atNewline = false;
               hasSpace = false;
@@ -3844,7 +3824,7 @@ var require_resolve_props = __commonJS({
             }
           // else fallthrough
           default:
-            onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.type} token`);
+            onError(token, "UNEXPECTED_TOKEN", "Unexpected ".concat(token.type, " token"));
             atNewline = false;
             hasSpace = false;
         }
@@ -4140,7 +4120,7 @@ var require_resolve_end = __commonJS({
               hasSpace = true;
               break;
             default:
-              onError(token, "UNEXPECTED_TOKEN", `Unexpected ${type} at node end`);
+              onError(token, "UNEXPECTED_TOKEN", "Unexpected ".concat(type, " at node end"));
           }
           offset += source.length;
         }
@@ -4192,9 +4172,9 @@ var require_resolve_flow_collection = __commonJS({
         if (!props.found) {
           if (!props.anchor && !props.tag && !sep && !value) {
             if (i === 0 && props.comma)
-              onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
+              onError(props.comma, "UNEXPECTED_TOKEN", "Unexpected , in ".concat(fcName));
             else if (i < fc.items.length - 1)
-              onError(props.start, "UNEXPECTED_TOKEN", `Unexpected empty item in ${fcName}`);
+              onError(props.start, "UNEXPECTED_TOKEN", "Unexpected empty item in ".concat(fcName));
             if (props.comment) {
               if (coll.comment)
                 coll.comment += "\n" + props.comment;
@@ -4214,10 +4194,10 @@ var require_resolve_flow_collection = __commonJS({
         }
         if (i === 0) {
           if (props.comma)
-            onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
+            onError(props.comma, "UNEXPECTED_TOKEN", "Unexpected , in ".concat(fcName));
         } else {
           if (!props.comma)
-            onError(props.start, "MISSING_CHAR", `Missing , between ${fcName} items`);
+            onError(props.start, "MISSING_CHAR", "Missing , between ".concat(fcName, " items"));
           if (props.comment) {
             let prevItemComment = "";
             loop: for (const st of start) {
@@ -4282,9 +4262,9 @@ var require_resolve_flow_collection = __commonJS({
             }
           } else if (value) {
             if ("source" in value && value.source?.[0] === ":")
-              onError(value, "MISSING_CHAR", `Missing space after : in ${fcName}`);
+              onError(value, "MISSING_CHAR", "Missing space after : in ".concat(fcName));
             else
-              onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
+              onError(valueProps.start, "MISSING_CHAR", "Missing , or : between ".concat(fcName, " items"));
           }
           const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep, null, valueProps, onError) : null;
           if (valueNode) {
@@ -4322,7 +4302,7 @@ var require_resolve_flow_collection = __commonJS({
         cePos = ce.offset + ce.source.length;
       else {
         const name = fcName[0].toUpperCase() + fcName.substring(1);
-        const msg = atRoot ? `${name} must end with a ${expectedEnd}` : `${name} in block collection must be sufficiently indented and end with a ${expectedEnd}`;
+        const msg = atRoot ? "".concat(name, " must end with a ").concat(expectedEnd) : "".concat(name, " in block collection must be sufficiently indented and end with a ").concat(expectedEnd);
         onError(offset, atRoot ? "MISSING_CHAR" : "BAD_INDENT", msg);
         if (ce && ce.source.length !== 1)
           ee.unshift(ce);
@@ -4390,9 +4370,9 @@ var require_compose_collection = __commonJS({
           tag = kt;
         } else {
           if (kt) {
-            onError(tagToken, "BAD_COLLECTION_TYPE", `${kt.tag} used for ${expType} collection, but expects ${kt.collection ?? "scalar"}`, true);
+            onError(tagToken, "BAD_COLLECTION_TYPE", "".concat(kt.tag, " used for ").concat(expType, " collection, but expects ").concat(kt.collection ?? "scalar"), true);
           } else {
-            onError(tagToken, "TAG_RESOLVE_FAILED", `Unresolved tag: ${tagName}`, true);
+            onError(tagToken, "TAG_RESOLVE_FAILED", "Unresolved tag: ".concat(tagName), true);
           }
           return resolveCollection(CN, ctx, token, onError, tagName);
         }
@@ -4478,7 +4458,7 @@ var require_resolve_block_scalar = __commonJS({
           content = content.slice(0, -1);
         if (content && indent.length < trimIndent) {
           const src = header.indent ? "explicit indentation indicator" : "first line";
-          const message = `Block scalar lines must not be less indented than their ${src}`;
+          const message = "Block scalar lines must not be less indented than their ".concat(src);
           onError(offset - content.length - (crlf ? 2 : 1), "BAD_INDENT", message);
           indent = "";
         }
@@ -4542,7 +4522,7 @@ var require_resolve_block_scalar = __commonJS({
         }
       }
       if (error !== -1)
-        onError(error, "UNEXPECTED_TOKEN", `Block scalar header includes extra characters: ${source}`);
+        onError(error, "UNEXPECTED_TOKEN", "Block scalar header includes extra characters: ".concat(source));
       let hasSpace = false;
       let comment = "";
       let length = source.length;
@@ -4569,7 +4549,7 @@ var require_resolve_block_scalar = __commonJS({
             break;
           /* istanbul ignore next should not happen */
           default: {
-            const message = `Unexpected token in block scalar header: ${token.type}`;
+            const message = "Unexpected token in block scalar header: ".concat(token.type);
             onError(token, "UNEXPECTED_TOKEN", message);
             const ts = token.source;
             if (ts && typeof ts === "string")
@@ -4619,7 +4599,7 @@ var require_resolve_flow_scalar = __commonJS({
           break;
         /* istanbul ignore next should not happen */
         default:
-          onError(scalar, "UNEXPECTED_TOKEN", `Expected a flow scalar value, but found: ${type}`);
+          onError(scalar, "UNEXPECTED_TOKEN", "Expected a flow scalar value, but found: ".concat(type));
           return {
             value: "",
             type: null,
@@ -4651,17 +4631,17 @@ var require_resolve_flow_scalar = __commonJS({
           break;
         case "|":
         case ">": {
-          badChar = `block scalar indicator ${source[0]}`;
+          badChar = "block scalar indicator ".concat(source[0]);
           break;
         }
         case "@":
         case "`": {
-          badChar = `reserved character ${source[0]}`;
+          badChar = "reserved character ".concat(source[0]);
           break;
         }
       }
       if (badChar)
-        onError(0, "BAD_SCALAR_START", `Plain value cannot start with ${badChar}`);
+        onError(0, "BAD_SCALAR_START", "Plain value cannot start with ".concat(badChar));
       return unfoldLines(source);
     }
     function singleQuotedValue(source, onError) {
@@ -4732,7 +4712,7 @@ var require_resolve_flow_scalar = __commonJS({
             i += length;
           } else {
             const raw = source.substr(i - 1, 2);
-            onError(i - 1, "BAD_DQ_ESCAPE", `Invalid escape sequence ${raw}`);
+            onError(i - 1, "BAD_DQ_ESCAPE", "Invalid escape sequence ".concat(raw));
             res += raw;
           }
         } else if (ch === " " || ch === "	") {
@@ -4806,7 +4786,7 @@ var require_resolve_flow_scalar = __commonJS({
         return String.fromCodePoint(code);
       } catch {
         const raw = source.substr(offset - 2, length + 2);
-        onError(offset - 2, "BAD_DQ_ESCAPE", `Invalid escape sequence ${raw}`);
+        onError(offset - 2, "BAD_DQ_ESCAPE", "Invalid escape sequence ".concat(raw));
         return raw;
       }
     }
@@ -4875,7 +4855,7 @@ var require_compose_scalar = __commonJS({
         schema.tags.push(Object.assign({}, kt, { default: false, test: void 0 }));
         return kt;
       }
-      onError(tagToken, "TAG_RESOLVE_FAILED", `Unresolved tag: ${tagName}`, tagName !== "tag:yaml.org,2002:str");
+      onError(tagToken, "TAG_RESOLVE_FAILED", "Unresolved tag: ".concat(tagName), tagName !== "tag:yaml.org,2002:str");
       return schema[identity.SCALAR];
     }
     function findScalarTagByTest({ atKey, directives, schema }, value, token, onError) {
@@ -4885,7 +4865,7 @@ var require_compose_scalar = __commonJS({
         if (tag.tag !== compat.tag) {
           const ts = directives.tagString(tag.tag);
           const cs = directives.tagString(compat.tag);
-          const msg = `Value may be parsed as either ${ts} or ${cs}`;
+          const msg = "Value may be parsed as either ".concat(ts, " or ").concat(cs);
           onError(token, "TAG_RESOLVE_FAILED", msg, true);
         }
       }
@@ -4968,7 +4948,7 @@ var require_compose_node = __commonJS({
           }
           break;
         default: {
-          const message = token.type === "error" ? token.message : `Unsupported token (type: ${token.type})`;
+          const message = token.type === "error" ? token.message : "Unsupported token (type: ".concat(token.type, ")");
           onError(token, "UNEXPECTED_TOKEN", message);
           isSrcToken = false;
         }
@@ -5140,8 +5120,7 @@ var require_composer = __commonJS({
         if (comment) {
           const dc = doc.contents;
           if (afterDoc) {
-            doc.comment = doc.comment ? `${doc.comment}
-${comment}` : comment;
+            doc.comment = doc.comment ? "".concat(doc.comment, "\n").concat(comment) : comment;
           } else if (afterEmptyLine || doc.directives.docStart || !dc) {
             doc.commentBefore = comment;
           } else if (identity.isCollection(dc) && !dc.flow && dc.items.length > 0) {
@@ -5149,12 +5128,10 @@ ${comment}` : comment;
             if (identity.isPair(it))
               it = it.key;
             const cb = it.commentBefore;
-            it.commentBefore = cb ? `${comment}
-${cb}` : comment;
+            it.commentBefore = cb ? "".concat(comment, "\n").concat(cb) : comment;
           } else {
             const cb = dc.commentBefore;
-            dc.commentBefore = cb ? `${comment}
-${cb}` : comment;
+            dc.commentBefore = cb ? "".concat(comment, "\n").concat(cb) : comment;
           }
         }
         if (afterDoc) {
@@ -5227,7 +5204,7 @@ ${cb}` : comment;
             this.prelude.push(token.source);
             break;
           case "error": {
-            const msg = token.source ? `${token.message}: ${JSON.stringify(token.source)}` : token.message;
+            const msg = token.source ? "".concat(token.message, ": ").concat(JSON.stringify(token.source)) : token.message;
             const error = new errors.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", msg);
             if (this.atDirectives || !this.doc)
               this.errors.push(error);
@@ -5246,14 +5223,13 @@ ${cb}` : comment;
             this.decorate(this.doc, true);
             if (end.comment) {
               const dc = this.doc.comment;
-              this.doc.comment = dc ? `${dc}
-${end.comment}` : end.comment;
+              this.doc.comment = dc ? "".concat(dc, "\n").concat(end.comment) : end.comment;
             }
             this.doc.range[2] = end.offset;
             break;
           }
           default:
-            this.errors.push(new errors.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", `Unsupported token ${token.type}`));
+            this.errors.push(new errors.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", "Unsupported token ".concat(token.type)));
         }
       }
       /**
@@ -6457,7 +6433,7 @@ var require_parser = __commonJS({
         }
         const type = cst.tokenType(source);
         if (!type) {
-          const message = `Not a YAML token: ${source}`;
+          const message = "Not a YAML token: ".concat(source);
           yield* this.pop({ type: "error", offset: this.offset, message, source });
           this.offset += source.length;
         } else if (type === "scalar") {
@@ -6645,7 +6621,7 @@ var require_parser = __commonJS({
         yield {
           type: "error",
           offset: this.offset,
-          message: `Unexpected ${this.type} token in YAML stream`,
+          message: "Unexpected ".concat(this.type, " token in YAML stream"),
           source: this.source
         };
       }
@@ -6676,7 +6652,7 @@ var require_parser = __commonJS({
           yield {
             type: "error",
             offset: this.offset,
-            message: `Unexpected ${this.type} token in YAML document`,
+            message: "Unexpected ".concat(this.type, " token in YAML document"),
             source: this.source
           };
         }

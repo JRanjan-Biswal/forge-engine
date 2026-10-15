@@ -34,7 +34,7 @@ export function listPacks(root) {
                 continue;
             const pack = parsePack(file);
             if (pack.id !== id)
-                throw new Error(`${file}: id "${pack.id}" must match its directory "${id}"`);
+                throw new Error("".concat(file, ": id \"", pack.id, "\" must match its directory \"", id, "\""));
             found.set(id, { pack, dir: join(base, id), source });
         }
     }
@@ -43,14 +43,14 @@ export function listPacks(root) {
 function parsePack(file) {
     const result = StackPack.safeParse(parse(readFileSync(file, "utf8")) ?? {});
     if (!result.success)
-        throw new Error(`Invalid ${file}:\n${formatIssues(result.error)}`);
+        throw new Error("Invalid ".concat(file, ":\n", formatIssues(result.error)));
     return result.data;
 }
 export function loadPack(id, root) {
     const all = listPacks(root);
     const hit = all.find((p) => p.pack.id === id);
     if (!hit)
-        throw new Error(`Unknown stack pack "${id}". Available: ${all.map((p) => p.pack.id).join(", ")}`);
+        throw new Error("Unknown stack pack \"".concat(id, "\". Available: ", all.map((p) => p.pack.id).join(", ")));
     return hit;
 }
 /** The pack's conventions and review lens (markdown). */
@@ -61,7 +61,7 @@ export function readLens(id, root) {
 /** One `## Heading` section of a markdown document, without the heading. */
 export function lensSection(markdown, heading) {
     const lines = markdown.split("\n");
-    const start = lines.findIndex((line) => line.trim().toLowerCase() === `## ${heading.toLowerCase()}`);
+    const start = lines.findIndex((line) => line.trim().toLowerCase() === "## ".concat(heading.toLowerCase()));
     if (start < 0)
         return "";
     const end = lines.findIndex((line, i) => i > start && /^## /.test(line));
@@ -153,7 +153,7 @@ function candidateDirs(root) {
     const subdirs = (rel) => safeReaddir(join(root, rel))
         .sort()
         .filter((name) => !name.startsWith(".") && !SKIP_DIRS.has(name))
-        .map((name) => (rel === "." ? name : `${rel}/${name}`))
+        .map((name) => (rel === "." ? name : "".concat(rel, "/", name)))
         .filter((path) => {
         try {
             return statSync(join(root, path)).isDirectory();
@@ -176,9 +176,9 @@ export function detectStacks(root) {
             if (unlessDeps.some((dep) => facts.npmDeps.has(dep)))
                 continue;
             const evidence = [
-                ...packageDeps.filter((dep) => facts.npmDeps.has(dep)).map((dep) => `dependency ${dep}`),
-                ...pyDeps.filter((dep) => facts.pyDeps.has(normalizePy(dep))).map((dep) => `python dependency ${dep}`),
-                ...files.filter((file) => existsSync(join(facts.abs, file))).map((file) => `file ${file}`),
+                ...packageDeps.filter((dep) => facts.npmDeps.has(dep)).map((dep) => "dependency ".concat(dep)),
+                ...pyDeps.filter((dep) => facts.pyDeps.has(normalizePy(dep))).map((dep) => "python dependency ".concat(dep)),
+                ...files.filter((file) => existsSync(join(facts.abs, file))).map((file) => "file ".concat(file)),
             ];
             if (evidence.length)
                 found.push({ pack: pack.id, dir, evidence });
@@ -239,13 +239,13 @@ function fill(template, values) {
 }
 function unmet(req, facts) {
     if (req.script && !facts.scripts.has(req.script))
-        return `no "${req.script}" script in package.json`;
+        return "no \"".concat(req.script, "\" script in package.json");
     if (req.dep && !facts.npmDeps.has(req.dep) && !facts.pyDeps.has(normalizePy(req.dep)))
-        return `${req.dep} is not a dependency`;
+        return "".concat(req.dep, " is not a dependency");
     if (req.file && !existsSync(join(facts.abs, req.file)))
-        return `${req.file} does not exist`;
+        return "".concat(req.file, " does not exist");
     if (req.bin && !onPath(req.bin))
-        return `${req.bin} is not on PATH`;
+        return "".concat(req.bin, " is not on PATH");
     return undefined;
 }
 export function stackCommands(root, packId, dir = ".") {
@@ -275,7 +275,7 @@ export function stackCommands(root, packId, dir = ".") {
     }
     return { pack: pack.id, dir, packageManager: pm, commands, missing };
 }
-const quote = (path) => (/^[\w./-]+$/.test(path) ? path : `'${path.replace(/'/g, `'\\''`)}'`);
+const quote = (path) => (/^[\w./-]+$/.test(path) ? path : "'".concat(path.replace(/'/g, `'\\''`), "'"));
 /** One root-level command per gate key across all stacks (each runs in its own directory). */
 export function combineCommands(stacks) {
     const combined = {};
@@ -284,11 +284,11 @@ export function combineCommands(stacks) {
             const command = s.commands[key];
             if (!command)
                 return [];
-            return [s.dir === "." ? command : `cd ${quote(s.dir)} && ${command}`];
+            return [s.dir === "." ? command : "cd ".concat(quote(s.dir), " && ", command)];
         });
         if (!parts.length)
             continue;
-        combined[key] = parts.length === 1 ? parts[0] : parts.map((p) => `(${p})`).join(" && ");
+        combined[key] = parts.length === 1 ? parts[0] : parts.map((p) => "(".concat(p, ")")).join(" && ");
     }
     return combined;
 }
@@ -311,7 +311,7 @@ export function useStacks(root, options = {}) {
     else {
         if (!detected.length) {
             const ids = listPacks(root).map((p) => p.pack.id);
-            throw new Error(`No known stack found in ${root}. Name one with \`forge stack use <pack> --dir <dir>\`, or scaffold one with \`forge stack scaffold <pack>\`. Packs: ${ids.join(", ")}`);
+            throw new Error("No known stack found in ".concat(root, ". Name one with `forge stack use <pack> --dir <dir>`, or scaffold one with `forge stack scaffold <pack>`. Packs: ", ids.join(", ")));
         }
         chosen = detected.map(({ pack, dir }) => ({ pack, dir }));
     }
@@ -338,13 +338,13 @@ export function useStacks(root, options = {}) {
         writeFileSync(configFile, doc.toString());
         loadConfig(root); // fail loudly if the edit produced an invalid config
         const why = [
-            ...detected.filter((d) => chosen.some((c) => c.pack === d.pack && c.dir === d.dir)).map((d) => `${d.pack} in ${d.dir}: ${d.evidence.join(", ")}`),
-            ...Object.entries(set).map(([key, value]) => `commands.${key} = ${value}`),
+            ...detected.filter((d) => chosen.some((c) => c.pack === d.pack && c.dir === d.dir)).map((d) => "".concat(d.pack, " in ", d.dir, ": ", d.evidence.join(", "))),
+            ...Object.entries(set).map(([key, value]) => "commands.".concat(key, " = ", value)),
         ].join("; ");
         appendLedger(root, {
             kind: "decision",
             stage: "architect",
-            summary: `Stacks: ${chosen.map((s) => `${s.pack} (${s.dir})`).join(", ")}`.slice(0, 1_000),
+            summary: "Stacks: ".concat(chosen.map((s) => "".concat(s.pack, " (", s.dir, ")")).join(", ")).slice(0, 1_000),
             ...(why ? { why: why.slice(0, 2_000) } : {}),
         });
         return { stacks, set, kept, detected };
@@ -353,13 +353,13 @@ export function useStacks(root, options = {}) {
 function normalizeDir(root, dir) {
     const rel = relative(resolve(root), resolve(root, dir));
     if (rel.startsWith("..") || resolve(rel) === rel)
-        throw new Error(`--dir must be inside the project: ${dir}`);
+        throw new Error("--dir must be inside the project: ".concat(dir));
     return rel === "" ? "." : rel.split(sep).join("/");
 }
 /** Configured stacks that a task touches: by file paths first, then by department, else the only one. */
 export function stacksForTask(root, task) {
     const stacks = loadConfig(root).stacks;
-    const byFiles = stacks.filter((s) => s.dir !== "." && task.files.some((file) => file === s.dir || file.startsWith(`${s.dir}/`)));
+    const byFiles = stacks.filter((s) => s.dir !== "." && task.files.some((file) => file === s.dir || file.startsWith("".concat(s.dir, "/"))));
     if (byFiles.length)
         return byFiles;
     const byDept = stacks.filter((s) => {
@@ -392,26 +392,26 @@ export function stackBrief(root, task) {
             pack = loadPack(id, root).pack;
         }
         catch {
-            lines.push("", `## Stack: ${id} — unknown pack; run \`forge stack list\``);
+            lines.push("", "## Stack: ".concat(id, " — unknown pack; run `forge stack list`"));
             continue;
         }
         const { commands, missing } = stackCommands(root, id, dir);
-        const where = dir === "." ? "the project root" : `${dir}/`;
-        lines.push("", `## Stack: ${pack.name} in ${where}`);
-        const places = Object.entries(pack.layout).map(([what, path]) => `${what} → ${dir === "." ? path : `${dir}/${path}`}`);
+        const where = dir === "." ? "the project root" : "".concat(dir, "/");
+        lines.push("", "## Stack: ".concat(pack.name, " in ", where));
+        const places = Object.entries(pack.layout).map(([what, path]) => "".concat(what, " → ", dir === "." ? path : "".concat(dir, "/", path)));
         if (places.length)
-            lines.push(`- Where things go: ${places.join("; ")}`);
-        const runs = Object.entries(commands).map(([key, command]) => `${key} \`${command}\``);
+            lines.push("- Where things go: ".concat(places.join("; ")));
+        const runs = Object.entries(commands).map(([key, command]) => "".concat(key, " `", command, "`"));
         if (runs.length)
-            lines.push(`- Run from ${where} before you report: ${runs.join(" · ")}`);
+            lines.push("- Run from ".concat(where, " before you report: ", runs.join(" · ")));
         for (const m of missing)
-            lines.push(`- No ${m.key} command yet (${m.why})${m.fix ? ` — ${m.fix}` : ""}`);
+            lines.push("- No ".concat(m.key, " command yet (", m.why, ")", m.fix ? " — ".concat(m.fix) : ""));
         if (DESIGN_EXPORTS[pack.tokens])
-            lines.push(`- Design tokens: ${DESIGN_EXPORTS[pack.tokens]} — run \`forge design build\`; never hard-code values.`);
-        lines.push(`- QA: ${pack.qa}`);
+            lines.push("- Design tokens: ".concat(DESIGN_EXPORTS[pack.tokens], " — run `forge design build`; never hard-code values."));
+        lines.push("- QA: ".concat(pack.qa));
         const conventions = lensSection(readLens(id, root), "Conventions");
         if (conventions)
-            lines.push("", conventions.length > 3_000 ? `${conventions.slice(0, 3_000)}\n…(full: \`forge stack show ${id}\`)` : conventions);
+            lines.push("", conventions.length > 3_000 ? "".concat(conventions.slice(0, 3_000), "\n…(full: `forge stack show ", id, "`)") : conventions);
     }
     return lines;
 }
@@ -421,7 +421,7 @@ export function scaffoldPlan(root, packId, options = {}) {
     const fallbackDir = pack.kind === "service" ? "api" : pack.kind === "data" ? "." : native ? "mobile" : "web";
     const dir = normalizeDir(root, options.dir ?? fallbackDir);
     if (options.pm && !(options.pm in RUNNERS))
-        throw new Error(`--pm must be one of ${Object.keys(RUNNERS).join(", ")}`);
+        throw new Error("--pm must be one of ".concat(Object.keys(RUNNERS).join(", ")));
     const pm = options.pm ?? packageManager(root, ".");
     const values = { ...RUNNERS[pm], pm, dir: quote(dir) };
     return {
@@ -441,15 +441,15 @@ export async function scaffoldStack(root, packId, options = {}) {
     const plan = scaffoldPlan(root, packId, options);
     const target = resolve(root, plan.dir);
     if (plan.dir !== "." && existsSync(target) && safeReaddir(target).length) {
-        throw new Error(`${plan.dir}/ already exists and is not empty — scaffold into a new directory (--dir)`);
+        throw new Error("".concat(plan.dir, "/ already exists and is not empty — scaffold into a new directory (--dir)"));
     }
     const { resources } = loadConfig(root);
     const timeoutMs = options.timeoutMs ?? 900_000;
     const steps = [[plan.command, root], ...plan.then.map((step) => [step, target])];
     let output = "";
     for (const [command, cwd] of steps) {
-        const result = await withCommandSlot(root, { max: resources.maxConcurrentCommands, waitMs: resources.commandWaitMs, task: `forge stack scaffold ${packId}`, onWait: options.onWait }, () => runCommand(command, cwd, { timeoutMs }));
-        output += `$ ${command}\n${tail(result.output.trim(), 4_000)}\n`;
+        const result = await withCommandSlot(root, { max: resources.maxConcurrentCommands, waitMs: resources.commandWaitMs, task: "forge stack scaffold ".concat(packId), onWait: options.onWait }, () => runCommand(command, cwd, { timeoutMs }));
+        output += "$ ".concat(command, "\n", tail(result.output.trim(), 4_000), "\n");
         if (result.code !== 0 || result.timedOut)
             return { ...plan, ok: false, failedStep: command, output };
     }

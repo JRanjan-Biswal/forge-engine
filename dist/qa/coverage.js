@@ -22,11 +22,11 @@ export function qaPlan(root) {
         .flatMap((story) => {
         const platforms = new Set((screens?.screens ?? []).filter((s) => s.storyIds.includes(story.id)).map((s) => s.platform));
         const tool = platforms.has("web") ? "playwright" : platforms.has("ios") || platforms.has("android") ? "maestro" : platforms.size ? "playwright" : "api";
-        const suggestedFile = tool === "maestro" ? `.maestro/${slug(story.id)}.yaml` : tool === "playwright" ? `e2e/${slug(story.id)}.spec.ts` : `tests/${slug(story.id)}.test.ts`;
+        const suggestedFile = tool === "maestro" ? ".maestro/".concat(slug(story.id), ".yaml") : tool === "playwright" ? "e2e/".concat(slug(story.id), ".spec.ts") : "tests/".concat(slug(story.id), ".test.ts");
         return story.acceptance.map((ac, i) => ({
-            id: `${story.id}/AC${i + 1}`,
+            id: "".concat(story.id, "/AC", i + 1),
             story: story.id,
-            text: `Given ${ac.given}, when ${ac.when}, then ${ac.then}`,
+            text: "Given ".concat(ac.given, ", when ", ac.when, ", then ", ac.then),
             tool,
             suggestedFile,
         }));
@@ -39,7 +39,7 @@ export function qaCoverage(root, options = {}) {
     const unknownTags = [];
     const listed = listProjectFiles(root);
     // Maestro flows live in a dot-directory that the non-git file walk skips.
-    const maestro = existsSync(join(root, ".maestro")) ? readdirSync(join(root, ".maestro")).map((name) => `.maestro/${name}`) : [];
+    const maestro = existsSync(join(root, ".maestro")) ? readdirSync(join(root, ".maestro")).map((name) => ".maestro/".concat(name)) : [];
     const testFiles = [...new Set([...listed, ...maestro])].filter((file) => TEST_FILE.test(file) && /\.(?:[cm]?[jt]sx?|py|ya?ml|feature)$/.test(file));
     for (const file of testFiles) {
         let text;
@@ -69,7 +69,7 @@ export function qaCoverage(root, options = {}) {
             const story = known.get(id)?.story;
             for (const file of files)
                 if (story)
-                    linkTrace(root, `story:${story}`, `test:${file}`, "verifiedBy");
+                    linkTrace(root, "story:".concat(story), "test:".concat(file), "verifiedBy");
         }
     }
     const missing = cases.filter((c) => !filesByCase.has(c.id));

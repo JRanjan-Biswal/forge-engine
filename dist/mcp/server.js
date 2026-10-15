@@ -84,18 +84,18 @@ export function listGuides() {
         if (!existsSync(dir))
             return [];
         return kind === "skills"
-            ? readdirSync(dir).filter((id) => existsSync(join(dir, id, "SKILL.md"))).map((id) => `skills/${id}`)
-            : readdirSync(dir).filter((file) => file.endsWith(".md")).map((file) => `${kind}/${file.slice(0, -3)}`);
+            ? readdirSync(dir).filter((id) => existsSync(join(dir, id, "SKILL.md"))).map((id) => "skills/".concat(id))
+            : readdirSync(dir).filter((file) => file.endsWith(".md")).map((file) => "".concat(kind, "/", file.slice(0, -3)));
     });
 }
 export function readGuide(name) {
     const [kind, id] = name.replace(/\.md$/, "").replace(/\/SKILL$/, "").split("/");
     if (!kind || !id || !GUIDE_KINDS.includes(kind) || !/^[a-z0-9-]+$/.test(id)) {
-        throw new Error(`Unknown guide "${name}". Available: ${listGuides().join(", ")}`);
+        throw new Error("Unknown guide \"".concat(name, "\". Available: ", listGuides().join(", ")));
     }
-    const file = kind === "skills" ? join(PACKAGE_ROOT, "skills", id, "SKILL.md") : join(PACKAGE_ROOT, kind, `${id}.md`);
+    const file = kind === "skills" ? join(PACKAGE_ROOT, "skills", id, "SKILL.md") : join(PACKAGE_ROOT, kind, "".concat(id, ".md"));
     if (!existsSync(file))
-        throw new Error(`Unknown guide "${name}". Available: ${listGuides().join(", ")}`);
+        throw new Error("Unknown guide \"".concat(name, "\". Available: ", listGuides().join(", ")));
     return readFileSync(file, "utf8");
 }
 export function createForgeServer(root) {
@@ -110,7 +110,7 @@ export function createForgeServer(root) {
     server.registerTool("forge_status", { description: "Pipeline dashboard: every stage's status, the next stage and its command, blockers.", inputSchema: {} }, guarded(() => forge().status()));
     server.registerTool("stage_list", { description: "Enabled stages with their outputs and gate checks.", inputSchema: {} }, guarded(() => forge()
         .stages()
-        .map((s) => ({ id: s.id, title: s.title, command: s.command, outputs: s.outputs, checkpoint: s.checkpoint, gate: s.gate.map((c) => `${c.id}: ${c.description}`) }))));
+        .map((s) => ({ id: s.id, title: s.title, command: s.command, outputs: s.outputs, checkpoint: s.checkpoint, gate: s.gate.map((c) => "".concat(c.id, ": ", c.description)) }))));
     server.registerTool("stage_start", {
         description: "Start a stage. Fails if earlier stages are unfinished unless force=true (recorded in the ledger).",
         inputSchema: { stage, force: z.boolean().optional() },
@@ -129,7 +129,7 @@ export function createForgeServer(root) {
         inputSchema: { stage, note: z.string().optional() },
     }, guarded(({ stage: id, note }) => {
         forge().approve(id, "user (via agent)", note);
-        return `Approved ${id}`;
+        return "Approved ".concat(id);
     }));
     server.registerTool("stage_reopen", {
         description: "Reopen a stage (cascade=true also reopens every later stage).",
@@ -140,7 +140,7 @@ export function createForgeServer(root) {
         const root = forge().root;
         const def = ARTIFACTS[name];
         const value = def?.format === "text" ? readArtifactText(root, name) : loadArtifact(root, name);
-        return value ?? `${def?.path ?? name} does not exist yet`;
+        return value ?? "".concat(def?.path ?? name, " does not exist yet");
     }));
     server.registerTool("artifact_write", {
         description: "Validate and write an artifact. JSON artifacts take an object (or JSON string); text artifacts take a string.",
@@ -163,7 +163,7 @@ export function createForgeServer(root) {
         inputSchema: { question: z.string().min(1), budget: z.number().int().positive().optional().describe("Token budget (default 1500)") },
     }, guarded(async ({ question, budget }) => {
         const answer = await queryMemory(forge().root, question, { budgetTokens: budget });
-        return { intent: answer.intent, graph: answer.graph?.error ? `graphify: ${answer.graph.error}` : undefined, answer: answer.text };
+        return { intent: answer.intent, graph: answer.graph?.error ? "graphify: ".concat(answer.graph.error) : undefined, answer: answer.text };
     }));
     server.registerTool("memory_save_episode", {
         description: "Save a session summary so the next session (in any tool) can resume.",
@@ -194,7 +194,7 @@ export function createForgeServer(root) {
         },
     }, guarded(({ from, to, type }) => {
         const trace = linkTrace(forge().root, from, to, type);
-        return `Linked ${from} → ${to} (${type}); trace has ${trace.nodes.length} nodes, ${trace.edges.length} edges`;
+        return "Linked ".concat(from, " → ", to, " (", type, "); trace has ", trace.nodes.length, " nodes, ", trace.edges.length, " edges");
     }));
     server.registerTool("trace_gaps", { description: "Traceability gaps: MVP stories missing design, implementation or test links.", inputSchema: {} }, guarded(() => computeGaps(forge().root)));
     server.registerTool("graph_status", { description: "Whether graphify is installed and a code graph exists.", inputSchema: {} }, guarded(() => graphStatus(forge().root)));
@@ -258,8 +258,8 @@ export function createForgeServer(root) {
         const map = loadProductMap(root);
         if (!map)
             throw new Error("No product map yet — call product_adopt (or product_sync)");
-        const surfaces = map.surfaces.filter((s) => (!kind || s.kind === kind) && (!match || `${s.id} ${s.file}`.includes(match)));
-        return { check: checkProduct(root), frameworks: map.frameworks, graph: map.graph, surfaces, calls: map.calls.filter((c) => !match || `${c.from} ${c.to}`.includes(match)), docs: map.docs };
+        const surfaces = map.surfaces.filter((s) => (!kind || s.kind === kind) && (!match || "".concat(s.id, " ", s.file).includes(match)));
+        return { check: checkProduct(root), frameworks: map.frameworks, graph: map.graph, surfaces, calls: map.calls.filter((c) => !match || "".concat(c.from, " ", c.to).includes(match)), docs: map.docs };
     }));
     server.registerTool("page_audit_write", {
         description: "Record a pro-page-complete audit for one page (job, every atom with status/break/fix/must, connections, ideas, robustness, proof). The gap gate fails while audited pages have open must-fix atoms.",
@@ -369,11 +369,11 @@ export function createForgeServer(root) {
             const root = forge().root;
             const shot = readManifest(root)?.shots.find((s) => s.screen === screen && (!state || s.state === state) && (!viewport || s.viewport === viewport) && !s.error);
             if (!shot)
-                throw new Error(`No screenshot for ${screen}${state ? `/${state}` : ""}${viewport ? `@${viewport}` : ""} — run design_shots first`);
+                throw new Error("No screenshot for ".concat(screen, state ? "/".concat(state) : "", viewport ? "@".concat(viewport) : "", " — run design_shots first"));
             const data = readFileSync(join(root, shot.file)).toString("base64");
             return {
                 content: [
-                    { type: "text", text: `${shot.file} (${shot.width ?? "?"}×${shot.height ?? "?"}${shot.blank ? ", BLANK" : ""})` },
+                    { type: "text", text: "".concat(shot.file, " (", shot.width ?? "?", "×", shot.height ?? "?", shot.blank ? ", BLANK" : "", ")") },
                     { type: "image", data, mimeType: "image/png" },
                 ],
             };

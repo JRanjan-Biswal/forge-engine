@@ -76,7 +76,7 @@ export function scanSecurity(root, options = {}) {
                 return; // minified or generated
             const hits = findSecrets(raw).map((label) => ({
                 rule: "secret",
-                title: `Committed credential (${label})`,
+                title: "Committed credential (".concat(label, ")"),
                 severity: "critical",
                 cwe: "CWE-798",
                 fix: "Remove it, rotate the credential now, and load it from the environment or a secret store.",
@@ -100,7 +100,7 @@ export function scanSecurity(root, options = {}) {
                     continue;
                 }
                 if (match)
-                    invalidSuppressions.push({ file, line: index + 1, text: `${hit.rule}: suppression needs a reason (-- <why>, at least 3 words)` });
+                    invalidSuppressions.push({ file, line: index + 1, text: "".concat(hit.rule, ": suppression needs a reason (-- <why>, at least 3 words)") });
                 findings.push({ ...hit, file, line: index + 1, snippet: redact(raw.trim()).slice(0, 200) });
             }
         });
@@ -129,7 +129,7 @@ function globToRegExp(glob) {
         .replace(/\?/g, "[^/]")
         .replace(/\u0000/g, "(?:.*/)?")
         .replace(/\u0001/g, ".*");
-    return new RegExp(`^${source}(?:/.*)?$`);
+    return new RegExp("^".concat(source, "(?:/.*)?$"));
 }
 /**
  * File scan findings into the `reviews` artifact (category `security:<rule>`), once
@@ -139,23 +139,23 @@ function globToRegExp(glob) {
 export function recordFindings(root, result) {
     return withLock(root, () => {
         const reviews = loadArtifact(root, "reviews") ?? { findings: [] };
-        const key = (category, file, line) => `${category}|${file}|${line ?? ""}`;
+        const key = (category, file, line) => "".concat(category, "|", file, "|", line ?? "");
         const known = new Set(reviews.findings.map((f) => key(f.category, f.file, f.line)));
         let next = reviews.findings.filter((f) => /^SEC-\d+$/.test(f.id)).reduce((max, f) => Math.max(max, Number(f.id.slice(4))), 0);
         let added = 0;
         for (const finding of result.findings) {
-            const category = `security:${finding.rule}`;
+            const category = "security:".concat(finding.rule);
             if (known.has(key(category, finding.file, finding.line)))
                 continue;
             known.add(key(category, finding.file, finding.line));
             reviews.findings.push({
-                id: `SEC-${++next}`,
+                id: "SEC-".concat(++next),
                 severity: finding.severity,
                 category,
                 file: finding.file,
                 line: finding.line,
-                claim: `${finding.title} (${finding.cwe})`,
-                evidence: `forge security scan: ${finding.snippet}`,
+                claim: "".concat(finding.title, " (", finding.cwe, ")"),
+                evidence: "forge security scan: ".concat(finding.snippet),
                 suggestedFix: finding.fix,
                 status: "open",
             });

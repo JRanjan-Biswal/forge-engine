@@ -54,7 +54,7 @@ export function auditContrast(root) {
         pairs = JSON.parse(readFileSync(file, "utf8")).pairs ?? [];
     }
     catch (error) {
-        return { declared: false, results: [], errors: [`design/contrast.json is invalid: ${error.message}`] };
+        return { declared: false, results: [], errors: ["design/contrast.json is invalid: ".concat(error.message)] };
     }
     if (!pairs.length)
         return { declared: false, results: [], errors: ["design/contrast.json declares no pairs"] };
@@ -68,7 +68,7 @@ export function auditContrast(root) {
             const bg = tokens.get(pair.bg);
             const min = pair.min ?? 4.5;
             if (!fg || !bg) {
-                errors.push(`${theme}: ${!fg ? pair.fg : pair.bg} is not a token`);
+                errors.push("".concat(theme, ": ", !fg ? pair.fg : pair.bg, " is not a token"));
                 continue;
             }
             const ratio = contrastRatio(String(fg.value), String(bg.value));

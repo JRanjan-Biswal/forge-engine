@@ -8,10 +8,10 @@ export async function checkHeaders(url, options = {}) {
         parsed = new URL(url);
     }
     catch {
-        throw new Error(`Not a URL: ${url}`);
+        throw new Error("Not a URL: ".concat(url));
     }
     if (!/^https?:$/.test(parsed.protocol))
-        throw new Error(`Only http(s) URLs can be checked: ${url}`);
+        throw new Error("Only http(s) URLs can be checked: ".concat(url));
     let response;
     try {
         response = await fetch(parsed, {
@@ -22,7 +22,7 @@ export async function checkHeaders(url, options = {}) {
     }
     catch (error) {
         const cause = error.cause;
-        throw new Error(`Could not reach ${url}: ${cause instanceof Error ? cause.message : error.message}`);
+        throw new Error("Could not reach ".concat(url, ": ", cause instanceof Error ? cause.message : error.message));
     }
     await response.body?.cancel().catch(() => undefined);
     return analyzeHeaders(parsed.href, response.status, response.headers);
@@ -42,7 +42,7 @@ export function analyzeHeaders(url, status, headers) {
         let target = location;
         try {
             const next = new URL(location, url);
-            target = `${next.origin}${next.pathname}`;
+            target = "".concat(next.origin, next.pathname);
         }
         catch {
             // keep the raw value
@@ -51,7 +51,7 @@ export function analyzeHeaders(url, status, headers) {
             id: "redirect",
             status: "warn",
             severity: "medium",
-            detail: `HTTP ${status} → ${target} — these are the redirect's headers, not the page's; check the final URL`,
+            detail: "HTTP ".concat(status, " → ", target, " — these are the redirect's headers, not the page's; check the final URL"),
             fix: "Point the check at the URL that serves the page (or provide the deployment-protection bypass header).",
         });
     }
@@ -79,7 +79,7 @@ export function analyzeHeaders(url, status, headers) {
             problems.push("script-src allows 'unsafe-eval'");
         const wide = script.filter((s) => /^(?:\*|https?:|data:)$/.test(s));
         if (wide.length)
-            problems.push(`script-src allows any source (${wide.join(" ")})`);
+            problems.push("script-src allows any source (".concat(wide.join(" "), ")"));
         if (!directives.has("script-src") && !directives.has("default-src"))
             problems.push("no script-src or default-src");
         if (html && !(directives.get("object-src") ?? directives.get("default-src") ?? []).includes("'none'"))
@@ -87,14 +87,14 @@ export function analyzeHeaders(url, status, headers) {
         if (html && !directives.has("base-uri"))
             problems.push("no base-uri");
         add(problems.length
-            ? { id: "csp", status: "fail", severity: "medium", detail: `weak CSP: ${problems.join("; ")}`, fix: "Use nonces or hashes instead of 'unsafe-inline'/'unsafe-eval'; set object-src 'none' and base-uri 'none'." }
+            ? { id: "csp", status: "fail", severity: "medium", detail: "weak CSP: ".concat(problems.join("; ")), fix: "Use nonces or hashes instead of 'unsafe-inline'/'unsafe-eval'; set object-src 'none' and base-uri 'none'." }
             : { id: "csp", status: "pass", severity: "high", detail: "Content-Security-Policy set without unsafe script sources" });
     }
     // ── Clickjacking ──────────────────────────────────────────────────────────
     const frameAncestors = directives.get("frame-ancestors");
     const xfo = get("x-frame-options").toUpperCase();
     if (frameAncestors?.length || xfo === "DENY" || xfo === "SAMEORIGIN") {
-        add({ id: "clickjacking", status: "pass", severity: "medium", detail: frameAncestors?.length ? `frame-ancestors ${frameAncestors.join(" ")}` : `X-Frame-Options ${xfo}` });
+        add({ id: "clickjacking", status: "pass", severity: "medium", detail: frameAncestors?.length ? "frame-ancestors ".concat(frameAncestors.join(" ")) : "X-Frame-Options ".concat(xfo) });
     }
     else {
         add({
@@ -117,7 +117,7 @@ export function analyzeHeaders(url, status, headers) {
         const maxAge = Number(/max-age\s*=\s*"?(\d+)/i.exec(hsts)?.[1] ?? 0);
         add(maxAge >= 15_552_000
             ? { id: "hsts", status: "pass", severity: "high", detail: hsts }
-            : { id: "hsts", status: "fail", severity: "medium", detail: `HSTS max-age ${maxAge}s is under 180 days`, fix: "max-age=63072000 (2 years); includeSubDomains" });
+            : { id: "hsts", status: "fail", severity: "medium", detail: "HSTS max-age ".concat(maxAge, "s is under 180 days"), fix: "max-age=63072000 (2 years); includeSubDomains" });
     }
     // ── Other headers ─────────────────────────────────────────────────────────
     add(get("x-content-type-options").toLowerCase() === "nosniff"
@@ -128,34 +128,34 @@ export function analyzeHeaders(url, status, headers) {
         add({ id: "referrer-policy", status: html ? "warn" : "info", severity: "low", detail: "no Referrer-Policy (browser default applies)", fix: "Referrer-Policy: strict-origin-when-cross-origin" });
     }
     else if (/unsafe-url|no-referrer-when-downgrade/.test(referrer)) {
-        add({ id: "referrer-policy", status: "fail", severity: "medium", detail: `Referrer-Policy ${referrer} leaks full URLs (tokens in query strings)`, fix: "Referrer-Policy: strict-origin-when-cross-origin" });
+        add({ id: "referrer-policy", status: "fail", severity: "medium", detail: "Referrer-Policy ".concat(referrer, " leaks full URLs (tokens in query strings)"), fix: "Referrer-Policy: strict-origin-when-cross-origin" });
     }
     else {
-        add({ id: "referrer-policy", status: "pass", severity: "low", detail: `Referrer-Policy ${referrer}` });
+        add({ id: "referrer-policy", status: "pass", severity: "low", detail: "Referrer-Policy ".concat(referrer) });
     }
     if (html) {
         add(get("permissions-policy")
             ? { id: "permissions-policy", status: "pass", severity: "low", detail: "Permissions-Policy set" }
             : { id: "permissions-policy", status: "warn", severity: "low", detail: "no Permissions-Policy", fix: "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()" });
         add(get("cross-origin-opener-policy")
-            ? { id: "coop", status: "pass", severity: "low", detail: `Cross-Origin-Opener-Policy ${get("cross-origin-opener-policy")}` }
+            ? { id: "coop", status: "pass", severity: "low", detail: "Cross-Origin-Opener-Policy ".concat(get("cross-origin-opener-policy")) }
             : { id: "coop", status: "warn", severity: "low", detail: "no Cross-Origin-Opener-Policy", fix: "Cross-Origin-Opener-Policy: same-origin" });
     }
     // ── Information leaks ─────────────────────────────────────────────────────
     const leaks = [
-        get("x-powered-by") && `X-Powered-By: ${get("x-powered-by")}`,
-        /\d/.test(get("server")) && `Server: ${get("server")}`,
-        get("x-aspnet-version") && `X-AspNet-Version: ${get("x-aspnet-version")}`,
+        get("x-powered-by") && "X-Powered-By: ".concat(get("x-powered-by")),
+        /\d/.test(get("server")) && "Server: ".concat(get("server")),
+        get("x-aspnet-version") && "X-AspNet-Version: ".concat(get("x-aspnet-version")),
     ].filter(Boolean);
     add(leaks.length
-        ? { id: "info-leak", status: "warn", severity: "low", detail: `stack details exposed (${leaks.join(", ")})`, fix: "Remove X-Powered-By (Next.js: poweredByHeader: false; Express: app.disable('x-powered-by')) and version numbers from Server." }
+        ? { id: "info-leak", status: "warn", severity: "low", detail: "stack details exposed (".concat(leaks.join(", "), ")"), fix: "Remove X-Powered-By (Next.js: poweredByHeader: false; Express: app.disable('x-powered-by')) and version numbers from Server." }
         : { id: "info-leak", status: "pass", severity: "low", detail: "no framework/version headers" });
     // ── Cookies ───────────────────────────────────────────────────────────────
     for (const cookie of headers.getSetCookie()) {
         const [pair = "", ...attributes] = cookie.split(";").map((part) => part.trim());
         const name = pair.split("=")[0] || "?";
         const attrs = attributes.map((a) => a.toLowerCase());
-        const has = (flag) => attrs.some((a) => a === flag || a.startsWith(`${flag}=`));
+        const has = (flag) => attrs.some((a) => a === flag || a.startsWith("".concat(flag, "=")));
         const sameSite = attrs.find((a) => a.startsWith("samesite="))?.split("=")[1];
         const problems = [];
         if (SESSION_COOKIE.test(name) && !/csrf|xsrf/i.test(name) && !has("httponly"))
@@ -168,8 +168,8 @@ export function analyzeHeaders(url, status, headers) {
             problems.push({ text: "no SameSite (set Lax or Strict explicitly)", severity: "low" });
         const worst = problems.map((p) => p.severity).sort((a, b) => rank(a) - rank(b))[0];
         add(worst
-            ? { id: `cookie:${name}`, status: rank(worst) <= rank("medium") ? "fail" : "warn", severity: worst, detail: problems.map((p) => p.text).join("; "), fix: "Set-Cookie: <name>=…; HttpOnly; Secure; SameSite=Lax; Path=/" }
-            : { id: `cookie:${name}`, status: "pass", severity: "low", detail: "HttpOnly/Secure/SameSite set" });
+            ? { id: "cookie:".concat(name), status: rank(worst) <= rank("medium") ? "fail" : "warn", severity: worst, detail: problems.map((p) => p.text).join("; "), fix: "Set-Cookie: <name>=…; HttpOnly; Secure; SameSite=Lax; Path=/" }
+            : { id: "cookie:".concat(name), status: "pass", severity: "low", detail: "HttpOnly/Secure/SameSite set" });
     }
     // ── CORS ──────────────────────────────────────────────────────────────────
     const acao = get("access-control-allow-origin");
@@ -182,7 +182,7 @@ export function analyzeHeaders(url, status, headers) {
             id: "cors",
             status: "fail",
             severity: allowsCookies ? "critical" : "medium",
-            detail: `reflects any Origin${allowsCookies ? " and allows cookies — any website can read logged-in responses" : ""}`,
+            detail: "reflects any Origin".concat(allowsCookies ? " and allows cookies — any website can read logged-in responses" : ""),
             fix: "Echo the Origin only when it is in an explicit allow-list; add Vary: Origin.",
         });
     }
@@ -195,7 +195,7 @@ export function analyzeHeaders(url, status, headers) {
             : { id: "cors", status: "warn", severity: "low", detail: "Access-Control-Allow-Origin * (fine only for public, unauthenticated data)" });
     }
     else {
-        add({ id: "cors", status: "pass", severity: "high", detail: `allows ${acao} only` });
+        add({ id: "cors", status: "pass", severity: "high", detail: "allows ".concat(acao, " only") });
     }
     return { url, status, contentType, kind, https, checks };
 }
