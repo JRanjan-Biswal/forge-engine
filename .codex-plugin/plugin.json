@@ -1,6 +1,6 @@
 {
   "name": "forge-engine",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Idea → validated → designed → built → verified → shipped. A gated, memory-backed product pipeline for coding agents: evidence-checked validation, design system + screenshot critique, stack packs, code & security review, QA coverage, deploy with real checks.",
   "author": {
     "name": "JRanjan-Biswal",
@@ -40,6 +40,9 @@
       "Use forge: call forge_status and work on the next stage.",
       "Use the security-review skill on this repository.",
       "Use forge to validate this idea with cited evidence: "
-    ]
+    ],
+    "logo": "./.claude-plugin/icon.png",
+    "composerIcon": "./assets/icon.svg",
+    "brandColor": "#FF8A1F"
   }
 }

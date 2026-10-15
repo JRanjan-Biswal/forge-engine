@@ -22,7 +22,7 @@
 - [ ] Writes that can be retried accept an idempotency key where the contract says so.
 - [ ] Secrets come from settings/env; CORS origins are explicit (no `*` with credentials).
 - [ ] Tests cover success, validation error, unauthorized and not-found per endpoint.
-- [ ] No f-string/`%`/`.format` SQL, `shell=True`, `eval`, `pickle`/`yaml.load` on input; file paths and redirect targets are allow-listed.
+- [ ] SQL uses bound parameters (never string-built queries); subprocesses get argument lists without a shell; nothing evaluates or deserializes request data unsafely; file paths and redirect targets are allow-listed.
 - [ ] Security headers middleware present; `forge security scan` and `forge security headers` pass.
 - [ ] Generated OpenAPI matches `contracts/openapi.yaml`.
 

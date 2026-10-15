@@ -59,7 +59,7 @@ async function getJson<T>(url: string, options: ConnectorOptions, headers: Recor
     signal: AbortSignal.timeout(options.timeoutMs ?? 15_000),
   });
   if (!response.ok) {
-    const hint = response.status === 403 || response.status === 429 ? " (rate limited or blocked — try later, or set a token)" : "";
+    const hint = response.status === 403 || response.status === 429 ? " (rate limited or blocked — try again later)" : "";
     throw new EvidenceSourceError(`${new URL(url).host} answered HTTP ${response.status}${hint}`);
   }
   return (await response.json()) as T;
@@ -140,7 +140,8 @@ const CONNECTORS: Record<EvidenceSource, Connector> = {
 
   github: async (query, options) => {
     const base = options.baseUrl ?? "https://api.github.com";
-    const token = options.token ?? process.env.GITHUB_TOKEN;
+    // Only an explicitly passed token is used — never one read from the user's environment.
+    const token = options.token;
     const data = await getJson<{ items: GithubRepo[] }>(
       `${base}/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${options.limit}`,
       options,

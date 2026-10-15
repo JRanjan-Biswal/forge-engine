@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "--yes",
-        "forge-engine@0.1.1",
+        "forge-engine@0.1.2",
         "mcp"
       ]
     }

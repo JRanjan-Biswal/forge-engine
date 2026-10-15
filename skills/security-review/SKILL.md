@@ -31,8 +31,8 @@ Find the **source** (where the value comes from) and the **sink** (where it is u
 **Injection** — trace every input to every interpreter:
 - SQL: parameters or tagged templates only (`$1`, `?`, `sql` tagged templates, ORM filters). Dynamic identifiers (sort column, table) come from an allow-list.
 - NoSQL: request objects are never filters (`{"$ne": null}` login bypass); validate types first (zod/pydantic).
-- OS command: no shell; `execFile` / `subprocess.run([...])` with an argument array; allow-listed arguments; watch for option injection (`--upload-pack=…` in git, `-o` in curl) — put `--` before user arguments.
-- Code: no dynamic evaluation (`eval`, `new Function`, `vm`, Python `exec`), no dynamic `import()`/`require()` of user paths, no `pickle`/`yaml.load`/`node-serialize` on input.
+- OS command: no shell — run programs with an argument array (Node's execFile, Python's subprocess with a list); allow-list arguments; watch for option injection (git's upload-pack option, an HTTP client's output-file flag) — put `--` before user-supplied arguments.
+- Code: no dynamic evaluation of input (eval-style APIs, the Function constructor, Node's vm module, Python's exec), no dynamic import of user-chosen paths, no unsafe deserialization of input (pickle, unsafe YAML loading, node-serialize).
 - Templates (SSTI): user input never becomes template source; auto-escaping stays on.
 - Headers / CRLF and logs: strip CR/LF; structured logging; never raw input in `Location`, `Set-Cookie`, `Content-Disposition`.
 - Regex: `new RegExp(input)` → ReDoS and pattern injection; escape it, bound input length.
@@ -73,6 +73,6 @@ Find the **source** (where the value comes from) and the **sink** (where it is u
 
 ## 6. Write it up and fix it
 - Each finding: `severity`, `category: security:<area>`, `file`, `line`, `claim` (what is wrong + CWE), `evidence` (exploit scenario: input → sink → impact, or the scanner snippet), `suggestedFix`.
-- The **fixer** first writes a regression test that sends the hostile input — e.g. `' OR 1=1 --`, `; touch /tmp/pwned`, `{"$ne": null}`, `../../etc/passwd`, `http://169.254.169.254/`, `<img src=x onerror=alert(1)>`, `%0d%0aSet-Cookie:x=y` — and fails before the fix. Payloads stay inert and local; never test systems you do not own.
+- The **fixer** first writes a regression test that sends the hostile input — e.g. a quote-and-OR SQL string, a shell metacharacter sequence, a NoSQL operator object, a `../` path, the cloud metadata IP address, an HTML event-handler payload, an encoded CR/LF header — and fails before the fix. Payloads stay inert and local; never test systems you do not own.
 - The **verifier** tries bypasses: encodings, case, double encoding, other parameter locations, other call paths to the same sink.
 - Loop until `stage_complete verify` passes. Repeated root causes → `memory_add_learning`; general ones become a line in `rules/secure-by-default.md`.
