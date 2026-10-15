@@ -8,6 +8,7 @@ import { ARTIFACTS, checkArtifact, listArtifacts, loadArtifact, readArtifactText
 import { Forge } from "./core/engine.js";
 import { gateChecks } from "./core/gates.js";
 import { appendLedger, readLedger } from "./core/ledger.js";
+import { currentUser, findOnPath, setting } from "./core/env.js";
 import { findRoot } from "./core/paths.js";
 import { listProjectProcesses, memorySnapshot, registryTemplate } from "./core/procs.js";
 import { adoptProject } from "./product/adopt.js";
@@ -337,7 +338,7 @@ export async function run(argv, io = defaultIO) {
             }
             case "approve": {
                 const id = need(args[0], "stage");
-                forge().approve(id, process.env.USER ?? "human", opts.note);
+                forge().approve(id, currentUser(), opts.note);
                 print({ approved: id }, () => io.out(`Approved ${id}. Run \`forge complete ${id}\` to re-check the gate.`));
                 return 0;
             }
@@ -345,7 +346,7 @@ export async function run(argv, io = defaultIO) {
             case "override": {
                 const id = need(args[0], "stage");
                 const reason = need(opts.reason, "--reason");
-                const by = process.env.USER ?? "human";
+                const by = currentUser();
                 const state = command === "skip" ? forge().skip(id, reason, by) : forge().override(id, reason, by);
                 print(state, () => io.out(`${command === "skip" ? "↷ Skipped" : "⚑ Overrode"} ${id} — recorded in the ledger.`));
                 return 0;
@@ -427,7 +428,7 @@ export async function run(argv, io = defaultIO) {
                         why: opts.why,
                         rejected: opts.rejected ? opts.rejected.split(",").map((item) => item.trim()).filter(Boolean) : [],
                         stage: opts.stage,
-                        by: process.env.USER ?? "human",
+                        by: currentUser(),
                     });
                     print(entry, () => io.out(`Recorded ${entry.id}`));
                     return 0;
@@ -550,7 +551,7 @@ export async function run(argv, io = defaultIO) {
                         url: need(opts.url, "--url"),
                         quote: need(opts.quote, "--quote"),
                         source: opts.source,
-                        savedBy: process.env.USER ?? "human",
+                        savedBy: currentUser(),
                     });
                     print(item, () => io.out(`Saved ${item.id} (${item.verification.status} via ${item.verification.method}${item.verification.note ? `: ${item.verification.note}` : ""})`));
                     return 0;
@@ -845,7 +846,7 @@ export async function run(argv, io = defaultIO) {
                     const kind = args[1];
                     if (kind !== "review" && kind !== "gap")
                         throw new UsageError("Usage: forge ci check review|gap [--format text|github|json]");
-                    const format = opts.json ? "json" : (opts.format ?? (process.env.GITHUB_ACTIONS === "true" ? "github" : "text"));
+                    const format = opts.json ? "json" : (opts.format ?? (setting("GITHUB_ACTIONS") === "true" ? "github" : "text"));
                     if (!["text", "github", "json"].includes(format))
                         throw new UsageError("--format must be text, github or json");
                     const check = runCiCheck(forge().root, kind);
@@ -1173,13 +1174,6 @@ const EpisodeFile = z.object({
     next: z.string().optional(),
     stage: z.string().optional(),
 });
-function onPath(binary) {
-    for (const dir of (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":")) {
-        if (dir && existsSync(join(dir, binary)))
-            return join(dir, binary);
-    }
-    return null;
-}
 function doctor(rootOption) {
     const root = findRoot(rootOption ? resolve(rootOption) : undefined);
     const items = [];
@@ -1203,7 +1197,7 @@ function doctor(rootOption) {
     const graphify = findGraphify();
     items.push({ name: "graphify", ok: graphify !== null, detail: graphify ?? `optional — ${GRAPHIFY_INSTALL_HINT}` });
     for (const [name, binary] of [["claude", "claude"], ["codex", "codex"], ["gemini", "gemini"], ["opencode", "opencode"], ["cursor-agent", "cursor-agent"]]) {
-        const path = onPath(binary);
+        const path = findOnPath(binary);
         items.push({ name, ok: path !== null, detail: path ?? "not found (optional headless worker)" });
     }
     return items;

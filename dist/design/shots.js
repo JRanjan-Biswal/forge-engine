@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { onPath } from "../build/stacks.js";
 import { loadArtifact } from "../core/artifacts.js";
 import { loadConfig } from "../core/config.js";
+import { setting } from "../core/env.js";
 import { layout, nowIso } from "../core/paths.js";
 import { runCommand, withCommandSlot } from "../core/proc.js";
 import { decodePng, diffRatio, distinctColors } from "./png.js";
@@ -38,14 +39,15 @@ export function viewportsFor(platform) {
 }
 /** FORGE_BROWSER, Playwright's headless shell, then installed Chrome, Chromium, Edge or Brave. */
 export function findBrowser() {
-    const fromEnv = process.env.FORGE_BROWSER;
+    const fromEnv = setting("FORGE_BROWSER");
     if (fromEnv)
         return existsSync(fromEnv) || onPath(fromEnv) ? fromEnv : undefined;
+    const localAppData = setting("LOCALAPPDATA");
     const caches = [
-        process.env.PLAYWRIGHT_BROWSERS_PATH,
+        setting("PLAYWRIGHT_BROWSERS_PATH"),
         join(homedir(), "Library", "Caches", "ms-playwright"),
         join(homedir(), ".cache", "ms-playwright"),
-        process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "ms-playwright") : undefined,
+        localAppData ? join(localAppData, "ms-playwright") : undefined,
     ].filter((dir) => Boolean(dir && existsSync(dir)));
     for (const cache of caches) {
         const shells = readdirSync(cache).filter((d) => d.startsWith("chromium_headless_shell-")).sort().reverse();

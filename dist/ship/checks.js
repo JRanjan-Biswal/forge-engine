@@ -2,6 +2,7 @@ import { appendFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadArtifact } from "../core/artifacts.js";
 import { loadConfig } from "../core/config.js";
+import { setting } from "../core/env.js";
 import { auditDrift } from "../design/audit.js";
 import { qaCoverage } from "../qa/coverage.js";
 import { scanSecurity, severityRank } from "../security/scan.js";
@@ -156,7 +157,7 @@ export function markdownSummary(result) {
 export function reportToGithub(result, out) {
     for (const line of githubAnnotations(result))
         out(line);
-    const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+    const summaryFile = setting("GITHUB_STEP_SUMMARY");
     if (summaryFile)
         appendFileSync(summaryFile, markdownSummary(result));
 }

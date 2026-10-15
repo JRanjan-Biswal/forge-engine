@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { setting } from "../core/env.js";
 import { layout } from "../core/paths.js";
 import { runCommand } from "../core/proc.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./tasks.js";
@@ -62,7 +63,7 @@ const HOST_COMMANDS = {
  */
 export async function runWorkers(root, config, options = {}) {
     const host = options.host ?? config.workers.host;
-    const template = process.env.FORGE_WORKER_COMMAND;
+    const template = setting("FORGE_WORKER_COMMAND");
     if (!template && !HOST_COMMANDS[host])
         throw new Error(`Unknown worker host "${host}". Hosts: ${Object.keys(HOST_COMMANDS).join(", ")}`);
     const max = Math.max(1, options.max ?? config.workers.maxConcurrent);

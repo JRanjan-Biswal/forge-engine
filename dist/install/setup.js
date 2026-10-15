@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { onPath } from "../build/stacks.js";
@@ -13,7 +14,7 @@ export const REPO = "JRanjan-Biswal/forge-engine";
 /** A local path becomes absolute; anything else (owner/repo, git URL) is passed through. */
 function normalizeSource(source) {
     if (source.startsWith("~/"))
-        return resolve(process.env.HOME ?? "", source.slice(2));
+        return resolve(homedir(), source.slice(2));
     if (source.startsWith(".") || source.startsWith("/") || existsSync(source))
         return resolve(source);
     return source;
@@ -60,7 +61,7 @@ function runArgv(argv, timeout = 300_000) {
     const [command, ...args] = argv;
     if (!command)
         return { ok: false, output: "empty command" };
-    const result = spawnSync(command, args, { encoding: "utf8", timeout, stdio: ["ignore", "pipe", "pipe"], env: process.env });
+    const result = spawnSync(command, args, { encoding: "utf8", timeout, stdio: ["ignore", "pipe", "pipe"] });
     const output = `${result.stdout ?? ""}${result.stderr ?? ""}${result.error ? String(result.error) : ""}`.trim();
     return { ok: result.status === 0, output };
 }
