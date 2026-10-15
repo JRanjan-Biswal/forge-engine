@@ -41,8 +41,8 @@ export type StackCommand = z.infer<typeof StackCommand>;
 
 const CommandOptions = z.array(StackCommand).default([]);
 
-export const COMMAND_KEYS = ["build", "test", "e2e", "lint", "audit"] as const;
-export type CommandKey = (typeof COMMAND_KEYS)[number];
+export const GATE_COMMANDS = ["build", "test", "e2e", "lint", "audit"] as const;
+export type CommandKey = (typeof GATE_COMMANDS)[number];
 
 /** A place this stack can be deployed with its official CLI. Commands run in the stack directory. */
 export const DeployTarget = z
@@ -100,7 +100,7 @@ export const StackPack = z
       .strict()
       .prefault({}),
     /** What to do when no option for a command is available yet. */
-    fixes: z.partialRecord(z.enum(COMMAND_KEYS), z.string().min(1)).default({}),
+    fixes: z.partialRecord(z.enum(GATE_COMMANDS), z.string().min(1)).default({}),
     scaffold: z
       .object({
         /**

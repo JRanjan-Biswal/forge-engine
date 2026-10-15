@@ -9,7 +9,7 @@ import { layout } from "../core/paths.js";
 import { runCommand, withCommandSlot } from "../core/proc.js";
 import { formatIssues, tail } from "../core/util.js";
 import type { Tasks } from "../schemas/artifacts.js";
-import { COMMAND_KEYS, StackPack, type CommandKey, type StackRequirement } from "../schemas/stack.js";
+import { GATE_COMMANDS, StackPack, type CommandKey, type StackRequirement } from "../schemas/stack.js";
 
 /**
  * Stack packs: recognise the stacks in a repo, derive gate commands only from what
@@ -292,7 +292,7 @@ export function stackCommands(root: string, packId: string, dir = "."): StackCom
   const values = { ...RUNNERS[pm], pm, python: pythonRunner(facts) };
   const commands: StackCommands["commands"] = {};
   const missing: StackCommands["missing"] = [];
-  for (const key of COMMAND_KEYS) {
+  for (const key of GATE_COMMANDS) {
     const options = pack.commands[key];
     if (!options.length) continue;
     const reasons: string[] = [];
@@ -315,7 +315,7 @@ const quote = (path: string) => (/^[\w./-]+$/.test(path) ? path : `'${path.repla
 /** One root-level command per gate key across all stacks (each runs in its own directory). */
 export function combineCommands(stacks: StackCommands[]): Partial<Record<CommandKey, string>> {
   const combined: Partial<Record<CommandKey, string>> = {};
-  for (const key of COMMAND_KEYS) {
+  for (const key of GATE_COMMANDS) {
     const parts = stacks.flatMap((s) => {
       const command = s.commands[key];
       if (!command) return [];
@@ -369,7 +369,7 @@ export function useStacks(root: string, options: { pack?: string; dir?: string; 
     const current = loadConfig(root).commands;
     const set: StackUseResult["set"] = {};
     const kept: StackUseResult["kept"] = {};
-    for (const key of COMMAND_KEYS) {
+    for (const key of GATE_COMMANDS) {
       const suggested = combined[key];
       if (!suggested || current[key] === suggested) continue;
       const existing = current[key];
@@ -423,7 +423,7 @@ export function stacksForTask(root: string, task: TaskShape): { pack: string; di
   return stacks.length === 1 ? stacks : [];
 }
 
-const TOKEN_OUTPUTS: Record<StackPack["tokens"], string> = {
+const DESIGN_EXPORTS: Record<StackPack["tokens"], string> = {
   css: "design/dist/tokens.css (CSS variables)",
   tailwind: "design/dist/tailwind.css (Tailwind v4 @theme) with design/dist/tokens.css",
   ts: "design/dist/theme.ts",
@@ -452,7 +452,7 @@ export function stackBrief(root: string, task: TaskShape): string[] {
     const runs = Object.entries(commands).map(([key, command]) => `${key} \`${command}\``);
     if (runs.length) lines.push(`- Run from ${where} before you report: ${runs.join(" · ")}`);
     for (const m of missing) lines.push(`- No ${m.key} command yet (${m.why})${m.fix ? ` — ${m.fix}` : ""}`);
-    if (TOKEN_OUTPUTS[pack.tokens]) lines.push(`- Design tokens: ${TOKEN_OUTPUTS[pack.tokens]} — run \`forge design build\`; never hard-code values.`);
+    if (DESIGN_EXPORTS[pack.tokens]) lines.push(`- Design tokens: ${DESIGN_EXPORTS[pack.tokens]} — run \`forge design build\`; never hard-code values.`);
     lines.push(`- QA: ${pack.qa}`);
     const conventions = lensSection(readLens(id, root), "Conventions");
     if (conventions) lines.push("", conventions.length > 3_000 ? `${conventions.slice(0, 3_000)}\n…(full: \`forge stack show ${id}\`)` : conventions);
