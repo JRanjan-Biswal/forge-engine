@@ -333,7 +333,7 @@ export interface StackUseResult {
   stacks: StackCommands[];
   /** Commands written to forge.config.yaml. */
   set: Partial<Record<CommandKey, string>>;
-  /** Already-configured commands that were left as they are (pass force to replace). */
+  /** Already-configured commands that were left as they are (use force to replace them). */
   kept: Partial<Record<CommandKey, { current: string; suggested: string }>>;
   detected: Detection[];
 }

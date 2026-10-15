@@ -205,23 +205,23 @@ export function analyzeHeaders(url: string, status: number, headers: Headers): H
 
   // ── CORS ──────────────────────────────────────────────────────────────────
   const acao = get("access-control-allow-origin");
-  const credentials = get("access-control-allow-credentials").toLowerCase() === "true";
+  const allowsCookies = get("access-control-allow-credentials").toLowerCase() === "true";
   if (!acao) {
     add({ id: "cors", status: "pass", severity: "high", detail: "no CORS access granted to a foreign origin" });
   } else if (acao === PROBE_ORIGIN) {
     add({
       id: "cors",
       status: "fail",
-      severity: credentials ? "critical" : "medium",
-      detail: `reflects any Origin${credentials ? " WITH credentials — any website can read authenticated responses" : ""}`,
+      severity: allowsCookies ? "critical" : "medium",
+      detail: `reflects any Origin${allowsCookies ? " and allows cookies — any website can read logged-in responses" : ""}`,
       fix: "Echo the Origin only when it is in an explicit allow-list; add Vary: Origin.",
     });
   } else if (acao === "null") {
-    add({ id: "cors", status: "fail", severity: credentials ? "high" : "medium", detail: "Access-Control-Allow-Origin: null (sandboxed iframes and file: pages qualify)", fix: "Never allow the null origin." });
+    add({ id: "cors", status: "fail", severity: allowsCookies ? "high" : "medium", detail: "Access-Control-Allow-Origin: null (sandboxed iframes and file: pages qualify)", fix: "Never allow the null origin." });
   } else if (acao === "*") {
     add(
-      credentials
-        ? { id: "cors", status: "fail", severity: "high", detail: "Access-Control-Allow-Origin * with Allow-Credentials true", fix: "List origins explicitly when credentials are allowed." }
+      allowsCookies
+        ? { id: "cors", status: "fail", severity: "high", detail: "Access-Control-Allow-Origin * while cookies are allowed", fix: "List origins explicitly when cookies are allowed." }
         : { id: "cors", status: "warn", severity: "low", detail: "Access-Control-Allow-Origin * (fine only for public, unauthenticated data)" },
     );
   } else {

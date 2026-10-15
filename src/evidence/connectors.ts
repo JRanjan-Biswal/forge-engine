@@ -9,7 +9,7 @@ import { htmlToText, USER_AGENT } from "./text.js";
  * (pain, competitors, demand). Every result keeps its URL and the text it came
  * with, so quotes saved from it can be verified later (see store.ts).
  *
- * Not included: PyPI (no search API) and Product Hunt (API requires OAuth and has
+ * Not included: PyPI (no search API) and Product Hunt (API needs an account login and has
  * no full-text search). Agents use their host's web search for everything else
  * and still save the evidence through forge, which verifies it against the page.
  */
@@ -40,7 +40,6 @@ export interface ConnectorOptions {
   limit?: number;
   /** Override the API origin (tests, proxies). */
   baseUrl?: string;
-  token?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   /** Skip the 24h cache. */
@@ -140,12 +139,11 @@ const CONNECTORS: Record<EvidenceSource, Connector> = {
 
   github: async (query, options) => {
     const base = options.baseUrl ?? "https://api.github.com";
-    // Only an explicitly passed token is used — never one read from the user's environment.
-    const token = options.token;
+    // Anonymous GitHub search: forge sends no account data with evidence queries.
     const data = await getJson<{ items: GithubRepo[] }>(
       `${base}/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${options.limit}`,
       options,
-      { accept: "application/vnd.github+json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      { accept: "application/vnd.github+json" },
     );
     return data.items.map((repo) => ({
       source: "github",
@@ -224,8 +222,8 @@ export async function searchEvidence(root: string, source: string, query: string
   if (!isSource(source)) throw new EvidenceSourceError(`Unknown evidence source "${source}". Sources: ${SOURCES.join(", ")}`);
   if (!query.trim()) throw new EvidenceSourceError("A search query is required");
   const limit = Math.min(Math.max(options.limit ?? 10, 1), 30);
-  const key = createHash("sha1").update(`${source}\n${query.trim()}\n${limit}`).digest("hex");
-  const file = join(cacheDir(root), `${key}.json`);
+  const cacheId = createHash("sha1").update(`${source}\n${query.trim()}\n${limit}`).digest("hex");
+  const file = join(cacheDir(root), `${cacheId}.json`);
   if (!options.fresh && existsSync(file)) {
     const cached = JSON.parse(readFileSync(file, "utf8")) as Omit<SearchResponse, "cached">;
     if (Date.now() - Date.parse(cached.fetchedAt) < CACHE_TTL_MS) return { ...cached, cached: true };

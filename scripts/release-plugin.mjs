@@ -33,6 +33,15 @@ const pkg = join(WORK, "package");
 // 2. Claude Code only: run the bundled server; Codex installs from main (its server must be path-independent).
 writeFileSync(join(pkg, ".mcp.json"), `${JSON.stringify({ mcpServers: { forge: { command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/dist/cli.js", "mcp"] } } }, null, 2)}\n`);
 for (const codexOnly of [".codex-plugin", ".codex-mcp.json", ".agents", "scripts"]) rmSync(join(pkg, codexOnly), { recursive: true, force: true });
+// Type declarations are for library users, not the running plugin.
+const dropTypes = (dir) => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) dropTypes(path);
+    else if (entry.name.endsWith(".d.ts")) rmSync(path);
+  }
+};
+dropTypes(join(pkg, "dist"));
 
 // 3. Commit onto the `plugin` branch in a separate worktree (never touches your checkout).
 const remoteHas = git("ls-remote", "--heads", "origin", BRANCH) !== "";
