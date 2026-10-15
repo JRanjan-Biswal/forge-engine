@@ -45,6 +45,14 @@ export const ForgeConfig = z.object({
     })
     .prefault({}),
   stages: z.object({ skip: z.array(z.string()).default([]) }).prefault({}),
+  resources: z
+    .object({
+      /** Heavy gate commands (builds, test suites) allowed at once across all agents. */
+      maxConcurrentCommands: z.number().int().min(1).max(8).default(1),
+      /** How long a gate waits for a free command slot before failing. */
+      commandWaitMs: z.number().int().positive().default(900_000),
+    })
+    .prefault({}),
 });
 export type ForgeConfig = z.infer<typeof ForgeConfig>;
 
@@ -86,5 +94,12 @@ gates:
 
 stages:
   skip: []                # stage ids to leave out of this project's pipeline
+
+# RAM protection: gate commands run in their own process group (stopped on exit,
+# timeout or Ctrl-C) and share a per-project slot, so parallel agents cannot stack
+# builds or test suites. Raise maxConcurrentCommands only on a machine with headroom.
+resources:
+  maxConcurrentCommands: 1
+  commandWaitMs: 900000   # wait up to 15 min for a free slot
 `;
 }

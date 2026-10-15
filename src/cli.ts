@@ -9,6 +9,7 @@ import { Forge } from "./core/engine.js";
 import { gateChecks } from "./core/gates.js";
 import { appendLedger, readLedger } from "./core/ledger.js";
 import { findRoot } from "./core/paths.js";
+import { listProjectProcesses, memorySnapshot, registryTemplate } from "./core/procs.js";
 import { errorMessage } from "./core/util.js";
 import { saveEpisode, type EpisodeInput } from "./memory/episodes.js";
 import { findGraphify, graphExplain, graphPathBetween, graphQuery, graphStatus, graphUpdate, GRAPHIFY_INSTALL_HINT } from "./memory/graphify.js";
@@ -27,7 +28,9 @@ Project
   init [--name <n>] [--force]          create forge.config.yaml and .forge/ here
   status                               pipeline dashboard
   stages                               enabled stages and their gate checks
-  doctor                               check node, config, graphify and agent CLIs
+  doctor                               check node, memory, config, graphify and agent CLIs
+  procs                                processes belonging to this project, with RSS memory
+  procs init                           create an AGENT_PROCESSES.md process registry here
 
 Stages
   start <stage> [--force]              begin a stage
@@ -406,6 +409,41 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
         return result.ok ? 0 : 1;
       }
 
+      case "procs": {
+        const root = forge().root;
+        if (args[0] === "init") {
+          const file = join(root, "AGENT_PROCESSES.md");
+          if (existsSync(file)) {
+            print({ created: false, file }, () => io.out(`${file} already exists — left unchanged`));
+            return 0;
+          }
+          writeFileSync(file, registryTemplate(root));
+          print({ created: true, file }, () => {
+            io.out(`Created ${file}`);
+            io.out("Keep it out of version control: add AGENT_PROCESSES.md and .agent-runtime/ to .gitignore.");
+          });
+          return 0;
+        }
+        if (args[0]) throw new UsageError(`Unknown procs subcommand "${args[0]}"`);
+        const processes = listProjectProcesses(root);
+        const memory = memorySnapshot();
+        const totalMb = processes.reduce((sum, p) => sum + p.rssKb, 0) / 1024;
+        print({ root, memory, totalRssMb: Math.round(totalMb), processes }, () => {
+          io.out(`machine: ${memory.totalGb.toFixed(1)} GB RAM, ${memory.freePercent}% free (${memory.source})`);
+          if (!processes.length) {
+            io.out(`no processes belong to ${root}`);
+            return;
+          }
+          io.out(`${"PID".padEnd(8)}${"PPID".padEnd(8)}${"PGID".padEnd(8)}${"RSS".padStart(9)}  ${"WHY".padEnd(11)}COMMAND`);
+          for (const p of processes) {
+            const rss = `${(p.rssKb / 1024).toFixed(1)} MB`;
+            io.out(`${String(p.pid).padEnd(8)}${String(p.ppid).padEnd(8)}${String(p.pgid).padEnd(8)}${rss.padStart(9)}  ${p.reason.padEnd(11)}${p.command.slice(0, 110)}`);
+          }
+          io.out(`${processes.length} process(es) · ${totalMb.toFixed(1)} MB resident (RSS)`);
+        });
+        return 0;
+      }
+
       case "doctor": {
         const report = doctor(opts.root);
         print(report, () => {
@@ -463,6 +501,12 @@ function doctor(rootOption?: string): { name: string; ok: boolean; detail: strin
   const items: { name: string; ok: boolean; detail: string }[] = [];
   const major = Number(process.versions.node.split(".")[0]);
   items.push({ name: "node", ok: major >= 20, detail: `v${process.versions.node}${major >= 20 ? "" : " (forge needs ≥ 20)"}` });
+  const memory = memorySnapshot();
+  items.push({
+    name: "memory",
+    ok: memory.freePercent >= 20,
+    detail: `${memory.totalGb.toFixed(1)} GB, ${memory.freePercent}% free (${memory.source})${memory.freePercent < 20 ? " — low: avoid heavy jobs" : ""}`,
+  });
   const f = new Forge(root);
   items.push({ name: "project", ok: f.initialized, detail: f.initialized ? root : `not initialised in ${root} — run \`forge init\`` });
   try {

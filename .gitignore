@@ -9,3 +9,11 @@ coverage/
 credentials.md
 # forge's own code graph (dogfooding); user projects may choose to commit theirs
 graphify-out/
+
+# Local agent process registry and runtime files (see rules/process-lifecycle.md)
+AGENT_PROCESSES.md
+.agent-runtime/
+# e2e run outputs (test projects, packed tarballs)
+e2e/runs/
+# e2e reports contain absolute local paths; regenerate with pnpm e2e
+e2e/LATEST-*.md

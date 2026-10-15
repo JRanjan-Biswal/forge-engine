@@ -22,6 +22,10 @@ pnpm build          # dist/ is what the plugin's MCP server runs
 pnpm schemas        # regenerate schemas/*.schema.json after changing src/schemas
 ```
 
+## Process lifecycle (RAM protection)
+
+Follow `rules/process-lifecycle.md`. Before starting servers, watchers, test runners, builds or browsers, read the local `AGENT_PROCESSES.md` (untracked; `node dist/cli.js procs init` creates it) and run `node dist/cli.js procs`. One heavy job at a time on this repo (`pnpm test`, `pnpm build`, `node e2e/run.mjs` are each heavy); vitest is capped at 2 workers. Stop what you start, verify it exited, and record it in `AGENT_PROCESSES.md`.
+
 ## Principles
 
 - Control flow is deterministic code; LLM output is never trusted to decide whether a stage is done.

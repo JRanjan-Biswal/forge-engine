@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { runCommand, withCommandSlot } from "./proc.js";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -156,38 +156,6 @@ async function runCheck(check: GateCheck, ctx: GateContext): Promise<Outcome> {
 
 // ── command ──────────────────────────────────────────────────────────────────
 
-export interface ShellResult {
-  code: number | null;
-  output: string;
-  timedOut: boolean;
-}
-
-export function runShell(command: string, cwd: string, timeoutMs: number): Promise<ShellResult> {
-  return new Promise((resolve) => {
-    const child = spawn(command, { cwd, shell: true, env: process.env });
-    let output = "";
-    let timedOut = false;
-    const collect = (chunk: Buffer) => {
-      output += chunk.toString();
-      if (output.length > 200_000) output = output.slice(-100_000);
-    };
-    child.stdout?.on("data", collect);
-    child.stderr?.on("data", collect);
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-    }, timeoutMs);
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      resolve({ code: 127, output: `${output}${error.message}`, timedOut });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ code, output, timedOut });
-    });
-  });
-}
-
 async function runCommandCheck(check: Extract<GateCheck, { type: "command" }>, ctx: GateContext): Promise<Outcome> {
   const configured = check.configKey ? getPath(ctx.config, check.configKey) : undefined;
   const command = check.command ?? (typeof configured === "string" ? configured : undefined);
@@ -197,10 +165,24 @@ async function runCommandCheck(check: Extract<GateCheck, { type: "command" }>, c
       ? skip(`${where} is not configured`)
       : fail(`${where} is not configured — set it; forge never assumes a command passes`);
   }
-  const result = await runShell(command, ctx.root, check.timeoutMs);
-  if (result.code === 0 && !result.timedOut) return pass(`\`${command}\` exited 0`);
-  const how = result.timedOut ? `timed out after ${check.timeoutMs}ms` : `exited ${result.code ?? "on a signal"}`;
-  return fail(`\`${command}\` ${how}\n${tail(result.output.trim(), 1500)}`);
+  const { maxConcurrentCommands, commandWaitMs } = ctx.config.resources;
+  // Heavy commands share a per-project slot so parallel agents cannot stack test suites in RAM.
+  const result = await withCommandSlot(
+    ctx.root,
+    {
+      max: maxConcurrentCommands,
+      waitMs: commandWaitMs,
+      task: `forge gate ${ctx.stage.id}/${check.id}`,
+      onWait: () => process.stderr.write(`forge: waiting for a free command slot to run \`${command}\`…\n`),
+    },
+    () => runCommand(command, ctx.root, { timeoutMs: check.timeoutMs }),
+  );
+  const cleanup = result.leftovers
+    ? ` — stopped ${result.leftovers} background process(es) it left running`
+    : "";
+  if (result.code === 0 && !result.timedOut) return pass(`\`${command}\` exited 0${cleanup}`);
+  const how = result.timedOut ? `timed out after ${check.timeoutMs}ms (process group stopped)` : `exited ${result.code ?? "on a signal"}`;
+  return fail(`\`${command}\` ${how}${cleanup}\n${tail(result.output.trim(), 1500)}`);
 }
 
 // ── rubric & human ───────────────────────────────────────────────────────────

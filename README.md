@@ -99,6 +99,18 @@ Check your host's MCP documentation for the exact file. The server's instruction
 
 `forge memory query` (MCP: `memory_query`) routes the question to the right layers and returns cited hits within a token budget. Every write to memory passes a secret scanner.
 
+## Process & RAM protection
+
+Agents love to leave dev servers, watchers, test runners and MCP servers running. forge doesn't, and makes your agents stop too:
+
+- **Gate commands run in their own process group.** On exit, timeout or Ctrl-C the whole group is stopped — including background jobs a command left behind (forge reports them: "stopped 1 background process(es) it left running").
+- **One heavy command at a time per project**, shared across every agent and process (`resources.maxConcurrentCommands`, default 1).
+- **The MCP server never outlives its host:** it exits when the client disconnects, on SIGINT/SIGTERM/SIGHUP, or if it gets orphaned.
+- **`forge procs`** (MCP: `process_snapshot`) lists every process belonging to the project with its resident memory; `forge doctor` shows memory headroom; `forge procs init` creates a local `AGENT_PROCESSES.md` registry.
+- The conductor agent and the MCP instructions carry the [process-lifecycle rule](rules/process-lifecycle.md): look before launching, reuse, cap test workers, stop what you start, verify it exited, never kill what you didn't start.
+
+These are process rules, not an OS-enforced memory limit.
+
 ## Roadmap
 
 - **v0.1 Validate** — brainstorm, vision, evidence collectors, competitor teardown, validation scorer, PRD team

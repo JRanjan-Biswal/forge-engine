@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { ARTIFACTS, listArtifacts, loadArtifact, readArtifactText, writeArtifact } from "../core/artifacts.js";
 import { Forge } from "../core/engine.js";
+import { listProjectProcesses, memorySnapshot } from "../core/procs.js";
 import { appendLedger, readLedger } from "../core/ledger.js";
 import { errorMessage } from "../core/util.js";
 import { LedgerKind } from "../schemas/runtime.js";
@@ -21,7 +22,8 @@ Protocol:
 3. Call stage_complete to run the gate. A stage is done only when its gate passes. Never claim a stage is complete otherwise; report the failing checks and fix them.
 4. Human checkpoints: when a gate waits for approval, show the user a short decision memo and let them run \`forge approve <stage>\` (or call stage_approve only after the user explicitly approves).
 5. Memory: call memory_query before re-deriving past decisions. Record decisions with ledger_add (include why and rejected alternatives). Save memory_save_episode before the session ends.
-6. Never fabricate evidence, data, keys or results. Unknown research answers stay "unknown"; missing credentials become blockers (blocker_add).`;
+6. Never fabricate evidence, data, keys or results. Unknown research answers stay "unknown"; missing credentials become blockers (blocker_add).
+7. Protect the machine's RAM: call process_snapshot before starting any server, watcher, test runner or browser and reuse what is already running; prefer one-shot commands to watch mode; run one heavy job at a time; stop every process you start (and its children) as soon as it is no longer needed, and verify it exited before you finish. Never kill processes you did not start.`;
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -278,10 +280,43 @@ export function createForgeServer(root?: string): McpServer {
     guarded(({ node }: { node: string }) => graphExplain(forge().root, node)),
   );
 
+  server.registerTool(
+    "process_snapshot",
+    {
+      description:
+        "Read-only: processes that belong to this project (cwd inside it, command naming it, or their children) with RSS memory, plus machine memory headroom. Use before starting servers/watchers/test runners and before finishing, to reuse and clean up.",
+      inputSchema: {},
+    },
+    guarded(() => {
+      const processes = listProjectProcesses(forge().root);
+      const rssMb = processes.reduce((sum, p) => sum + p.rssKb, 0) / 1024;
+      return { memory: memorySnapshot(), totalRssMb: Math.round(rssMb), processes };
+    }),
+  );
+
   return server;
 }
 
+/**
+ * Serve over stdio and never outlive the host: exit when stdin closes (host
+ * disconnected), on SIGINT/SIGTERM/SIGHUP, or if the parent process disappears
+ * without closing the pipe — so abandoned MCP servers cannot pile up in RAM.
+ */
 export async function startStdioServer(root?: string): Promise<void> {
   const server = createForgeServer(root);
+  let stopping = false;
+  const shutdown = () => {
+    if (stopping) return;
+    stopping = true;
+    void server.close().finally(() => process.exit(0));
+    setTimeout(() => process.exit(0), 1_000).unref();
+  };
+  process.stdin.on("end", shutdown);
+  process.stdin.on("close", shutdown);
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.once(signal, shutdown);
+  const parent = process.ppid;
+  setInterval(() => {
+    if (process.ppid !== parent) shutdown(); // re-parented: the host died
+  }, 5_000).unref();
   await server.connect(new StdioServerTransport());
 }

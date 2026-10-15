@@ -30,7 +30,9 @@
     "build": "tsc -p tsconfig.json && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "schemas": "node dist/cli.js schemas export --out schemas"
+    "schemas": "node dist/cli.js schemas export --out schemas",
+    "e2e": "node e2e/run.mjs",
+    "e2e:hosts": "node e2e/hosts.mjs"
   },
   "keywords": [
     "claude-code",
@@ -50,6 +52,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.4"
   }

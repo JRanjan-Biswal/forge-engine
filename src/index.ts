@@ -15,3 +15,6 @@ export { assertNoSecrets, findSecrets, redactSecrets, SecretError } from "./memo
 export { computeGaps, linkTrace, scanPlaceholders } from "./trace/trace.js";
 export { createForgeServer, startStdioServer } from "./mcp/server.js";
 export { VERSION } from "./version.js";
+export { runCommand, withCommandSlot, groupMembers, type CommandResult } from "./core/proc.js";
+export { listProjectProcesses, memorySnapshot, registryTemplate, type ProcessInfo } from "./core/procs.js";
+export { withLock, withLockAt, isStale } from "./core/lock.js";
