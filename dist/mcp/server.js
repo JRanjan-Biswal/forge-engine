@@ -99,7 +99,7 @@ export function readGuide(name) {
     return readFileSync(file, "utf8");
 }
 export function createForgeServer(root) {
-    const server = new McpServer({ name: "forge", version: VERSION }, { instructions: INSTRUCTIONS });
+    const server = new McpServer({ name: "forge-engine", version: VERSION }, { instructions: INSTRUCTIONS });
     // A fresh Forge per call: state lives on disk and may change between calls.
     const forge = () => new Forge(root);
     const stage = z.string().describe("Stage id, e.g. validate");
