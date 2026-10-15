@@ -310,11 +310,26 @@ await stage("design", {
       });
     put("screens", screensDoc(["success", "loading"]));
     rubric(8);
-    expectFail("design", ["design-states", "design-critique"], "missing empty/error states + rubric 8/10");
+    expectFail("design", ["design-states", "design-shotsFresh", "design-critique"], "missing empty/error states, no prototype shots + rubric 8/10");
     put("screens", screensDoc(all));
     const proto = forge(P, "design", "prototype");
     suite.check("design: prototype scaffold covers every screen × state", proto.code === 0 && (readFileSync(join(P, "design/prototype/index.html"), "utf8").match(/data-state=/g) ?? []).length === 8, proto.all);
-    rubric(9);
+    const protoFile = join(P, "design/prototype/index.html");
+    const unfilled = json(forge(P, "design", "shots", "--json"));
+    suite.check("design: shots of the bare scaffold report all 8 states as not designed (and blank)", unfilled?.problems?.some((p) => /8 prototype state\(s\) not designed/.test(p)) && unfilled.shots.every((s) => s.blank), JSON.stringify(unfilled?.problems ?? unfilled));
+    // The designer fills every state with token-styled markup.
+    writeFileSync(
+      protoFile,
+      readFileSync(protoFile, "utf8").replace(/<div data-state="(\w+)" hidden>(\s*<!--[^>]*-->)/g, (_, state, comment) => `<div data-state="${state}" hidden>${comment}\n    <article style="margin:var(--space-4);padding:var(--space-4);background:var(--color-accent-default);color:var(--color-bg-default)"><h2>${state}</h2><p>Habit check-in — ${state} state</p></article>`),
+    );
+    const shots = json(forge(P, "design", "shots", "--json"));
+    suite.check(
+      "design: forge design shots renders 2 screens × 4 states × 3 viewports with a real headless browser, none blank",
+      shots?.shots?.length === 24 && shots.shots.every((s) => !s.blank && !s.error && existsSync(join(P, s.file))) && shots.problems.length === 0,
+      JSON.stringify(shots?.problems ?? shots),
+    );
+    suite.check("design: no browser process left after the shots", !sh("pgrep", ["-f", join(P, ".forge", "browser-profile")]).out.trim());
+    rubric(9); // the judge scores the fresh shots (written after them)
   },
 });
 
@@ -716,7 +731,7 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 55 tools, each with an object input schema", tools.length === 55 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 57 tools, each with an object input schema", tools.length === 57 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
   let t = await call("guide", { name: "skills/validate-idea" });
   suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));

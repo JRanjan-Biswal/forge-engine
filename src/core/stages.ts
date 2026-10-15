@@ -152,6 +152,7 @@ const STAGE_INPUTS: StageInput[] = [
       builtin("design.contrast", "Declared text/background pairs meet WCAG contrast in every theme"),
       builtin("design.storyCoverage", "Every MVP story has at least one screen"),
       builtin("design.states", "Every screen designs empty, loading, error and success states"),
+      builtin("design.shotsFresh", "Every screen × state is designed, screenshotted after the last change, not blank, and critiqued after the shots"),
       {
         type: "rubric",
         id: "design-critique",

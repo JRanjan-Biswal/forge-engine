@@ -11,6 +11,7 @@ import { adoptProject } from "../product/adopt.js";
 import { auditContrast, auditDrift } from "../design/audit.js";
 import { buildDesign, loadTokens } from "../design/tokens.js";
 import { buildPrototype } from "../design/prototype.js";
+import { captureShots, readManifest, shotProblems, VIEWPORTS, type ViewportId } from "../design/shots.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "../build/tasks.js";
 import { mergeTasks } from "../build/workers.js";
 import { qaCoverage, qaPlan } from "../qa/coverage.js";
@@ -631,9 +632,51 @@ export function createForgeServer(root?: string): McpServer {
     "design_prototype",
     {
       description: "Generate design/prototype/index.html from the screens artifact: one dependency-free page per screen with an empty/loading/error/success state switcher, styled by the generated tokens. Fill each state; screenshot ?screen=<id>&state=<state> for critique.",
-      inputSchema: {},
+      inputSchema: { force: z.boolean().optional().describe("Regenerate even though a prototype exists (discards designed states)") },
     },
-    guarded(() => buildPrototype(forge().root)),
+    guarded(({ force }: { force?: boolean }) => buildPrototype(forge().root, { force })),
+  );
+
+  server.registerTool(
+    "design_shots",
+    {
+      description:
+        "Screenshot every screen × state × viewport of design/prototype (360/768/1280 px for web, 390 px for mobile apps) — or of a running app's routes with url — using a local headless Chromium, one short process at a time. Returns the manifest (files, blank renders, % changed since the last shots) and what the design gate still needs. Then look at the images (design_shot) and score the rubric.",
+      inputSchema: {
+        url: z.string().optional().describe("Base URL of a running app; omit to shoot the prototype"),
+        viewports: z.array(z.enum(Object.keys(VIEWPORTS) as [ViewportId, ...ViewportId[]])).optional(),
+        screens: z.array(z.string()).optional(),
+      },
+    },
+    guarded(async ({ url, viewports, screens }: { url?: string; viewports?: ViewportId[]; screens?: string[] }) => {
+      const root = forge().root;
+      const manifest = await captureShots(root, { url, viewports, screens });
+      return { ...manifest, gateProblems: manifest.source === "prototype" ? shotProblems(root) : [] };
+    }),
+  );
+
+  server.registerTool(
+    "design_shot",
+    {
+      description: "One screenshot from the latest design_shots run, returned as an image so you can critique it: screen id, state (empty/loading/error/success, or rendered for url shots) and viewport.",
+      inputSchema: { screen: z.string(), state: z.string().optional(), viewport: z.enum(Object.keys(VIEWPORTS) as [ViewportId, ...ViewportId[]]).optional() },
+    },
+    async ({ screen, state, viewport }: { screen: string; state?: string; viewport?: ViewportId }) => {
+      try {
+        const root = forge().root;
+        const shot = readManifest(root)?.shots.find((s) => s.screen === screen && (!state || s.state === state) && (!viewport || s.viewport === viewport) && !s.error);
+        if (!shot) throw new Error(`No screenshot for ${screen}${state ? `/${state}` : ""}${viewport ? `@${viewport}` : ""} — run design_shots first`);
+        const data = readFileSync(join(root, shot.file)).toString("base64");
+        return {
+          content: [
+            { type: "text" as const, text: `${shot.file} (${shot.width ?? "?"}×${shot.height ?? "?"}${shot.blank ? ", BLANK" : ""})` },
+            { type: "image" as const, data, mimeType: "image/png" },
+          ],
+        };
+      } catch (error) {
+        return { isError: true, content: [{ type: "text" as const, text: errorMessage(error) }] };
+      }
+    },
   );
 
   server.registerTool(

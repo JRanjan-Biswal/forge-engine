@@ -98,6 +98,8 @@ describe("design, planning and review gates", () => {
 
   it("passes design with tokens, states and a rubric from a judge", async () => {
     const root = tmpProject({ autonomy: "auto" });
+    // Screenshots are covered by test/shots.test.ts (real headless browser).
+    editConfig(root, (text) => text.replace("screenshots: true", "screenshots: false"));
     writeArtifact(root, "prd", prd());
     writeArtifact(root, "screens", screens());
     const forge = new Forge(root);

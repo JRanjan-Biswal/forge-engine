@@ -44,7 +44,11 @@ export const ForgeConfig = z.object({
         })
         .prefault({}),
       design: z
-        .object({ rubricMinPass: z.number().min(0).max(1).default(0.9) })
+        .object({
+          rubricMinPass: z.number().min(0).max(1).default(0.9),
+          /** Require fresh prototype screenshots (and a critique newer than them) — needs a local Chromium-family browser. */
+          screenshots: z.boolean().default(true),
+        })
         .prefault({}),
       qa: z
         .object({
@@ -142,6 +146,7 @@ gates:
     minVerifiedShare: 0.6       # share of cited quotes verified against their page or search result
   design:
     rubricMinPass: 0.9    # share of design-critic rubric criteria that must pass
+    screenshots: true     # require fresh \`forge design shots\` of every screen × state, critiqued after they were taken
   qa:
     minCoverage: 1        # share of MVP acceptance criteria with a tagged test (@S-1/AC1) — forge qa coverage
   gap:

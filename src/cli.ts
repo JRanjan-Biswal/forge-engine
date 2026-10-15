@@ -14,6 +14,7 @@ import { adoptProject } from "./product/adopt.js";
 import { auditContrast, auditDrift } from "./design/audit.js";
 import { buildDesign, loadTokens } from "./design/tokens.js";
 import { buildPrototype } from "./design/prototype.js";
+import { captureShots, shotProblems, VIEWPORTS, type ViewportId } from "./design/shots.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./build/tasks.js";
 import { detectStacks, listPacks, loadPack, readLens, scaffoldPlan, scaffoldStack, stackCommands, useStacks } from "./build/stacks.js";
 import { checkHeaders, blockingHeaders } from "./security/headers.js";
@@ -109,7 +110,9 @@ Stacks
 Design
   design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)
   design audit                         token validity, WCAG contrast pairs, hard-coded colour drift
-  design prototype                     single-file prototype scaffold: every screen × state, on the tokens
+  design prototype [--force]           single-file prototype scaffold: every screen × state, on the tokens
+  design shots [--url <base>] [--viewport mobile,tablet,desktop,phone] [--screens a,b]
+                                       screenshot every screen × state × viewport (headless Chromium) for the critique
 
 Evidence & validation
   evidence search <source> "<query>" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit
@@ -175,6 +178,8 @@ const OPTIONS = {
   prod: { type: "boolean" },
   plan: { type: "boolean" },
   only: { type: "string" },
+  viewport: { type: "string" },
+  screens: { type: "string" },
 } as const;
 
 export interface CliIO {
@@ -932,11 +937,32 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
           return ok ? 0 : 1;
         }
         if (args[0] === "prototype") {
-          const result = buildPrototype(root);
+          const result = buildPrototype(root, { force: opts.force });
           print(result, () => io.out(`Wrote ${result.path} (${result.screens} screens · ?screen=<id>&state=empty|loading|error|success)`));
           return 0;
         }
-        throw new UsageError("Usage: forge design build | audit | prototype");
+        if (args[0] === "shots") {
+          const viewports = opts.viewport ? opts.viewport.split(",").map((v) => v.trim()) : undefined;
+          const bad = viewports?.filter((v) => !(v in VIEWPORTS));
+          if (bad?.length) throw new UsageError(`--viewport must be among ${Object.keys(VIEWPORTS).join(", ")}`);
+          const manifest = await captureShots(root, {
+            url: opts.url,
+            viewports: viewports as ViewportId[] | undefined,
+            screens: opts.screens ? opts.screens.split(",").map((s) => s.trim()) : undefined,
+            onWait: () => io.err("forge: waiting for a free command slot…"),
+          });
+          const problems = manifest.source === "prototype" ? shotProblems(root).filter((p) => !/critique predates/.test(p)) : [];
+          print({ ...manifest, problems }, () => {
+            for (const s of manifest.shots) {
+              io.out(`${s.error ? "✗" : s.blank ? "!" : "✓"} ${s.file}${s.error ? ` — ${s.error}` : s.blank ? " — blank render" : ""}${s.changedRatio !== undefined ? ` (${(s.changedRatio * 100).toFixed(1)}% changed)` : ""}`);
+            }
+            for (const skip of manifest.skipped) io.out(`– ${skip}`);
+            for (const p of problems) io.out(`! ${p}`);
+            io.out(`\n${manifest.shots.filter((s) => !s.error).length}/${manifest.shots.length} shots → design/shots/ · next: the design-critic scores them and writes .forge/gates/design.rubric.json`);
+          });
+          return manifest.shots.some((s) => s.error || s.blank) ? 1 : 0;
+        }
+        throw new UsageError("Usage: forge design build | audit | prototype [--force] | shots [--url <base>]");
       }
 
       case "procs": {

@@ -24,6 +24,7 @@ import { redactSecrets } from "../memory/secrets.js";
 import { computeGaps, scanPlaceholders } from "../trace/trace.js";
 import { blockingHeaders, checkHeaders } from "../security/headers.js";
 import { blocking, scanSecurity } from "../security/scan.js";
+import { shotProblems } from "../design/shots.js";
 import { qaCoverage } from "../qa/coverage.js";
 import { answered, bypassHeaders, describeHttp, httpStatus } from "../ship/deploy.js";
 import { ARTIFACTS, checkArtifact, loadArtifact } from "./artifacts.js";
@@ -434,6 +435,12 @@ export const BUILTINS: Record<string, Builtin> = {
     const covered = new Set(need<Screens>(ctx, "screens").screens.flatMap((screen) => screen.storyIds));
     const missing = prd.stories.filter((story) => story.mvp && !covered.has(story.id)).map((story) => story.id);
     return listOrPass(missing, "every MVP story has a screen", "MVP stories without a screen");
+  },
+
+  "design.shotsFresh": (ctx) => {
+    if (!ctx.config.gates.design.screenshots) return skip("gates.design.screenshots is off");
+    const problems = shotProblems(ctx.root);
+    return problems.length ? fail(problems.join("; ")) : pass("every screen × state designed, freshly screenshotted and critiqued after the shots");
   },
 
   "design.states": (ctx) => {

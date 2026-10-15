@@ -6,16 +6,19 @@ import type { Screens } from "../schemas/artifacts.js";
 /**
  * Prototype scaffold: one dependency-free HTML file with a page per screen and a
  * state switcher (empty / loading / error / success), styled by the generated
- * design/dist/tokens.css. The screen designer fills each state; the design critic
- * screenshots `?screen=<id>&state=<state>` at 360 / 768 / 1280 px.
+ * design/dist/tokens.css. The screen designer fills each state; `forge design shots`
+ * screenshots `?screen=<id>&state=<state>&chrome=0` at 360 / 768 / 1280 px (390 for mobile apps).
  */
 
 const STATES = ["empty", "loading", "error", "success"] as const;
 const escape = (text: string) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
 
-export function buildPrototype(root: string): { path: string; screens: number } {
+export function buildPrototype(root: string, options: { force?: boolean } = {}): { path: string; screens: number } {
   const screens = loadArtifact<Screens>(root, "screens");
   if (!screens) throw new Error("No screens artifact yet — write design/screens.json first (artifact_write screens)");
+  if (existsSync(join(root, "design", "prototype", "index.html")) && !options.force) {
+    throw new Error("design/prototype/index.html already exists and may hold designed states — pass --force (force: true) to regenerate it from scratch");
+  }
   const hasTokens = existsSync(join(root, "design", "dist", "tokens.css"));
   const sections = screens.screens
     .map((screen) => {
@@ -45,6 +48,7 @@ ${hasTokens ? '<link rel="stylesheet" href="../dist/tokens.css">' : "<!-- run `f
   .fp-bar a { color: inherit; } .fp-bar a[aria-current="true"] { font-weight: 700; }
   .fp-meta { opacity: .7; font-size: .8rem; padding: 0 1rem; } .fp-meta h1 { font-size: 1rem; margin: .75rem 0 0; }
   main { padding: 1rem; }
+  [hidden] { display: none !important; } /* the hidden attribute must win over display rules (chrome=0 screenshots) */
 </style>
 </head>
 <body>
@@ -57,6 +61,8 @@ ${sections}
   const params = new URLSearchParams(location.search);
   const screen = params.get("screen") || ${JSON.stringify(screens.screens[0]?.id ?? "")};
   const state = params.get("state") || "success";
+  // chrome=0: only the design (used by \`forge design shots\` for the critique screenshots).
+  if (params.get("chrome") === "0") for (const el of document.querySelectorAll(".fp-bar, .fp-meta")) el.hidden = true;
   for (const el of document.querySelectorAll("[data-screen]")) el.hidden = el.dataset.screen !== screen;
   for (const el of document.querySelectorAll("[data-screen='" + CSS.escape(screen) + "'] [data-state]")) el.hidden = el.dataset.state !== state;
   for (const a of document.querySelectorAll("nav a[href^='?screen=']")) a.setAttribute("aria-current", String(a.getAttribute("href") === "?screen=" + encodeURIComponent(screen)));

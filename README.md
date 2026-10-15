@@ -161,9 +161,11 @@ forge design build      # design/tokens → design/dist: tokens.css (light/dark 
                         #   theme.ts (typed, incl. springs), tokens.json, tokens.dart (Flutter), ForgeTokens.swift (SwiftUI), ForgeTokens.kt (Compose)
 forge design prototype  # single-file prototype: every screen × empty/loading/error/success, on the tokens
 forge design audit      # token validity, WCAG contrast for declared pairs in every theme, hard-coded colours with the token to use instead
+forge design shots      # headless screenshots of every screen × state at 360/768/1280 px (or --url for a running app):
+                        #   blank renders, undesigned states and % changed since the last round
 ```
 
-The design gate requires valid tokens and passing contrast; the gap gate rejects hard-coded colours. Agents: design-system-architect, screen-designer, design-critic (a different model judges screenshots), motion-designer and web-animation-developer, with `design-system`, `screen-design` and `motion-system` playbooks.
+The design gate requires valid tokens, passing contrast, every state designed and freshly screenshotted, and a critique newer than the screenshots — a redesign forces a re-critique; the gap gate rejects hard-coded colours. Agents: design-system-architect, screen-designer, design-critic (a different model judges screenshots), motion-designer and web-animation-developer, with `design-system`, `screen-design` and `motion-system` playbooks.
 
 ## Evidence engine (validate stage)
 
