@@ -24,7 +24,12 @@
     "stack-packs",
     "schemas",
     ".claude-plugin",
-    ".mcp.json"
+    ".mcp.json",
+    "scripts/mcp.mjs",
+    ".codex-plugin",
+    ".codex-mcp.json",
+    ".agents",
+    "INSTALL.md"
   ],
   "engines": {
     "node": ">=20"
@@ -60,5 +65,17 @@
     "ajv-formats": "^3.0.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JRanjan-Biswal/forge-engine.git"
+  },
+  "homepage": "https://github.com/JRanjan-Biswal/forge-engine#readme",
+  "bugs": {
+    "url": "https://github.com/JRanjan-Biswal/forge-engine/issues"
+  },
+  "author": "JRanjan-Biswal",
+  "publishConfig": {
+    "access": "public"
   }
 }

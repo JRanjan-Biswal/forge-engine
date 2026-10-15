@@ -2,7 +2,9 @@
   "mcpServers": {
     "forge": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/cli.js", "mcp"]
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/mcp.mjs"
+      ]
     }
   }
 }

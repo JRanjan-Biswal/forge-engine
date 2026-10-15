@@ -1,12 +1,16 @@
 {
-  "name": "forge",
-  "owner": { "name": "forge contributors" },
-  "description": "forge — a gated, memory-backed product pipeline for coding agents.",
+  "name": "forge-engine",
+  "owner": {
+    "name": "JRanjan-Biswal",
+    "url": "https://github.com/JRanjan-Biswal"
+  },
+  "description": "forge-engine — a gated, memory-backed product pipeline for coding agents.",
   "plugins": [
     {
-      "name": "forge",
+      "name": "forge-engine",
       "source": "./",
-      "description": "Idea → validated → designed → built → verified → shipped, with gates and graph memory."
+      "version": "0.1.0-alpha.0",
+      "description": "Idea → validated → designed → built → verified → shipped, with gates, graph memory, stack packs, review, QA and deploy."
     }
   ]
 }

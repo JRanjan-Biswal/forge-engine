@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "forge": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "forge-engine@0.1.0-alpha.0",
+        "mcp"
+      ]
+    }
+  }
+}

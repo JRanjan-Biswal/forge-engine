@@ -21,6 +21,7 @@ import { checkHeaders, blockingHeaders } from "./security/headers.js";
 import { blocking, recordFindings, scanSecurity } from "./security/scan.js";
 import { qaCoverage, qaPlan } from "./qa/coverage.js";
 import { writeWorkflow } from "./ship/ci.js";
+import { quoteArgv, runSetup, setupPlan, type Host, type Scope } from "./install/setup.js";
 import { markdownSummary, reportToGithub, runCiCheck } from "./ship/checks.js";
 import { deploy, deployPlan, releaseNotes } from "./ship/deploy.js";
 import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "./build/workers.js";
@@ -42,7 +43,12 @@ import { VERSION } from "./version.js";
 
 const HELP = `forge ${VERSION} — idea → validated → designed → built → verified → shipped
 
-Usage: forge <command> [options]
+Usage: forge <command> [options]          (also available as \`forge-engine\`)
+
+Install
+  setup [--host claude,codex] [--scope user|project|local] [--source <path|owner/repo>] [--dry-run] [--yes]
+                                       install the forge-engine plugin in Claude Code and Codex (shows the commands first)
+  setup --remove                       uninstall it again
 
 Project
   init [--name <n>] [--force]          create forge.config.yaml and .forge/ here
@@ -186,6 +192,10 @@ const OPTIONS = {
   only: { type: "string" },
   viewport: { type: "string" },
   format: { type: "string" },
+  scope: { type: "string" },
+  yes: { type: "boolean", short: "y" },
+  "dry-run": { type: "boolean" },
+  remove: { type: "boolean" },
   screens: { type: "string" },
 } as const;
 
@@ -614,7 +624,7 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
             io.out(`  stacks: ${result.stacks.stacks.map((st) => `${st.pack} (${st.dir})`).join(", ")}`);
             for (const [key, command] of Object.entries(result.stacks.set)) io.out(`    ✓ commands.${key.padEnd(6)} ${command}`);
           }
-          io.out("\nNext: /forge:understand (or follow guide skills/understand-product) to write the product model, then `forge complete understand`.");
+          io.out("\nNext: /forge-engine:understand (or follow guide skills/understand-product) to write the product model, then `forge complete understand`.");
         });
         return 0;
       }
@@ -673,7 +683,7 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
         const chosen = args[0] ? audits.filter((a) => a.slug === args[0]) : audits;
         if (args[0] && !chosen.length) throw new Error(`No page audit "${args[0]}"`);
         print(chosen, () => {
-          if (!chosen.length) io.out("No page audits yet — run /forge:page <route> (pro-page-complete).");
+          if (!chosen.length) io.out("No page audits yet — run /forge-engine:page <route> (pro-page-complete).");
           for (const audit of chosen) {
             const open = audit.atoms.filter((a) => a.must && a.status !== "live");
             io.out(`${audit.slug.padEnd(24)} ${audit.page} · ${audit.atoms.length} atoms · ${open.length} open must-fix`);
@@ -760,6 +770,48 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
           for (const r of results) io.out(`${r.status === "done" ? "✓" : "✗"} ${r.task} (${r.seconds}s${r.timedOut ? ", timed out" : ""}) → ${r.worktree}`);
         });
         return results.every((r) => r.status === "done") ? 0 : 1;
+      }
+
+      case "setup": {
+        const hosts = opts.host ? opts.host.split(",").map((h) => h.trim()) : undefined;
+        if (hosts?.some((h) => h !== "claude" && h !== "codex")) throw new UsageError("--host must be claude, codex or both (claude,codex)");
+        if (opts.scope && !["user", "project", "local"].includes(opts.scope)) throw new UsageError("--scope must be user, project or local");
+        const plan = setupPlan({ hosts: hosts as Host[] | undefined, source: opts.source, scope: opts.scope as Scope | undefined, remove: opts.remove });
+        if (opts.json && (opts["dry-run"] || !opts.yes)) {
+          io.out(JSON.stringify(plan, null, 2));
+          return 0;
+        }
+        if (!opts.json) {
+          io.out(`forge-engine setup — ${plan.action}`);
+          for (const h of plan.hosts) io.out(`  ${h.found ? "✓" : "–"} ${h.host === "claude" ? "Claude Code" : "Codex"}${h.found ? "" : " (not found)"}`);
+          if (plan.steps.length) io.out("\nWill run:");
+          for (const step of plan.steps) io.out(`  ${quoteArgv(step.argv)}\n      ${step.label}`);
+          for (const note of plan.notes) io.out(`  ! ${note}`);
+        }
+        if (!plan.steps.length || opts["dry-run"]) return plan.steps.length || opts["dry-run"] ? 0 : 1;
+        if (!opts.yes) {
+          if (!process.stdin.isTTY) {
+            io.out("\nRe-run with --yes to apply (no terminal to confirm in).");
+            return 0;
+          }
+          const { createInterface } = await import("node:readline/promises");
+          const rl = createInterface({ input: process.stdin, output: process.stdout });
+          const answer = (await rl.question("\nProceed? [y/N] ")).trim().toLowerCase();
+          rl.close();
+          if (answer !== "y" && answer !== "yes") {
+            io.out("Nothing changed.");
+            return 0;
+          }
+        }
+        const result = runSetup(plan, (step) => !opts.json && io.out(`\n→ ${quoteArgv(step.argv)}`));
+        print(result, () => {
+          for (const r of result.results) if (!r.ok) io.out(`  ✗ ${r.label} failed:\n${r.output.split("\n").slice(-6).map((l) => `      ${l}`).join("\n")}`);
+          io.out("");
+          for (const v of result.verified) io.out(`${(plan.action === "install") === v.installed ? "✓" : "✗"} ${v.host === "claude" ? "Claude Code" : "Codex"}: ${v.detail}`);
+          if (plan.action === "install" && result.verified.some((v) => v.installed)) io.out("\nRestart the host, then run /forge-engine:forge in Claude Code, or ask Codex to \"use forge\" (see INSTALL.md).");
+        });
+        const ok = result.results.every((r) => r.ok) && result.verified.every((v) => v.installed === (plan.action === "install"));
+        return ok ? 0 : 1;
       }
 
       case "qa": {

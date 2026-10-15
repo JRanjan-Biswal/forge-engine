@@ -85,7 +85,7 @@ if (enabled("claude")) {
 
 // ── Claude Code: a real validation (opt-in: real research, costs ~$1–4) ──────
 if (wanted.includes("claude-validate")) {
-  suite.begin("Claude Code — real /forge:validate run (research, subagents, evidence store, gate)");
+  suite.begin("Claude Code — real /forge-engine:validate run (research, subagents, evidence store, gate)");
   await suite.guard("claude-validate", async () => {
     const dir = join(RUN, "claude-validate");
     mkdirSync(dir, { recursive: true });
@@ -102,7 +102,7 @@ if (wanted.includes("claude-validate")) {
     const r = await shAsync(
       "claude",
       [
-        "-p", `/forge:validate ${idea}`,
+        "-p", `/forge-engine:validate ${idea}`,
         "--plugin-dir", FORGE,
         "--model", "sonnet",
         "--max-budget-usd", budget,

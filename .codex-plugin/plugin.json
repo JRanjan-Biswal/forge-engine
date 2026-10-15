@@ -1,0 +1,45 @@
+{
+  "name": "forge-engine",
+  "version": "0.1.0-alpha.0",
+  "description": "Idea → validated → designed → built → verified → shipped. A gated, memory-backed product pipeline for coding agents: evidence-checked validation, design system + screenshot critique, stack packs, code & security review, QA coverage, deploy with real checks.",
+  "author": {
+    "name": "JRanjan-Biswal",
+    "url": "https://github.com/JRanjan-Biswal"
+  },
+  "homepage": "https://github.com/JRanjan-Biswal/forge-engine",
+  "repository": "https://github.com/JRanjan-Biswal/forge-engine",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "pipeline",
+    "agents",
+    "mcp",
+    "idea-validation",
+    "design-system",
+    "code-review",
+    "security",
+    "qa",
+    "deploy",
+    "memory"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.codex-mcp.json",
+  "interface": {
+    "displayName": "forge-engine",
+    "shortDescription": "Gated product pipeline: validate, design, build, review, QA and ship — with evidence and memory.",
+    "longDescription": "forge-engine drives an idea through 14 gated stages. Gates are deterministic code: evidence must be quoted from real sources, designs are screenshotted and critiqued, code is scanned for injection and secrets, every acceptance criterion needs a tagged test, and deploys are smoke-tested on the live URL. The MCP server exposes the pipeline; the skills are the playbooks.",
+    "developerName": "JRanjan-Biswal",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/JRanjan-Biswal/forge-engine",
+    "defaultPrompt": [
+      "Use forge: call forge_status and work on the next stage.",
+      "Use the security-review skill on this repository.",
+      "Use forge to validate this idea with cited evidence: "
+    ]
+  }
+}

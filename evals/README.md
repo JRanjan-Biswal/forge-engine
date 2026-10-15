@@ -10,7 +10,7 @@ node evals/run.mjs                                   # all 6 tasks (≈ $1–2 e
 node evals/run.mjs --tasks habit-tracker --budget 2  # a subset
 ```
 
-Each task in `validate/tasks.json` is an idea brief plus competitors that are well known in its market. For every task the runner initialises a fresh project, runs `/forge:validate` headless in Claude Code with the forge plugin, and scores **what is on disk**:
+Each task in `validate/tasks.json` is an idea brief plus competitors that are well known in its market. For every task the runner initialises a fresh project, runs `/forge-engine:validate` headless in Claude Code with the forge plugin, and scores **what is on disk**:
 
 | Metric | Meaning |
 |---|---|

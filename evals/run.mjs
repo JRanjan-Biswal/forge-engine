@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // forge-bench — Validate track.
-// Runs `/forge:validate` headless in Claude Code for each task, ONE AT A TIME (RAM protocol),
+// Runs `/forge-engine:validate` headless in Claude Code for each task, ONE AT A TIME (RAM protocol),
 // and scores what ended up on disk — not what the agent claims.
 //
 // Usage (from the forge repo root, after pnpm build):
@@ -55,7 +55,7 @@ for (const task of tasks) {
   const run = await shAsync(
     "claude",
     [
-      "-p", `/forge:validate ${task.idea}`,
+      "-p", `/forge-engine:validate ${task.idea}`,
       "--plugin-dir", FORGE,
       "--model", opts.model,
       "--max-budget-usd", opts.budget,

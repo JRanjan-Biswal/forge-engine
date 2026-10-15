@@ -35,59 +35,43 @@ forge is an open-source product pipeline for coding agents. Instead of a bag of 
 
 Run `forge stages` for the exact checks. Thresholds live in `forge.config.yaml`. `autonomy: auto | checkpoint | strict` controls human approvals.
 
+## Install
+
+```bash
+npx forge-engine setup      # finds Claude Code and Codex, shows the commands, asks, installs, verifies
+```
+
+Or directly:
+
+| Host | Install |
+|---|---|
+| **Claude Code** | `claude plugin install forge-engine@npm` — or inside Claude Code: `/plugin install forge-engine --marketplace JRanjan-Biswal/forge-engine` |
+| **Codex** | `codex plugin marketplace add JRanjan-Biswal/forge-engine && codex plugin add forge-engine@forge-engine` |
+| **Gemini CLI, Cursor, OpenCode, any MCP client** | MCP server `npx --yes forge-engine mcp` |
+| **Command line** | `npm install -g forge-engine` → `forge-engine` (also `forge`) |
+
+Full guide — requirements, scopes, verifying, updating, uninstalling, troubleshooting: **[INSTALL.md](INSTALL.md)**.
+
 ## Quick start
 
-```bash
-git clone https://github.com/<org>/forge && cd forge
-pnpm install && pnpm build
-pnpm link --global          # puts `forge` (and `forge-engine`) on your PATH
-```
-
-> Using Foundry? Its CLI is also called `forge` — use the `forge-engine` alias.
-
-In your project:
+In Claude Code: `/forge-engine:forge "an idea"` (status: `/forge-engine:forge`). In Codex or any MCP client: *"use forge: call forge_status and work on the next stage"*. Or from a terminal:
 
 ```bash
-forge init                  # forge.config.yaml + .forge/
-forge status                # what's next
-forge start brainstorm
-forge artifact write brainstorm --file ideas.json
-forge complete brainstorm   # runs the gate; exit code 1 if it fails
-forge evidence search hackernews "habit tracker"
-forge evidence save --url <url> --quote "<the source's exact words>"
-forge validate score               # weighted score + suggested verdict
-forge memory query "why did we choose Supabase?"
-forge gaps                  # stories missing design / code / test links
+forge-engine init                  # forge.config.yaml + .forge/
+forge-engine status                # what's next
+forge-engine start brainstorm
+forge-engine artifact write brainstorm --file ideas.json
+forge-engine complete brainstorm   # runs the gate; exit code 1 if it fails
+forge-engine evidence search hackernews "habit tracker"
+forge-engine evidence save --url <url> --quote "<the source's exact words>"
+forge-engine validate score        # weighted score + suggested verdict
+forge-engine memory query "why did we choose Supabase?"
+forge-engine gaps                  # stories missing design / code / test links
 ```
 
-### Claude Code
+Existing codebase? `forge-engine adopt` builds the product map and code graph and adds the `understand` stage.
 
-```text
-/plugin marketplace add /path/to/forge
-/plugin install forge@forge
-```
-
-Then use `/forge` (status), `/forge run`, `/forge validate`, or `/forge "an idea"`. Claude Code namespaces plugin commands, so it appears as **`/forge:forge`**. The plugin registers the forge MCP server and the **conductor** agent (`forge:conductor`). The plugin runs `dist/cli.js`, so build first.
-
-Tested end to end: headless Claude Code (`claude -p --plugin-dir ./forge`) and OpenCode each drove a stage through its gate using only forge's MCP tools, verified on disk.
-
-### Codex, Gemini CLI, Cursor and other MCP clients
-
-Point the client at the MCP server: command `node`, args `["/path/to/forge/dist/cli.js", "mcp"]`. For example, Codex `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.forge]
-command = "node"
-args = ["/path/to/forge/dist/cli.js", "mcp"]
-```
-
-Gemini CLI / Cursor (`settings.json` / `mcp.json`):
-
-```json
-{ "mcpServers": { "forge": { "command": "node", "args": ["/path/to/forge/dist/cli.js", "mcp"] } } }
-```
-
-Check your host's MCP documentation for the exact file. The server's instructions teach the agent the protocol: status → start → write artifacts → complete → record decisions → save an episode.
+Tested end to end: headless Claude Code (plugin loaded) and OpenCode each drove a stage through its gate using only forge's MCP tools, verified on disk; the Claude Code and Codex plugins install and verify through `forge-engine setup`.
 
 ## Build & verify (parallel, bounded)
 
@@ -126,7 +110,7 @@ Deploys use the official CLIs and your own logins; a missing login or project li
 
 ## Code & security review
 
-Two reviewer skills ship with forge — `code-review` and `security-review` — each with an agent (`code-reviewer`, `security-reviewer`), a slash command (`/forge:review`, `/forge:security`) and, for security, a rubric and an always-on `secure-by-default` rule for builders. The verify gate doesn't trust the reviewers' word: it re-runs the checks itself.
+Two reviewer skills ship with forge — `code-review` and `security-review` — each with an agent (`code-reviewer`, `security-reviewer`), a slash command (`/forge-engine:review`, `/forge-engine:security`) and, for security, a rubric and an always-on `secure-by-default` rule for builders. The verify gate doesn't trust the reviewers' word: it re-runs the checks itself.
 
 ```bash
 forge security scan             # code/SQL/NoSQL/shell/template injection, XSS, SSRF, path traversal, open redirects,
@@ -140,8 +124,8 @@ forge security headers http://localhost:3000   # CSP, HSTS, clickjacking, nosnif
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: <owner>/forge/actions/review@v1   # security scan, open review findings, QA coverage
-- uses: <owner>/forge/actions/gap@v1      # trace coverage, contract drift, platform parity, placeholder data, token drift
+- uses: JRanjan-Biswal/forge-engine/actions/review@v1   # security scan, open review findings, QA coverage
+- uses: JRanjan-Biswal/forge-engine/actions/gap@v1      # trace coverage, contract drift, platform parity, placeholder data, token drift
 ```
 
 Locally: `forge ci check review|gap` (`--format github|text|json`).
@@ -161,8 +145,8 @@ forge product pages    # what forge found: pages, endpoints, calls, docs
 - **Product map** — every page and API endpoint (Next.js app/pages, Expo Router, SvelteKit, Nuxt, React Router, Express/Hono/Fastify, FastAPI/Flask, plain `node:http`), which code calls which endpoint, all docs, each linked to its graphify node and into the traceability graph.
 - **Product model** — personas and features, each tied to real pages, endpoints and files with a verified status, gaps, and facts kept apart from assumptions. The `understand` gate fails until **every** page and endpoint is accounted for and the map is fresh.
 - **Always in sync** — a fingerprint detects code changes instantly; git hooks and a Claude Code SessionStart hook keep the map current; `forge sync` reports added/removed surfaces and features that reference removed code.
-- **`/forge:productize-vision`** — the product vision for what is actually built: facts vs assumptions, 3–5 options, one chosen, gaps to close, next move.
-- **`/forge:page <route>`** — pro-page-complete: inventory every atom on a page, trace API → DTO → mapper → render, fix the musts, prove them; the gap gate holds open musts.
+- **`/forge-engine:productize-vision`** — the product vision for what is actually built: facts vs assumptions, 3–5 options, one chosen, gaps to close, next move.
+- **`/forge-engine:page <route>`** — pro-page-complete: inventory every atom on a page, trace API → DTO → mapper → render, fix the musts, prove them; the gap gate holds open musts.
 
 ## Design & motion engine
 

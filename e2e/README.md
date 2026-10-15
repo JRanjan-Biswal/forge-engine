@@ -31,7 +31,7 @@ The validate stage's fixture quotes are served by `fixtures/evidence-server.mjs`
 
 ## What `hosts.mjs` covers
 
-`node e2e/hosts.mjs claude-validate` (opt-in, real web research, capped by `FORGE_E2E_BUDGET`, default $4) runs `/forge:validate` on a real idea (`FORGE_E2E_IDEA`) with the discovery subagents, and reports how far the gate got, the verdict, competitors and the verified-evidence share.
+`node e2e/hosts.mjs claude-validate` (opt-in, real web research, capped by `FORGE_E2E_BUDGET`, default $4) runs `/forge-engine:validate` on a real idea (`FORGE_E2E_IDEA`) with the discovery subagents, and reports how far the gate got, the verdict, competitors and the verified-evidence share.
 
 
 Each host must, using only forge's MCP tools: initialise a project, start `brainstorm`, write a valid artifact, pass the gate, and record a decision. Results are verified **on disk**, not from the agent's claims. Claude Code also checks plugin registration (MCP server, 25 tools, `/forge` command, conductor agent) and runs the `/forge status` command. The plugin is loaded with `--plugin-dir`, so your global Claude Code configuration is not changed.

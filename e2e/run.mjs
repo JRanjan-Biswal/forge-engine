@@ -87,6 +87,11 @@ await suite.guard("packaging", async () => {
     "commands/security.md",
     "rules/secure-by-default.md",
     "skills/qa-e2e/SKILL.md",
+    "scripts/mcp.mjs",
+    ".codex-plugin/plugin.json",
+    ".codex-mcp.json",
+    ".agents/plugins/marketplace.json",
+    "INSTALL.md",
     "skills/ship-release/SKILL.md",
     "agents/devops-engineer.md",
     "agents/qa-engineer.md",
@@ -107,6 +112,10 @@ await suite.guard("packaging", async () => {
     const v = sh(join(prefix, "node_modules", ".bin", bin), ["--version"]);
     suite.check(`installed \`${bin}\` binary runs and reports ${VERSION}`, v.code === 0 && v.out.trim() === VERSION, v.all);
   }
+  const setup = sh(join(prefix, "node_modules", ".bin", "forge-engine"), ["setup", "--dry-run", "--json"], { cwd: RUN });
+  suite.check("installed `forge-engine setup --dry-run` plans the Claude Code and Codex installs", setup.code === 0 && Array.isArray(json(setup)?.steps), setup.all.slice(0, 300));
+  const launcher = await shAsync(process.execPath, [join(prefix, "node_modules", "forge-engine", "scripts", "mcp.mjs")], { cwd: RUN, input: "", timeoutMs: 20_000 });
+  suite.check("the plugin's MCP launcher runs the bundled server from the installed package (exits on stdin close)", launcher.code === 0, launcher.all.slice(0, 300));
   const packs = sh(join(prefix, "node_modules", ".bin", "forge"), ["stack", "list", "--json"], { cwd: RUN });
   const packIds = packs.code === 0 ? JSON.parse(packs.out).packs.map((p) => p.id) : [];
   suite.check("installed package loads its 5 stack packs", ["expo", "fastapi", "nextjs", "node-hono", "supabase"].every((id) => packIds.includes(id)), packs.all.slice(0, 300));
