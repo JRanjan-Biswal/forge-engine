@@ -7,7 +7,7 @@
 //   pnpm build && node scripts/release-plugin.mjs [--push]
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -42,6 +42,59 @@ const dropTypes = (dir) => {
   }
 };
 dropTypes(join(pkg, "dist"));
+
+// Plugins are installed by copying the branch — nothing runs `npm install` — so the runtime
+// libraries are bundled into dist/vendor/ and forge's imports point there. forge's own
+// modules keep their files; shared library code lands in chunks.
+const VENDOR = {
+  zod: "zod",
+  yaml: "yaml",
+  "mcp-server": "@modelcontextprotocol/sdk/server/mcp.js",
+  "mcp-stdio": "@modelcontextprotocol/sdk/server/stdio.js",
+};
+const vendorSrc = join(WORK, "vendor-src");
+mkdirSync(vendorSrc, { recursive: true });
+for (const [name, spec] of Object.entries(VENDOR)) {
+  // Named exports spelled out: `export *` drops them when the library ships CommonJS (yaml).
+  const names = Object.keys(await import(spec)).filter((n) => n !== "default" && /^[A-Za-z_$][\w$]*$/.test(n));
+  writeFileSync(join(vendorSrc, `${name}.js`), `import * as lib from ${JSON.stringify(spec)};\nexport const { ${names.join(", ")} } = lib;\n`);
+}
+execFileSync(
+  join(ROOT, "node_modules", ".bin", "esbuild"),
+  [
+    ...Object.keys(VENDOR).map((name) => join(vendorSrc, `${name}.js`)),
+    "--bundle",
+    "--splitting",
+    "--format=esm",
+    "--platform=node",
+    "--target=node20",
+    `--outdir=${join(pkg, "dist", "vendor")}`,
+    "--chunk-names=chunk-[hash]",
+    "--legal-comments=eof",
+    "--log-level=warning",
+    // CommonJS dependencies inside an ES module bundle still call require().
+    "--banner:js=import { createRequire as __forgeRequire } from \"node:module\"; const require = __forgeRequire(import.meta.url);",
+  ],
+  { cwd: ROOT, stdio: "inherit" },
+);
+const rewriteImports = (dir) => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== "vendor") rewriteImports(path);
+      continue;
+    }
+    if (!entry.name.endsWith(".js")) continue;
+    let code = readFileSync(path, "utf8");
+    for (const [name, spec] of Object.entries(VENDOR)) {
+      let target = relative(dir, join(pkg, "dist", "vendor", `${name}.js`)).split(sep).join("/");
+      if (!target.startsWith(".")) target = `./${target}`;
+      code = code.replaceAll(`from "${spec}"`, `from "${target}"`);
+    }
+    writeFileSync(path, code);
+  }
+};
+rewriteImports(join(pkg, "dist"));
 
 // 3. Commit onto the `plugin` branch in a separate worktree (never touches your checkout).
 const remoteHas = git("ls-remote", "--heads", "origin", BRANCH) !== "";
