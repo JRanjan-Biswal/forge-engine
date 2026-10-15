@@ -4,7 +4,8 @@ import { join } from "node:path";
 import type { ForgeConfig } from "../core/config.js";
 import { layout } from "../core/paths.js";
 import { runCommand } from "../core/proc.js";
-import { loadTasks, nextTasks, taskBrief, updateTask } from "./tasks.js";
+import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./tasks.js";
+import { withCommandSlot } from "../core/proc.js";
 
 /**
  * Git worktrees per task, and headless workers that run one task per worktree
@@ -109,5 +110,60 @@ export async function runWorkers(
       for (let id = pending.shift(); id; id = pending.shift()) await runOne(id);
     }),
   );
+  return results;
+}
+
+// ── Merge queue ──────────────────────────────────────────────────────────────
+
+export interface MergeResult {
+  task: string;
+  status: "merged" | "blocked";
+  reason?: string;
+}
+
+/**
+ * Merge finished task worktrees back, one at a time in wave order: commit leftovers
+ * on the task branch, run commands.test inside the worktree (under the command slot),
+ * merge --no-ff only if tests pass, abort cleanly on conflict, then remove the worktree.
+ */
+export async function mergeTasks(root: string, config: ForgeConfig, ids?: string[]): Promise<MergeResult[]> {
+  const order = planWaves(loadTasks(root)).flat();
+  const candidates = (ids ?? loadTasks(root).filter((t) => t.status === "done").map((t) => t.id))
+    .filter((id) => existsSync(join(worktreesDir(root), id)))
+    .sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const results: MergeResult[] = [];
+  for (const id of candidates) {
+    const path = join(worktreesDir(root), id);
+    const branch = `forge/task-${id}`;
+    const block = (reason: string) => {
+      updateTask(root, id, "blocked", `merge: ${reason}`);
+      results.push({ task: id, status: "blocked", reason });
+    };
+    const inTree = (args: string[]) => spawnSync("git", ["-C", path, "-c", "user.email=forge@localhost", "-c", "user.name=forge", ...args], { encoding: "utf8" });
+    if (inTree(["status", "--porcelain"]).stdout.trim()) {
+      inTree(["add", "-A"]);
+      inTree(["commit", "-qm", `forge: task ${id}`]);
+    }
+    const test = config.commands.test;
+    if (test) {
+      const run = await withCommandSlot(root, { max: config.resources.maxConcurrentCommands, waitMs: config.resources.commandWaitMs, task: `forge merge ${id}` }, () =>
+        runCommand(test, path, { timeoutMs: 600_000 }),
+      );
+      if (run.code !== 0 || run.timedOut) {
+        block(`tests failed in the worktree (${run.timedOut ? "timeout" : `exit ${run.code}`}); not merged`);
+        continue;
+      }
+    }
+    const merge = spawnSync("git", ["-C", root, "-c", "user.email=forge@localhost", "-c", "user.name=forge", "merge", "--no-ff", "-m", `forge: merge task ${id}`, branch], { encoding: "utf8" });
+    if (merge.status !== 0) {
+      spawnSync("git", ["-C", root, "merge", "--abort"]);
+      block(`merge conflict with the current branch — resolve in .forge/worktrees/${id}, then retry (${(merge.stdout + merge.stderr).trim().split("\n")[0]})`);
+      continue;
+    }
+    removeWorktree(root, id, true);
+    spawnSync("git", ["-C", root, "branch", "-D", branch]);
+    updateTask(root, id, "done", "merged into the current branch");
+    results.push({ task: id, status: "merged" });
+  }
   return results;
 }

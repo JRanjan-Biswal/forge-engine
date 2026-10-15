@@ -15,7 +15,7 @@ import { auditContrast, auditDrift } from "./design/audit.js";
 import { buildDesign, loadTokens } from "./design/tokens.js";
 import { buildPrototype } from "./design/prototype.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./build/tasks.js";
-import { createWorktree, listWorktrees, removeWorktree, runWorkers } from "./build/workers.js";
+import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "./build/workers.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
 import { scoreValidation, validationTemplate } from "./core/validation.js";
 import { searchEvidence } from "./evidence/connectors.js";
@@ -75,6 +75,7 @@ Build (Phase 4)
   worktree [list|create <id>|remove <id>] [--force]
   workers run [--host claude|codex|gemini|opencode] [--max <n>] [--tasks a,b]
                                        run ready tasks headless, one git worktree each (default max 1)
+  merge [<id> …]                       merge done task worktrees in wave order: tests in the worktree, then --no-ff
 
 Design
   design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)
@@ -654,6 +655,16 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
         const list = listWorktrees(root);
         print(list, () => io.out(list.length ? list.map((w) => `${w.branch}  ${w.path}`).join("\n") : "No forge task worktrees."));
         return 0;
+      }
+
+      case "merge": {
+        const f = forge();
+        const results = await mergeTasks(f.root, f.config(), args.length ? args : undefined);
+        print(results, () => {
+          if (!results.length) io.out("Nothing to merge (no done tasks with a worktree).");
+          for (const r of results) io.out(`${r.status === "merged" ? "✓ merged" : "✗ blocked"} ${r.task}${r.reason ? ` — ${r.reason}` : ""}`);
+        });
+        return results.every((r) => r.status === "merged") ? 0 : 1;
       }
 
       case "workers": {

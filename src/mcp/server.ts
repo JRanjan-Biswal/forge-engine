@@ -12,6 +12,7 @@ import { auditContrast, auditDrift } from "../design/audit.js";
 import { buildDesign, loadTokens } from "../design/tokens.js";
 import { buildPrototype } from "../design/prototype.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "../build/tasks.js";
+import { mergeTasks } from "../build/workers.js";
 import { checkProduct, listPageAudits, loadProductMap, savePageAudit, syncProduct, type SyncResult } from "../product/sync.js";
 import { scoreValidation, validationTemplate } from "../core/validation.js";
 import { SOURCES, searchEvidence } from "../evidence/connectors.js";
@@ -487,6 +488,15 @@ export function createForgeServer(root?: string): McpServer {
     "task_update",
     { description: "Set a task's status (todo | doing | done | blocked) with an optional note; recorded in the ledger.", inputSchema: { id: z.string(), status: z.enum(["todo", "doing", "done", "blocked"]), note: z.string().optional() } },
     guarded(({ id, status, note }: { id: string; status: "todo" | "doing" | "done" | "blocked"; note?: string }) => updateTask(forge().root, id, status, note)),
+  );
+
+  server.registerTool(
+    "task_merge",
+    {
+      description: "Merge done task worktrees back in wave order: commit leftovers on the task branch, run commands.test in the worktree, merge --no-ff only if green, abort cleanly on conflict (task → blocked), then remove the worktree.",
+      inputSchema: { ids: z.array(z.string()).optional() },
+    },
+    guarded(({ ids }: { ids?: string[] }) => mergeTasks(forge().root, forge().config(), ids)),
   );
 
   server.registerTool(

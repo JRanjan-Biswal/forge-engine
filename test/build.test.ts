@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "../src/build/tasks.js";
-import { createWorktree, listWorktrees, removeWorktree, runWorkers } from "../src/build/workers.js";
+import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "../src/build/workers.js";
 import { writeArtifact } from "../src/core/artifacts.js";
 import { loadConfig } from "../src/core/config.js";
 import { appendLedger } from "../src/core/ledger.js";
@@ -101,5 +101,37 @@ describe("worktrees and headless workers", () => {
     expect(loadTasks(root).find((t) => t.id === "T-3")?.status).toBe("blocked");
     expect(existsSync(join(root, ".forge/worktrees/T-2.brief.md"))).toBe(true);
     writeFileSync(join(root, "noop"), "");
+  });
+
+  it("merges green task branches, blocks on failing tests and on conflicts without touching the main branch", async () => {
+    const root = gitProject();
+    writeArtifact(root, "tasks", PARALLEL);
+    const git = (...args: string[]) => spawnSync("git", ["-c", "user.email=t@forge.local", "-c", "user.name=t", ...args], { cwd: root, encoding: "utf8" });
+    git("add", "-A");
+    git("commit", "-qm", "tasks");
+    for (const id of ["T-1", "T-2", "T-3"]) createWorktree(root, id);
+    writeFileSync(join(root, ".forge/worktrees/T-1/store.txt"), "store\n");
+    writeFileSync(join(root, ".forge/worktrees/T-2/api.txt"), "from worktree\n");
+    writeFileSync(join(root, "api.txt"), "from main\n"); // conflicting file on the main branch
+    git("add", "api.txt");
+    git("commit", "-qm", "main change");
+    writeFileSync(join(root, ".forge/worktrees/T-3/fail.txt"), "x\n");
+    for (const id of ["T-1", "T-2", "T-3"]) updateTask(root, id, "done");
+
+    const config = loadConfig(root);
+    config.commands.test = `node -e "process.exit(require('fs').existsSync('fail.txt') ? 1 : 0)"`;
+    const results = await mergeTasks(root, config);
+    expect(results.map((r) => [r.task, r.status])).toEqual([
+      ["T-1", "merged"],
+      ["T-2", "blocked"],
+      ["T-3", "blocked"],
+    ]);
+    expect(readFileSync(join(root, "store.txt"), "utf8")).toBe("store\n");
+    expect(readFileSync(join(root, "api.txt"), "utf8")).toBe("from main\n"); // conflict aborted cleanly
+    expect(existsSync(join(root, "fail.txt"))).toBe(false); // failing tests → not merged
+    expect(results[1]?.reason).toMatch(/merge conflict/);
+    expect(results[2]?.reason).toMatch(/tests failed/);
+    expect(listWorktrees(root).map((w) => w.branch).sort()).toEqual(["forge/task-T-2", "forge/task-T-3"]);
+    expect(git("status", "--porcelain").stdout).not.toMatch(/^UU/m);
   });
 });
