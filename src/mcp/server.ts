@@ -8,6 +8,8 @@ import { ARTIFACTS, listArtifacts, loadArtifact, readArtifactText, writeArtifact
 import { Forge } from "../core/engine.js";
 import { listProjectProcesses, memorySnapshot } from "../core/procs.js";
 import { adoptProject } from "../product/adopt.js";
+import { auditContrast, auditDrift } from "../design/audit.js";
+import { buildDesign, loadTokens } from "../design/tokens.js";
 import { checkProduct, listPageAudits, loadProductMap, savePageAudit, syncProduct, type SyncResult } from "../product/sync.js";
 import { scoreValidation, validationTemplate } from "../core/validation.js";
 import { SOURCES, searchEvidence } from "../evidence/connectors.js";
@@ -453,6 +455,32 @@ export function createForgeServer(root?: string): McpServer {
     "page_audit_list",
     { description: "All page audits with their open must-fix atoms.", inputSchema: {} },
     guarded(() => listPageAudits(forge().root)),
+  );
+
+  server.registerTool(
+    "design_build",
+    {
+      description: "Build design/tokens (W3C DTCG, themes via *.<theme>.tokens.json) into design/dist: tokens.css (light/dark + prefers-color-scheme), tailwind.css (@theme), theme.ts (typed, incl. springs), tokens.json. Fails on unresolved aliases or invalid types.",
+      inputSchema: {},
+    },
+    guarded(() => buildDesign(forge().root)),
+  );
+
+  server.registerTool(
+    "design_audit",
+    {
+      description: "Audit the design system: token validity, WCAG contrast for the pairs in design/contrast.json (every theme), and hard-coded colours in product code (drift) with the token to use instead.",
+      inputSchema: {},
+    },
+    guarded(() => {
+      const root = forge().root;
+      const set = loadTokens(root);
+      return {
+        tokens: { count: set.base.size, themes: Object.keys(set.themes), errors: set.errors, warnings: set.warnings },
+        contrast: auditContrast(root),
+        drift: auditDrift(root, forge().config().gates.gap.scanDirs),
+      };
+    }),
   );
 
   server.registerTool(

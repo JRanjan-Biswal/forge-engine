@@ -11,6 +11,8 @@ import { appendLedger, readLedger } from "./core/ledger.js";
 import { findRoot } from "./core/paths.js";
 import { listProjectProcesses, memorySnapshot, registryTemplate } from "./core/procs.js";
 import { adoptProject } from "./product/adopt.js";
+import { auditContrast, auditDrift } from "./design/audit.js";
+import { buildDesign, loadTokens } from "./design/tokens.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
 import { scoreValidation, validationTemplate } from "./core/validation.js";
 import { searchEvidence } from "./evidence/connectors.js";
@@ -62,6 +64,10 @@ Existing products (brownfield)
   product [pages|endpoints|calls|docs] what forge knows about the product
   pages [<slug>]                       pro-page-complete audits and open must-fix atoms
   hooks install                        git hooks that run "forge sync" after commit / merge / checkout
+
+Design
+  design build                         design/tokens → design/dist (tokens.css, tailwind.css, theme.ts, tokens.json)
+  design audit                         token validity, WCAG contrast pairs, hard-coded colour drift
 
 Evidence & validation
   evidence search <source> "<query>" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit
@@ -585,6 +591,36 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
         const installed = installGitHooks(forge().root);
         print(installed, () => io.out(installed.length ? `Installed: ${installed.join(", ")}` : "forge git hooks already installed"));
         return 0;
+      }
+
+      case "design": {
+        const root = forge().root;
+        if (args[0] === "build") {
+          const result = buildDesign(root);
+          print(result, () => {
+            if (result.errors.length) for (const e of result.errors) io.err(`  ✗ ${e}`);
+            else io.out(`Built ${result.tokens} tokens${result.themes.length ? ` (themes: ${result.themes.join(", ")})` : ""} → ${result.files.join(", ")}`);
+            for (const w of result.warnings) io.out(`  ! ${w}`);
+          });
+          return result.errors.length ? 1 : 0;
+        }
+        if (args[0] === "audit") {
+          const set = loadTokens(root);
+          const contrast = auditContrast(root);
+          const drift = auditDrift(root, forge().config().gates.gap.scanDirs);
+          const ok = !set.errors.length && contrast.declared && !contrast.errors.length && contrast.results.every((r) => r.pass) && !drift.length;
+          print({ tokens: { count: set.base.size, errors: set.errors, warnings: set.warnings }, contrast, drift }, () => {
+            io.out(`tokens: ${set.base.size}${set.errors.length ? ` — ${set.errors.length} error(s)` : " ✓"}`);
+            for (const e of set.errors.slice(0, 10)) io.out(`  ✗ ${e}`);
+            io.out(`contrast: ${contrast.declared ? `${contrast.results.filter((r) => r.pass).length}/${contrast.results.length} pass` : "no pairs declared"}`);
+            for (const r of contrast.results.filter((x) => !x.pass)) io.out(`  ✗ ${r.theme}: ${r.fg} on ${r.bg} = ${r.ratio ?? "?"} (min ${r.min})${r.note ? ` — ${r.note}` : ""}`);
+            for (const e of contrast.errors) io.out(`  ✗ ${e}`);
+            io.out(`drift: ${drift.length} hard-coded colour(s)`);
+            for (const h of drift.slice(0, 20)) io.out(`  ✗ ${h.file}:${h.line} ${h.value}${h.suggest ? ` → use ${h.suggest}` : ""}`);
+          });
+          return ok ? 0 : 1;
+        }
+        throw new UsageError("Usage: forge design build | audit");
       }
 
       case "procs": {

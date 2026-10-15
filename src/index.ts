@@ -25,3 +25,5 @@ export { quoteAppears, normalizeText, htmlToText } from "./evidence/text.js";
 export { adoptProject } from "./product/adopt.js";
 export { syncProduct, checkProduct, loadProductMap, savePageAudit, listPageAudits, installGitHooks } from "./product/sync.js";
 export { extractProduct, listProjectFiles, fingerprint } from "./product/scan.js";
+export { loadTokens, buildDesign, type Token, type TokenSet } from "./design/tokens.js";
+export { auditContrast, auditDrift, contrastRatio } from "./design/audit.js";

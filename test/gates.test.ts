@@ -100,7 +100,11 @@ describe("design, planning and review gates", () => {
     const forge = new Forge(root);
     forge.start("design", { force: true });
     mkdirSync(join(root, "design", "tokens"), { recursive: true });
-    writeFileSync(join(root, "design", "tokens", "semantic.tokens.json"), "{}");
+    writeFileSync(
+      join(root, "design", "tokens", "semantic.tokens.json"),
+      JSON.stringify({ color: { $type: "color", text: { $value: "#1A1A2E" }, bg: { $value: "#FFFFFF" } } }),
+    );
+    writeFileSync(join(root, "design", "contrast.json"), JSON.stringify({ pairs: [{ fg: "color.text", bg: "color.bg" }] }));
     writeFileSync(
       join(root, ".forge", "gates", "design.rubric.json"),
       JSON.stringify({ judge: "model-b", producer: "model-a", criteria: Array.from({ length: 10 }, (_, i) => ({ id: `R-${i}`, question: `q${i}?`, pass: true })) }),

@@ -148,6 +148,8 @@ const STAGE_INPUTS: StageInput[] = [
         description: "Design tokens exist in design/tokens/",
         path: "design/tokens",
       },
+      builtin("design.tokensValid", "Design tokens load, every alias resolves and every type is valid"),
+      builtin("design.contrast", "Declared text/background pairs meet WCAG contrast in every theme"),
       builtin("design.storyCoverage", "Every MVP story has at least one screen"),
       builtin("design.states", "Every screen designs empty, loading, error and success states"),
       {
@@ -232,6 +234,7 @@ const STAGE_INPUTS: StageInput[] = [
       builtin("trace.coverage", "Trace coverage meets gates.gap.minCoverage"),
       builtin("gap.noPlaceholders", "No placeholder, fake or mock data in product code"),
       builtin("pages.noMustFix", "Every audited page has no open must-fix atoms (pro-page-complete)"),
+      builtin("design.noDrift", "No hard-coded colours in product code — use design tokens"),
     ],
   },
   {

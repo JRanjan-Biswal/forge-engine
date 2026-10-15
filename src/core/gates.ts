@@ -14,6 +14,8 @@ import {
   type Validation,
 } from "../schemas/artifacts.js";
 import type { CheckResult, GateCheck, GateResult, NumberOrConfig, State } from "../schemas/runtime.js";
+import { auditContrast, auditDrift } from "../design/audit.js";
+import { loadTokens, tokensDir } from "../design/tokens.js";
 import { findEvidence, loadEvidence } from "../evidence/store.js";
 import { checkProduct, listPageAudits, loadProductMap } from "../product/sync.js";
 import type { ProductModel } from "../schemas/product.js";
@@ -339,6 +341,32 @@ export const BUILTINS: Record<string, Builtin> = {
     return share >= min
       ? pass(`${verified}/${cited.length} cited quotes verified against their source (${pct(share)})`)
       : fail(`only ${verified}/${cited.length} cited quotes verified (${pct(share)}), needs ${pct(min)} — prefer sources whose pages can be fetched`);
+  },
+
+  "design.tokensValid": (ctx) => {
+    const set = loadTokens(ctx.root);
+    if (set.errors.length) return fail(set.errors.slice(0, 8).join("; "));
+    const themes = Object.keys(set.themes);
+    return pass(`${set.base.size} tokens resolve and validate${themes.length ? `; themes: ${themes.join(", ")}` : ""}`);
+  },
+
+  "design.contrast": (ctx) => {
+    const report = auditContrast(ctx.root);
+    if (!report.declared) return fail(report.errors.join("; "));
+    const failing = report.results
+      .filter((r) => !r.pass)
+      .map((r) => `${r.theme}: ${r.fg} on ${r.bg} = ${r.ratio ?? "?"}${r.note ? ` (${r.note})` : ` < ${r.min}`}`);
+    return listOrPass([...report.errors, ...failing], `${report.results.length} contrast checks pass (WCAG)`, "contrast failures");
+  },
+
+  "design.noDrift": (ctx) => {
+    if (!existsSync(tokensDir(ctx.root))) return skip("no design tokens in this project");
+    const hits = auditDrift(ctx.root, ctx.config.gates.gap.scanDirs, 20);
+    return listOrPass(
+      hits.map((h) => `${h.file}:${h.line} ${h.value}${h.suggest ? ` → ${h.suggest}` : ""}`),
+      "no hard-coded colours outside the design tokens",
+      "hard-coded colours (use design tokens)",
+    );
   },
 
   "product.mapFresh": (ctx) => {

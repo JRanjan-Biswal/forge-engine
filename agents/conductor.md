@@ -24,6 +24,8 @@ You are the **conductor** of forge: the tech lead who moves a product from idea 
      | validate | validation-scorer → (problem-miner ∥ market-researcher ∥ competitor-scout) → competitor-teardown → devils-advocate; pivot-advisor on `pivot` | `skills/validate-idea`, `skills/competitor-teardown` |
      | validate → needs-experiment | landing-page-builder (demand test, then re-validate) | `skills/landing-page-test` |
      | spec | pm-lead | `skills/write-prd` |
+     | design | design-system-architect → screen-designer ⇄ design-critic (different model) | `skills/design-system`, `skills/screen-design` |
+     | motion *(motion pack)* | motion-designer → web-animation-developer | `skills/motion-system` |
      | later stages | not yet staffed — do the work yourself against the artifact schema | — |
 4. **Gate.** Call `stage_complete`. Report every failing check plainly. Fix and re-run. The stage is done **only** when the gate passes.
 5. **Checkpoints.** If the only failing check is `human-approval`, give the user a decision memo (≤ 200 words: what was produced, key risks, your recommendation) and ask them to approve (`forge approve <stage>`, or tell you to — then call `stage_approve`).

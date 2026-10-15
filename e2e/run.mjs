@@ -74,6 +74,8 @@ await suite.guard("packaging", async () => {
     "commands/validate.md",
     "hooks/hooks.json",
     "skills/pro-page-complete/SKILL.md",
+    "skills/design-system/SKILL.md",
+    "agents/web-animation-developer.md",
     "README.md",
     "LICENSE",
   ]) {
@@ -268,8 +270,13 @@ await stage("design", {
       space: { 4: { $type: "dimension", $value: "16px" } },
     });
     writeJson(join(P, "design/tokens/semantic.tokens.json"), {
-      color: { accent: { default: { $type: "color", $value: "{color.indigo.500}" } } },
+      color: { $type: "color", accent: { default: { $value: "{color.indigo.500}" } }, text: { default: { $value: "#1A1A2E" } }, bg: { default: { $value: "#FFFFFF" } } },
     });
+    writeJson(join(P, "design/contrast.json"), { pairs: [{ fg: "color.text.default", bg: "color.bg.default" }, { fg: "color.accent.default", bg: "color.bg.default", min: 3 }] });
+    const built = forge(P, "design", "build");
+    suite.check("design: forge design build exports CSS, Tailwind, TS theme and JSON", built.code === 0 && existsSync(join(P, "design/dist/tokens.css")) && existsSync(join(P, "design/dist/tailwind.css")), built.all);
+    const audit = json(forge(P, "design", "audit", "--json"));
+    suite.check("design: contrast pairs pass and no drift in the app", audit?.contrast?.results?.every((r) => r.pass) && audit.drift.length === 0, JSON.stringify(audit?.contrast?.results));
     const all = ["empty", "loading", "error", "success"];
     const screensDoc = (checkinStates) => ({
       screens: [
@@ -670,7 +677,7 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 37 tools, each with an object input schema", tools.length === 37 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 39 tools, each with an object input schema", tools.length === 39 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
   let t = await call("guide", { name: "skills/validate-idea" });
   suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));

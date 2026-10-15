@@ -105,6 +105,17 @@ forge product pages    # what forge found: pages, endpoints, calls, docs
 - **`/forge:productize-vision`** — the product vision for what is actually built: facts vs assumptions, 3–5 options, one chosen, gaps to close, next move.
 - **`/forge:page <route>`** — pro-page-complete: inventory every atom on a page, trace API → DTO → mapper → render, fix the musts, prove them; the gap gate holds open musts.
 
+## Design & motion engine
+
+One W3C DTCG token source → every platform, with checks instead of opinions:
+
+```bash
+forge design build   # design/tokens → design/dist: tokens.css (light/dark + prefers-color-scheme), tailwind.css (@theme), theme.ts (typed, incl. springs), tokens.json
+forge design audit   # token validity, WCAG contrast for declared pairs in every theme, hard-coded colours with the token to use instead
+```
+
+The design gate requires valid tokens and passing contrast; the gap gate rejects hard-coded colours. Agents: design-system-architect, screen-designer, design-critic (a different model judges screenshots), motion-designer and web-animation-developer, with `design-system`, `screen-design` and `motion-system` playbooks.
+
 ## Evidence engine (validate stage)
 
 Validation is only as good as its sources, so forge **checks quotes instead of trusting them**:
@@ -144,7 +155,7 @@ These are process rules, not an OS-enforced memory limit.
 ## Roadmap
 
 - **v0.1 Validate** *(in progress)* — evidence engine with quote verification ✅, scorecard ✅, strategy/discovery/PM agents and skills ✅; next: forge-bench Validate track, landing-page smoke test
-- **v0.2 Design + Motion** — design-system engine (DTCG tokens → web/RN/Flutter/SwiftUI/Compose), screen generator, critique loop, motion system
+- **v0.2 Design + Motion** *(in progress)* — DTCG token pipeline → CSS/Tailwind/TS ✅, contrast + drift audits ✅, design/motion agents and skills ✅; next: native exporters (Flutter, SwiftUI, Compose), prototype generator, screenshot critique automation
 - **v0.5 Build & Verify** — architecture, frontend/backend/web teams, task DAG + worktrees + headless workers, review/debug/fix, QA, gap
 - **v1.0 Everywhere** — mobile, adapters for every host, published forge-bench evals
 
