@@ -1,0 +1,89 @@
+{
+  "summary": {
+    "track": "validate",
+    "stamp": "2026-10-15T06-30-13-907Z",
+    "forge": "0.1.0-alpha.0",
+    "model": "sonnet",
+    "budgetPerTaskUsd": 2,
+    "tasks": 2,
+    "checksPassRate": 0.5,
+    "meanVerifiedShare": 0.9814814814814814,
+    "meanKnownRecall": 0.7,
+    "meanCompetitors": 5.5,
+    "totalCostUsd": 2.7164056,
+    "meanSeconds": 230.5,
+    "verdicts": {
+      "needs-experiment": 2
+    }
+  },
+  "results": [
+    {
+      "id": "firebase-alternative",
+      "verdict": "needs-experiment",
+      "score": 63,
+      "answers": {
+        "unknown": 9,
+        "yes": 2,
+        "no": 1
+      },
+      "gateRuns": 2,
+      "gateFailing": [
+        "min-score",
+        "validation-minEvidence",
+        "validation-verdictGo",
+        "human-approval"
+      ],
+      "decisionOnly": false,
+      "validationValid": true,
+      "competitorsValid": true,
+      "evidence": 14,
+      "verifiedShare": 1,
+      "competitors": 5,
+      "knownRecall": 0.8,
+      "knownFound": [
+        "Supabase",
+        "Appwrite",
+        "PocketBase",
+        "Nhost"
+      ],
+      "knownMissed": [
+        "Parse"
+      ],
+      "costUsd": 0.7390885999999999,
+      "seconds": 173
+    },
+    {
+      "id": "habit-tracker",
+      "verdict": "needs-experiment",
+      "score": 79,
+      "answers": {
+        "yes": 4,
+        "unknown": 7,
+        "no": 1
+      },
+      "gateRuns": 1,
+      "gateFailing": [
+        "validation-verdictGo",
+        "human-approval"
+      ],
+      "decisionOnly": true,
+      "validationValid": true,
+      "competitorsValid": true,
+      "evidence": 27,
+      "verifiedShare": 0.9629629629629629,
+      "competitors": 6,
+      "knownRecall": 0.6,
+      "knownFound": [
+        "Habitica",
+        "Streaks",
+        "Loop"
+      ],
+      "knownMissed": [
+        "HabitNow",
+        "Productive"
+      ],
+      "costUsd": 1.977317,
+      "seconds": 288
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "track": "validate",
+  "description": "Idea briefs with competitors that are well known in each market. Recall of these is an objective floor for competitor research; verdicts are reported, not graded.",
+  "tasks": [
+    {
+      "id": "uptime-monitor",
+      "idea": "A hosted service that monitors website uptime and alerts small teams by SMS and Slack",
+      "knownCompetitors": ["UptimeRobot", "Pingdom", "Better Stack", "Uptime Kuma", "StatusCake"],
+      "note": "Crowded, mature market"
+    },
+    {
+      "id": "firebase-alternative",
+      "idea": "An open-source backend-as-a-service (database, auth, storage) that developers can self-host as a Firebase alternative",
+      "knownCompetitors": ["Supabase", "Appwrite", "PocketBase", "Nhost", "Parse"],
+      "note": "Crowded developer-tools market with strong open-source leaders"
+    },
+    {
+      "id": "habit-tracker",
+      "idea": "A mobile habit tracker app with streaks and gentle reminders",
+      "knownCompetitors": ["Habitica", "Streaks", "Loop", "HabitNow", "Productive"],
+      "note": "Saturated consumer category"
+    },
+    {
+      "id": "meeting-notes",
+      "idea": "An AI assistant that joins video calls and writes meeting notes and action items",
+      "knownCompetitors": ["Otter", "Fireflies", "Fathom", "tl;dv", "Granola"],
+      "note": "Fast-moving AI category with many funded players"
+    },
+    {
+      "id": "port-reaper",
+      "idea": "A CLI that finds and safely stops orphaned dev servers and processes holding ports on developer laptops",
+      "knownCompetitors": ["fkill", "kill-port", "npkill"],
+      "note": "Developer utility niche"
+    },
+    {
+      "id": "vet-scheduling",
+      "idea": "Software that helps veterinary clinics schedule appointments and send automated reminders to pet owners",
+      "knownCompetitors": ["PetDesk", "Vetstoria", "ezyVet", "Cornerstone", "AVImark"],
+      "note": "Vertical B2B SaaS"
+    }
+  ]
+}

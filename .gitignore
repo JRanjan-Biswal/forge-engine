@@ -17,3 +17,5 @@ AGENT_PROCESSES.md
 e2e/runs/
 # e2e reports contain absolute local paths; regenerate with pnpm e2e
 e2e/LATEST-*.md
+# forge-bench raw runs (results/ is committed)
+evals/runs/
