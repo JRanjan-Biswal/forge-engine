@@ -8,7 +8,7 @@ import { withLock } from "../core/lock.js";
 import { layout } from "../core/paths.js";
 import { runCommand, withCommandSlot } from "../core/proc.js";
 import { formatIssues, tail } from "../core/util.js";
-import { COMMAND_KEYS, StackPack } from "../schemas/stack.js";
+import { GATE_COMMANDS, StackPack } from "../schemas/stack.js";
 /**
  * Stack packs: recognise the stacks in a repo, derive gate commands only from what
  * the repo actually has (scripts, dependencies, files), record them in
@@ -255,7 +255,7 @@ export function stackCommands(root, packId, dir = ".") {
     const values = { ...RUNNERS[pm], pm, python: pythonRunner(facts) };
     const commands = {};
     const missing = [];
-    for (const key of COMMAND_KEYS) {
+    for (const key of GATE_COMMANDS) {
         const options = pack.commands[key];
         if (!options.length)
             continue;
@@ -279,7 +279,7 @@ const quote = (path) => (/^[\w./-]+$/.test(path) ? path : `'${path.replace(/'/g,
 /** One root-level command per gate key across all stacks (each runs in its own directory). */
 export function combineCommands(stacks) {
     const combined = {};
-    for (const key of COMMAND_KEYS) {
+    for (const key of GATE_COMMANDS) {
         const parts = stacks.flatMap((s) => {
             const command = s.commands[key];
             if (!command)
@@ -322,7 +322,7 @@ export function useStacks(root, options = {}) {
         const current = loadConfig(root).commands;
         const set = {};
         const kept = {};
-        for (const key of COMMAND_KEYS) {
+        for (const key of GATE_COMMANDS) {
             const suggested = combined[key];
             if (!suggested || current[key] === suggested)
                 continue;
@@ -374,7 +374,7 @@ export function stacksForTask(root, task) {
         return byDept;
     return stacks.length === 1 ? stacks : [];
 }
-const TOKEN_OUTPUTS = {
+const DESIGN_EXPORTS = {
     css: "design/dist/tokens.css (CSS variables)",
     tailwind: "design/dist/tailwind.css (Tailwind v4 @theme) with design/dist/tokens.css",
     ts: "design/dist/theme.ts",
@@ -406,8 +406,8 @@ export function stackBrief(root, task) {
             lines.push(`- Run from ${where} before you report: ${runs.join(" · ")}`);
         for (const m of missing)
             lines.push(`- No ${m.key} command yet (${m.why})${m.fix ? ` — ${m.fix}` : ""}`);
-        if (TOKEN_OUTPUTS[pack.tokens])
-            lines.push(`- Design tokens: ${TOKEN_OUTPUTS[pack.tokens]} — run \`forge design build\`; never hard-code values.`);
+        if (DESIGN_EXPORTS[pack.tokens])
+            lines.push(`- Design tokens: ${DESIGN_EXPORTS[pack.tokens]} — run \`forge design build\`; never hard-code values.`);
         lines.push(`- QA: ${pack.qa}`);
         const conventions = lensSection(readLens(id, root), "Conventions");
         if (conventions)
