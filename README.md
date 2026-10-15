@@ -136,6 +136,16 @@ forge security headers http://localhost:3000   # CSP, HSTS, clickjacking, nosnif
                                                # COOP, cookie flags, CORS with a foreign Origin, version leaks
 ```
 
+**In any repo's CI** — the same checks as GitHub Actions, with findings as inline PR annotations and a job summary:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: <owner>/forge/actions/review@v1   # security scan, open review findings, QA coverage
+- uses: <owner>/forge/actions/gap@v1      # trace coverage, contract drift, platform parity, placeholder data, token drift
+```
+
+Locally: `forge ci check review|gap` (`--format github|text|json`).
+
 Every finding carries file:line, CWE and a fix. A justified exception needs an inline `forge-security-ignore <rule> -- <reason>`; suppressions without a reason are ignored. Set `security.url` to have the verify gate check the running app's headers, and `commands.audit` (filled by `forge stack use`) for vulnerable dependencies.
 
 ## Existing products (brownfield)

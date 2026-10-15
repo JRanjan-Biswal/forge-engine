@@ -21,6 +21,7 @@ import { checkHeaders, blockingHeaders } from "./security/headers.js";
 import { blocking, recordFindings, scanSecurity } from "./security/scan.js";
 import { qaCoverage, qaPlan } from "./qa/coverage.js";
 import { writeWorkflow } from "./ship/ci.js";
+import { markdownSummary, reportToGithub, runCiCheck } from "./ship/checks.js";
 import { deploy, deployPlan, releaseNotes } from "./ship/deploy.js";
 import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "./build/workers.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
@@ -89,6 +90,8 @@ Ship & QA
   qa plan                              one test case per MVP acceptance criterion (@S-1/AC1) with the tool and file to use
   qa coverage [--link]                 which criteria have a tagged test; --link adds story → test trace links
   ci [--force]                         write .github/workflows/forge.yml from the stacks' gate commands
+  ci check review|gap [--format text|github|json]
+                                       the verify/gap checks for any repo; github = PR annotations + job summary
   deploy --plan [--prod]               targets per stack (Vercel, Fly, EAS, Supabase) and what is missing
   deploy [--prod] [--only a,b]         deploy with the official CLIs, smoke-test, probe headers, run e2e on the URL,
                                        write the release + notes (--prod needs "forge approve ship")
@@ -182,6 +185,7 @@ const OPTIONS = {
   plan: { type: "boolean" },
   only: { type: "string" },
   viewport: { type: "string" },
+  format: { type: "string" },
   screens: { type: "string" },
 } as const;
 
@@ -783,6 +787,17 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
       }
 
       case "ci": {
+        if (args[0] === "check") {
+          const kind = args[1];
+          if (kind !== "review" && kind !== "gap") throw new UsageError("Usage: forge ci check review|gap [--format text|github|json]");
+          const format = opts.json ? "json" : (opts.format ?? (process.env.GITHUB_ACTIONS === "true" ? "github" : "text"));
+          if (!["text", "github", "json"].includes(format)) throw new UsageError("--format must be text, github or json");
+          const check = runCiCheck(forge().root, kind);
+          if (format === "json") io.out(JSON.stringify(check, null, 2));
+          else if (format === "github") reportToGithub(check, io.out);
+          else io.out(markdownSummary(check).trim());
+          return check.ok ? 0 : 1;
+        }
         const result = writeWorkflow(forge().root, { force: opts.force });
         print(result, () => {
           io.out(result.written ? `Wrote ${result.path} — jobs: ${result.jobs.join(", ")}` : `${result.path} unchanged — jobs: ${result.jobs.join(", ")}`);

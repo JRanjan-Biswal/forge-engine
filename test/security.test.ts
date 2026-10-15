@@ -40,6 +40,7 @@ const CASES: [string, string, string, string][] = [
   ["src/a.ts", 'const fn = new Function("a", body);', "js.new-function", "const fn = handlers[name];"],
   ["src/a.ts", "exec(`git log ${branch}`);", "js.shell-interpolation", 'execFile("git", ["log", branch]);'],
   ["src/a.ts", 'child_process.execSync("convert " + file);', "js.shell-interpolation", 'child_process.execFileSync("convert", [file]);'],
+  ["src/a.js", "require('child_process').execSync(`tar -xf ${file}`);", "js.shell-interpolation", "require('child_process').execFileSync('tar', ['-xf', file]);"],
   ["src/a.ts", "spawn(cmd, args, { shell: true });", "js.spawn-shell", "spawn(cmd, args);"],
   ["src/a.ts", "await db.query(`SELECT * FROM users WHERE id = ${id}`);", "js.sql-interpolation", 'await db.query("SELECT * FROM users WHERE id = $1", [id]);'],
   ["src/a.ts", `await db.query("SELECT * FROM t WHERE name = '" + name + "'");`, "js.sql-interpolation", "await sql`SELECT * FROM t WHERE name = ${name}`;"],

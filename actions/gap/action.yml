@@ -1,0 +1,37 @@
+name: forge gap
+description: Gap analysis for any repo — trace coverage of MVP stories, contract drift (OpenAPI vs real routes), web↔mobile parity, placeholder data and hard-coded colours, as PR annotations and a job summary.
+author: forge
+branding:
+  icon: git-pull-request
+  color: purple
+inputs:
+  working-directory:
+    description: Project root (where forge.config.yaml lives; any repo works without one)
+    default: "."
+  forge-version:
+    description: forge-engine version to run from npm (e.g. 0.5.0). Empty builds forge from this action's checkout.
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Prepare forge
+      shell: bash
+      env:
+        FORGE_VERSION: ${{ inputs.forge-version }}
+      run: |
+        if [ -n "$FORGE_VERSION" ]; then
+          echo "FORGE_CLI=npx --yes forge-engine@$FORGE_VERSION" >> "$GITHUB_ENV"
+        else
+          cd "$GITHUB_ACTION_PATH/../.."
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm build
+          echo "FORGE_CLI=node $GITHUB_ACTION_PATH/../../dist/cli.js" >> "$GITHUB_ENV"
+        fi
+    - name: forge gap (trace coverage, contract drift, parity, placeholders, token drift)
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: $FORGE_CLI ci check gap --format github

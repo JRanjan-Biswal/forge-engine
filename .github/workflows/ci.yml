@@ -24,3 +24,11 @@ jobs:
       - run: pnpm build
       - name: Schemas are up to date
         run: pnpm schemas && git diff --exit-code schemas/
+
+  forge-checks:
+    # forge's own review-action and gap-action, run on this repo (dogfooding).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./actions/review
+      - uses: ./actions/gap

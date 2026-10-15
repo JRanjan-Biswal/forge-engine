@@ -881,6 +881,12 @@ await suite.guard("security", async () => {
     dirty.code === 1 && sameSet(report?.findings.map((f) => `${f.rule}@${f.file}:${f.line}`) ?? [], ["js.shell-interpolation@src/export.js:3", "js.sql-interpolation@src/export.js:5"]) && report.findings.every((f) => /^CWE-/.test(f.cwe)),
     dirty.all.slice(0, 400),
   );
+  const annotations = forge(S, "ci", "check", "review", "--format", "github");
+  suite.check(
+    "forge ci check review emits GitHub annotations for both sinks and exits 1",
+    annotations.code === 1 && /^::error file=src\/export\.js,line=3,title=critical%3A Shell command/m.test(annotations.out) && /^::error file=src\/export\.js,line=5,title=critical%3A SQL built/m.test(annotations.out),
+    annotations.all.slice(0, 400),
+  );
   const reviews = readJson(join(S, ".forge", "reviews", "findings.json"));
   suite.check("--record files them into the reviews artifact", reviews.findings.filter((f) => f.category.startsWith("security:")).length === 2, JSON.stringify(reviews.findings.map((f) => f.id)));
   writeFileSync(join(S, "src", "export.js"), "export const x = 1;\n");

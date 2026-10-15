@@ -87,7 +87,7 @@ export const RULES: Rule[] = [
     severity: "critical",
     cwe: "CWE-78",
     langs: ["js"],
-    pattern: /(?:(?<![.\w$])|\b(?:child_process|childProcess|cp)\.)(?:exec|execSync)\s*\(\s*(?:`[^`]*\$\{|["'][^"']*["']\s*\+|[A-Za-z_$][\w$.]*\s*\+)/,
+    pattern: /(?:(?<![.\w$])|\b(?:child_process|childProcess|cp)\.|require\(\s*["'](?:node:)?child_process["']\s*\)\.)(?:exec|execSync)\s*\(\s*(?:`[^`]*\$\{|["'][^"']*["']\s*\+|[A-Za-z_$][\w$.]*\s*\+)/,
     fix: "Use execFile/spawn with an argument array and no shell; validate arguments against an allow-list.",
   },
   {
