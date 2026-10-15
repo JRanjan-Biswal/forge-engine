@@ -36,4 +36,4 @@ Follow `rules/process-lifecycle.md`. Before starting servers, watchers, test run
 - Every gate check must fail loudly with an actionable message. Unconfigured inputs fail (or skip when `optional`) — never pass silently.
 - No new dependency without a clear need; the runtime must stay `npx`-installable and fast.
 - Memory is committed to git: anything written to `.forge/` passes the secret scanner.
-- New agents ship with an output schema, a rubric and eval cases (see `../plan/03-agent-roster.md` if present).
+- New agents ship with an output schema, a rubric and eval cases.
