@@ -76,7 +76,7 @@ if (enabled("claude")) {
     suite.check("/forge-engine:forge slash command is registered", slash.length > 0, JSON.stringify((init?.slash_commands ?? []).filter((c) => /forge/.test(c))));
     const agents = (init?.agents ?? []).filter((a) => /conductor/.test(a));
     suite.check("conductor agent is registered", agents.length > 0, JSON.stringify(init?.agents));
-    const toolPrefix = tools[0]?.split("__").slice(0, 2).join("__") ?? "mcp__plugin_forge_forge";
+    const toolPrefix = tools[0]?.split("__").slice(0, 2).join("__") ?? "mcp__plugin_forge-engine_forge-engine";
 
     r = await shAsync("claude", ["-p", TASK, ...base, "--allowedTools", toolPrefix, "--output-format", "json"], { cwd: dir, env, timeoutMs: 420_000 });
     writeText(join(dir, "task-output.json"), r.all);
@@ -116,7 +116,7 @@ if (wanted.includes("claude-validate")) {
         "--plugin-dir", FORGE,
         "--model", "sonnet",
         "--max-budget-usd", budget,
-        "--allowedTools", "mcp__plugin_forge_forge,WebSearch,WebFetch,Task,Agent",
+        "--allowedTools", "mcp__plugin_forge-engine_forge-engine,WebSearch,WebFetch,Task,Agent",
         "--output-format", "json",
       ],
       { cwd: dir, env, timeoutMs: 1_500_000 },
@@ -168,12 +168,12 @@ if (enabled("codex")) {
       "--skip-git-repo-check",
       "-C", dir,
       "-s", "workspace-write",
-      "-c", `mcp_servers.forge.command=${JSON.stringify(SERVER[0])}`,
-      "-c", `mcp_servers.forge.args=[${SERVER.slice(1).map((a) => JSON.stringify(a)).join(",")}]`,
-      "-c", `mcp_servers.forge.env={FORGE_ROOT=${JSON.stringify(dir)},FORGE_HOME=${JSON.stringify(FORGE_HOME)}}`,
+      "-c", `mcp_servers.forge-engine.command=${JSON.stringify(SERVER[0])}`,
+      "-c", `mcp_servers.forge-engine.args=[${SERVER.slice(1).map((a) => JSON.stringify(a)).join(",")}]`,
+      "-c", `mcp_servers.forge-engine.env={FORGE_ROOT=${JSON.stringify(dir)},FORGE_HOME=${JSON.stringify(FORGE_HOME)}}`,
       "-c", 'approval_policy="never"',
       // Codex asks before every MCP tool call unless that tool is approved; approve the ones this task uses.
-      ...["project_init", "forge_status", "stage_start", "artifact_write", "stage_complete", "ledger_add"].flatMap((tool) => ["-c", `mcp_servers.forge.tools.${tool}.approval_mode="approve"`]),
+      ...["project_init", "forge_status", "stage_start", "artifact_write", "stage_complete", "ledger_add"].flatMap((tool) => ["-c", `mcp_servers.forge-engine.tools.${tool}.approval_mode="approve"`]),
       TASK,
     ];
     const r = await shAsync("codex", args, { cwd: dir, env: process.env, timeoutMs: 600_000, input: "" });
@@ -190,7 +190,7 @@ if (enabled("opencode")) {
     mkdirSync(dir, { recursive: true });
     writeJson(join(dir, "opencode.json"), {
       $schema: "https://opencode.ai/config.json",
-      mcp: { forge: { type: "local", command: SERVER, enabled: true, environment: { FORGE_ROOT: dir, FORGE_HOME } } },
+      mcp: { "forge-engine": { type: "local", command: SERVER, enabled: true, environment: { FORGE_ROOT: dir, FORGE_HOME } } },
     });
     // e.g. FORGE_E2E_OPENCODE_MODEL=xai/grok-4.7 to run the same test on Grok.
     const model = process.env.FORGE_E2E_OPENCODE_MODEL ?? "opencode/big-pickle";

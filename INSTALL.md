@@ -59,7 +59,7 @@ or inside Claude Code: `/plugin install forge-engine --marketplace JRanjan-Biswa
 
 **Check it works:**
 
-- `/plugin list` shows `forge-engine@forge-engine` enabled; `/mcp` shows the `forge` server connected.
+- `/plugin list` shows `forge-engine@forge-engine` enabled; `/mcp` shows the `forge-engine` server connected.
 - `/forge-engine:forge` prints the pipeline status (`forge-engine init` the project first, or let the conductor do it).
 - More commands: `/forge-engine:validate <idea>`, `/forge-engine:design`, `/forge-engine:build`, `/forge-engine:review`, `/forge-engine:security`, `/forge-engine:qa`, `/forge-engine:ship`, `/forge-engine:adopt` (existing codebases). Agents appear as `forge-engine:<name>` — conductor, security-reviewer, qa-engineer, devops-engineer and the rest.
 
@@ -71,7 +71,7 @@ or inside Claude Code: `/plugin install forge-engine --marketplace JRanjan-Biswa
 codex plugin marketplace add JRanjan-Biswal/forge-engine
 codex plugin add forge-engine@forge-engine
 codex plugin list --json          # forge-engine@forge-engine … "enabled": true
-codex mcp list                    # forge  npx --yes forge-engine@<version> mcp
+codex mcp list                    # forge-engine  npx --yes forge-engine@<version> mcp
 ```
 
 Restart Codex (or open `/plugins`). You get forge's **MCP server** (pipeline, memory, evidence, design, security, QA and deploy tools) and its **skills** — the playbooks: validate-idea, design-system, code-review, security-review, qa-e2e, ship-release, … Codex has no Claude-style slash commands or subagents, so ask in plain words:
@@ -85,16 +85,18 @@ The server explains its protocol when the agent connects, and the `guide` tool r
 Codex asks before each MCP tool call. Approve forge's tools when asked, or pre-approve the ones you trust in `~/.codex/config.toml` (one block per tool):
 
 ```toml
-[mcp_servers.forge.tools.forge_status]
+[mcp_servers.forge-engine.tools.forge_status]
 approval_mode = "approve"
 ```
+
+Updating from 0.1.2 or earlier: the server was called `forge` then — rename those blocks to `mcp_servers.forge-engine`.
 
 **Update:** `codex plugin marketplace upgrade forge-engine && codex plugin add forge-engine@forge-engine` · **Remove:** `codex plugin remove forge-engine@forge-engine && codex plugin marketplace remove forge-engine`.
 
 **MCP only** (no plugin), in `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.forge]
+[mcp_servers.forge-engine]
 command = "npx"
 args = ["--yes", "forge-engine", "mcp"]
 ```
@@ -106,13 +108,13 @@ The server is `npx --yes forge-engine mcp` (stdio); it exits when the client dis
 Gemini CLI (`~/.gemini/settings.json`), Cursor (`~/.cursor/mcp.json` or `.cursor/mcp.json`), Windsurf and most others:
 
 ```json
-{ "mcpServers": { "forge": { "command": "npx", "args": ["--yes", "forge-engine", "mcp"] } } }
+{ "mcpServers": { "forge-engine": { "command": "npx", "args": ["--yes", "forge-engine", "mcp"] } } }
 ```
 
 OpenCode (`opencode.json`):
 
 ```json
-{ "mcp": { "forge": { "type": "local", "command": ["npx", "--yes", "forge-engine", "mcp"], "enabled": true } } }
+{ "mcp": { "forge-engine": { "type": "local", "command": ["npx", "--yes", "forge-engine", "mcp"], "enabled": true } } }
 ```
 
 Check your client's MCP documentation for the exact file location.
@@ -159,11 +161,11 @@ Then, in Claude Code, `/forge-engine:forge "a habit tracker for busy professiona
 |---|---|
 | `forge: command not found`, or Foundry's `forge` runs | use `forge-engine`, or `npx forge-engine …` |
 | `npx forge-engine@x.y.z mcp` → `notarget` / 404 | that version is not published (yet) — update the plugin, or `npm i -g forge-engine` |
-| `/mcp` doesn't list `forge` | restart Claude Code; `claude plugin list` must show it enabled |
-| Codex doesn't see the tools | restart Codex; `codex mcp list` must show `forge`; the first start downloads the package (needs network once) |
+| `/mcp` doesn't list `forge-engine` | restart Claude Code; `claude plugin list` must show it enabled |
+| Codex doesn't see the tools | restart Codex; `codex mcp list` must show `forge-engine`; the first start downloads the package (needs network once) |
 | `forge design shots`: no browser found | install Chrome, or `npx playwright install chromium-headless-shell`, or set `FORGE_BROWSER` |
 | `forge deploy` blocked: not logged in | run the login it names (`vercel login`, `fly auth login`, …) — forge never fakes a deploy |
-| Working **on forge itself** (inside this repo): the Codex plugin's server doesn't start | npx sees the repo's own `package.json` (also named forge-engine) — in this repo use the local build: `codex mcp add forge -- node <repo>/dist/cli.js mcp` |
+| Working **on forge itself** (inside this repo): the Codex plugin's server doesn't start | npx sees the repo's own `package.json` (also named forge-engine) — in this repo use the local build: `codex mcp add forge-engine -- node <repo>/dist/cli.js mcp` |
 | Anything else | `forge-engine doctor`, then open an issue: https://github.com/JRanjan-Biswal/forge-engine/issues |
 
 ## Uninstall

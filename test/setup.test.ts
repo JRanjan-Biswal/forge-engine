@@ -114,8 +114,8 @@ describe("plugin manifests", () => {
     expect(json(".claude-plugin/marketplace.json")).toMatchObject({ name: "forge-engine", plugins: [{ name: "forge-engine", source: "./", version: pkg.version }] });
     expect(json(".agents/plugins/marketplace.json")).toMatchObject({ name: "forge-engine", plugins: [{ name: "forge-engine", version: pkg.version, source: { source: "local", path: "./" } }] });
     // Codex starts plugin MCP servers in the session's cwd and does not expand a plugin-root variable: it must be path-independent.
-    expect(json(".codex-mcp.json").mcpServers.forge).toEqual({ command: "npx", args: ["--yes", `forge-engine@${pkg.version}`, "mcp"] });
-    expect(json(".mcp.json").mcpServers.forge).toEqual({ command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp.mjs"] });
+    expect(json(".codex-mcp.json").mcpServers["forge-engine"]).toEqual({ command: "npx", args: ["--yes", `forge-engine@${pkg.version}`, "mcp"] });
+    expect(json(".mcp.json").mcpServers["forge-engine"]).toEqual({ command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp.mjs"] });
     expect(codex).toMatchObject({ skills: "./skills/", mcpServers: "./.codex-mcp.json" });
     for (const file of ["scripts/mcp.mjs", ".codex-plugin", ".codex-mcp.json", ".agents", ".claude-plugin", ".mcp.json", "skills", "INSTALL.md"]) {
       expect(pkg.files, file).toContain(file);

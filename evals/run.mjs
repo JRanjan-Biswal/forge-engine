@@ -59,7 +59,7 @@ for (const task of tasks) {
       "--plugin-dir", FORGE,
       "--model", opts.model,
       "--max-budget-usd", opts.budget,
-      "--allowedTools", "mcp__plugin_forge_forge,WebSearch,WebFetch,Task,Agent",
+      "--allowedTools", "mcp__plugin_forge-engine_forge-engine,WebSearch,WebFetch,Task,Agent",
       "--output-format", "json",
     ],
     { cwd: dir, env, timeoutMs: 1_800_000 },

@@ -31,7 +31,7 @@ execFileSync("tar", ["-xzf", join(WORK, filename), "-C", WORK]);
 const pkg = join(WORK, "package");
 
 // 2. Claude Code only: run the bundled server; Codex installs from main (its server must be path-independent).
-writeFileSync(join(pkg, ".mcp.json"), `${JSON.stringify({ mcpServers: { forge: { command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/dist/cli.js", "mcp"] } } }, null, 2)}\n`);
+writeFileSync(join(pkg, ".mcp.json"), `${JSON.stringify({ mcpServers: { "forge-engine": { command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/dist/cli.js", "mcp"] } } }, null, 2)}\n`);
 for (const codexOnly of [".codex-plugin", ".codex-mcp.json", ".agents", "scripts"]) rmSync(join(pkg, codexOnly), { recursive: true, force: true });
 // Type declarations are for library users, not the running plugin.
 const dropTypes = (dir) => {
