@@ -4,7 +4,7 @@
 
 forge is an open-source product pipeline for coding agents. Instead of a bag of prompts, it gives your agent (Claude Code, Codex, Gemini CLI, Cursor, or anything that speaks MCP) a **gated, resumable pipeline**: every stage writes a schema-validated artifact, every stage has a machine-checked gate, and every decision lands in a ledger that the next session — in any tool — can recall.
 
-> **Status: alpha (v0.1.0-alpha).** The runtime spine is here: state machine, gates, artifacts, decision ledger, memory (with graphify), traceability and gap analysis, MCP server, CLI, and the Claude Code plugin with the conductor agent. Department agents (validation, design, motion, frontend, backend, mobile, QA…) land in the next waves — see [Roadmap](#roadmap).
+> **Status: early (v0.1.0).** Working today: the gated 14-stage pipeline (state machine, gates, artifacts, decision ledger, memory with graphify), the evidence-checked validate stage, the design engine (tokens, contrast, screenshot critique), stack packs (Next.js, Expo, FastAPI, Hono, Supabase), code and security review, QA coverage, CI generation, deploy with real post-deploy checks, contract-drift and parity gap checks — as a Claude Code plugin, a Codex plugin, an MCP server and a CLI. Still to come: mobile/AI/growth packs, more host adapters, published benchmarks — see [Roadmap](#roadmap).
 
 ## Why
 

@@ -9,7 +9,7 @@
     {
       "name": "forge-engine",
       "source": "./",
-      "version": "0.1.0-alpha.0",
+      "version": "0.1.0",
       "description": "Idea → validated → designed → built → verified → shipped, with gates, graph memory, stack packs, review, QA and deploy."
     }
   ]

@@ -1,6 +1,6 @@
 {
   "name": "forge-engine",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0",
   "description": "forge — idea → validated → designed → built → verified → shipped. A gated, memory-backed product pipeline for Claude Code, Codex, Gemini, Cursor and any MCP agent.",
   "type": "module",
   "license": "MIT",
