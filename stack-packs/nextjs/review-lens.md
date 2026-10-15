@@ -11,6 +11,7 @@
 - **Styling:** Tailwind with the forge tokens (`@import` of `design/dist/tailwind.css` in `src/app/globals.css`); no hex/rgb literals in components.
 - **Images & fonts:** `next/image` with width/height or `fill` + `sizes`; `next/font` for fonts (no layout shift).
 - **Env:** only `NEXT_PUBLIC_*` reaches the browser — never put secrets behind that prefix. Read env in one module and validate it at startup.
+- **Security headers** in `next.config.ts` `headers()` for every route: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`, `X-Frame-Options: DENY`; set `poweredByHeader: false`. The CSP is nonce-based and set in `proxy.ts` (generate a nonce per request, pass it via a request header, `script-src 'self' 'nonce-…' 'strict-dynamic'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`). Check the running app with `forge security headers <url>`.
 - **Tests:** Vitest + Testing Library for client components and pure logic (async Server Components are covered by Playwright), Playwright for story-level flows.
 
 ## Review lens
@@ -21,6 +22,8 @@
 - [ ] Each screen has loading, error, empty and success states (route files or explicit UI) and they are reachable in tests.
 - [ ] Mutations revalidate or redirect so the UI cannot show stale data.
 - [ ] No hard-coded colours, spacing or fonts — tokens only; images use `next/image` with dimensions.
+- [ ] Security headers and a nonce-based CSP are set; `poweredByHeader: false`; `forge security headers` passes against the running app.
+- [ ] No `dangerouslySetInnerHTML` without DOMPurify; redirects only to relative paths or allow-listed hosts.
 - [ ] No `fetch` to the app's own route handlers from Server Components.
 - [ ] No placeholder/mock data in product code (rules/no-fake-data.md).
 - [ ] Accessibility: semantic elements, labels on inputs, focus visible, keyboard paths in Playwright specs.

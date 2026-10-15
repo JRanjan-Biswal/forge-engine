@@ -16,6 +16,8 @@ import { buildDesign, loadTokens } from "./design/tokens.js";
 import { buildPrototype } from "./design/prototype.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./build/tasks.js";
 import { detectStacks, listPacks, loadPack, readLens, scaffoldPlan, scaffoldStack, stackCommands, useStacks } from "./build/stacks.js";
+import { checkHeaders, blockingHeaders } from "./security/headers.js";
+import { blocking, recordFindings, scanSecurity } from "./security/scan.js";
 import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "./build/workers.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
 import { scoreValidation, validationTemplate } from "./core/validation.js";
@@ -77,6 +79,11 @@ Build (Phase 4)
   workers run [--host claude|codex|gemini|opencode] [--max <n>] [--tasks a,b]
                                        run ready tasks headless, one git worktree each (default max 1)
   merge [<id> …]                       merge done task worktrees in wave order: tests in the worktree, then --no-ff
+
+Security
+  security scan [--record]             static scan: injection sinks, committed secrets, env files (exit 1 at security.failOn)
+                                       --record files new findings into the reviews artifact
+  security headers <url>               live check: CSP, HSTS, clickjacking, nosniff, cookies, CORS, info leaks
 
 Stacks
   stack [list]                         stack packs, what this repo has, and what is configured
@@ -151,6 +158,7 @@ const OPTIONS = {
   dir: { type: "string" },
   pm: { type: "string" },
   run: { type: "boolean" },
+  record: { type: "boolean" },
 } as const;
 
 export interface CliIO {
@@ -697,6 +705,42 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
           for (const r of results) io.out(`${r.status === "done" ? "✓" : "✗"} ${r.task} (${r.seconds}s${r.timedOut ? ", timed out" : ""}) → ${r.worktree}`);
         });
         return results.every((r) => r.status === "done") ? 0 : 1;
+      }
+
+      case "security": {
+        const f = forge();
+        const { failOn, ignore } = f.config().security;
+        if (args[0] === "scan") {
+          const result = scanSecurity(f.root, { ignore });
+          const recorded = opts.record ? recordFindings(f.root, result) : undefined;
+          const blockers = blocking(result, failOn);
+          print({ ...result, failOn, blocking: blockers.length, ...(recorded ? { recorded } : {}) }, () => {
+            for (const x of result.findings) {
+              io.out(`${x.severity.toUpperCase().padEnd(8)} ${x.rule.padEnd(28)} ${x.file}:${x.line}  ${x.title} [${x.cwe}]`);
+              io.out(`         ${x.snippet}`);
+              io.out(`         fix: ${x.fix}`);
+            }
+            for (const s of result.invalidSuppressions) io.out(`! ${s.file}:${s.line} ${s.text}`);
+            const c = result.counts;
+            io.out(`\n${result.filesScanned} files · ${c.critical} critical · ${c.high} high · ${c.medium} medium · ${c.low} low · ${result.suppressed.length} suppressed with a reason`);
+            if (recorded) io.out(`Recorded ${recorded.added} new finding(s) in the reviews artifact (${recorded.total} total).`);
+            io.out(blockers.length ? `FAIL — ${blockers.length} at ${failOn} or above (security.failOn)` : `PASS — nothing at ${failOn} or above`);
+          });
+          return blockers.length ? 1 : 0;
+        }
+        if (args[0] === "headers") {
+          const url = need(args[1] ?? f.config().security.url, "URL (or security.url in forge.config.yaml)");
+          const report = await checkHeaders(url);
+          const blockers = blockingHeaders(report, failOn);
+          print({ ...report, failOn, blocking: blockers.length }, () => {
+            io.out(`${report.url} → ${report.status} ${report.contentType || "(no content-type)"} [${report.kind}]`);
+            const icon = { pass: "✓", fail: "✗", warn: "!", info: "–" } as const;
+            for (const c of report.checks) io.out(`  ${icon[c.status]} ${c.id.padEnd(20)} ${c.status === "pass" || c.status === "info" ? "" : `${c.severity} — `}${c.detail}${c.fix && c.status !== "pass" ? `\n      fix: ${c.fix}` : ""}`);
+            io.out(blockers.length ? `\nFAIL — ${blockers.length} check(s) at ${failOn} or above` : `\nPASS — nothing failing at ${failOn} or above`);
+          });
+          return blockers.length ? 1 : 0;
+        }
+        throw new UsageError("Usage: forge security scan [--record] | forge security headers <url>");
       }
 
       case "stack": {

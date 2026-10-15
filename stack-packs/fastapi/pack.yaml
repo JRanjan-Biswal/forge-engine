@@ -23,16 +23,20 @@ commands:
       requires: { dep: ruff }
     - run: "{python} -m mypy ."
       requires: { dep: mypy }
+  audit:
+    - run: "{python} -m pip_audit"
+      requires: { dep: pip-audit }
 fixes:
   build: "put the FastAPI app in app/main.py (`app = FastAPI()`)"
   test: "uv add --dev pytest (TestClient needs httpx, which fastapi[standard] includes) and add tests/ (https://fastapi.tiangolo.com/tutorial/testing/)"
   lint: "uv add --dev ruff"
+  audit: "uv add --dev pip-audit (checks installed packages against the PyPI advisory database)"
 scaffold:
   command: "uv init --app --no-workspace --vcs none {dir}"
   docs: https://fastapi.tiangolo.com/tutorial/
   then:
     - 'uv add "fastapi[standard]"'
-    - "uv add --dev pytest ruff"
+    - "uv add --dev pytest ruff pip-audit"
 tokens: none
 qa: pytest with FastAPI's TestClient per endpoint (contract status codes and error shapes); schemathesis against the OpenAPI document for fuzzing.
 layout:

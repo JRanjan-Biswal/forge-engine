@@ -257,6 +257,46 @@
             ],
             "additionalProperties": false
           }
+        },
+        "audit": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "run": {
+                "type": "string",
+                "minLength": 1
+              },
+              "requires": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "script": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dep": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "file": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "bin": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "run"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
@@ -270,7 +310,8 @@
           "build",
           "test",
           "e2e",
-          "lint"
+          "lint",
+          "audit"
         ]
       },
       "additionalProperties": {

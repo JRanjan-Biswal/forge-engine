@@ -109,6 +109,20 @@ forge stack show fastapi              # conventions and review lens
 
 Workers are capped (`workers.maxConcurrent`, default 1), run in their own process groups with timeouts, and mark tasks done or blocked; review and merge follow. The verify stage runs a reviewer council → fixer (regression test first) → adversarial verifier loop, with a scientific debugger and a test strategist.
 
+## Code & security review
+
+Two reviewer skills ship with forge — `code-review` and `security-review` — each with an agent (`code-reviewer`, `security-reviewer`), a slash command (`/forge:review`, `/forge:security`) and, for security, a rubric and an always-on `secure-by-default` rule for builders. The verify gate doesn't trust the reviewers' word: it re-runs the checks itself.
+
+```bash
+forge security scan             # code/SQL/NoSQL/shell/template injection, XSS, SSRF, path traversal, open redirects,
+                                # header injection, unsafe deserialization, TLS off, CORS+credentials, secrets, .env files
+forge security scan --record    # file new findings into the reviews artifact for the review → fix → verify loop
+forge security headers http://localhost:3000   # CSP, HSTS, clickjacking, nosniff, Referrer/Permissions-Policy,
+                                               # COOP, cookie flags, CORS with a foreign Origin, version leaks
+```
+
+Every finding carries file:line, CWE and a fix. A justified exception needs an inline `forge-security-ignore <rule> -- <reason>`; suppressions without a reason are ignored. Set `security.url` to have the verify gate check the running app's headers, and `commands.audit` (filled by `forge stack use`) for vulnerable dependencies.
+
 ## Existing products (brownfield)
 
 Most teams are mid-build, not starting from scratch. forge can adopt a product that already exists and keep an always-current understanding of it:

@@ -24,6 +24,9 @@ commands:
   lint:
     - run: "{run} lint"
       requires: { script: lint }
+  audit:
+    - run: "{audit}"
+      requires: { file: package.json }
 fixes:
   build: "{pm} add -D typescript and add a tsconfig.json"
   test: "{pm} add -D vitest and test routes with app.request() (https://hono.dev/docs/guides/testing)"

@@ -219,8 +219,11 @@ const STAGE_INPUTS: StageInput[] = [
     gate: [
       artifact("reviews"),
       builtin("review.noBlocking", "No open critical or high findings"),
+      builtin("security.scan", "Static security scan: no injection sinks, committed secrets or env files at security.failOn"),
+      builtin("security.headers", "Running app sends safe security headers, cookies and CORS (when security.url is set)"),
       { type: "command", id: "e2e", description: "commands.e2e exits 0", configKey: "commands.e2e", optional: true },
       { type: "command", id: "lint", description: "commands.lint exits 0", configKey: "commands.lint", optional: true },
+      { type: "command", id: "audit", description: "commands.audit exits 0", configKey: "commands.audit", optional: true },
     ],
   },
   {

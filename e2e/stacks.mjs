@@ -6,10 +6,11 @@
 //   node e2e/stacks.mjs [fastapi] [node-hono] [nextjs] [expo] [supabase] [--with-docker]
 // Writes e2e/runs/<timestamp>-stacks/REPORT.md and e2e/LATEST-stacks.md. Dependencies
 // (node_modules, .venv, build caches) are deleted after each stack; sources stay for inspection.
+import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
-import { CLI, E2E, FORGE, Suite, forgeCli, makeRunDir, pruneRuns, readJson, sh, tail, writeText } from "./lib.mjs";
+import { CLI, E2E, FORGE, Suite, forgeCli, makeRunDir, pidAlive, pruneRuns, readJson, sh, shAsync, tail, writeText } from "./lib.mjs";
 
 const ALL = ["fastapi", "node-hono", "nextjs", "expo", "supabase"];
 const wanted = process.argv.slice(2).filter((a) => !a.startsWith("--"));
@@ -46,6 +47,40 @@ const PREPARE = {
 
 /** Follow the pack's own fix hint for a missing test runner, as a task brief tells a builder to. */
 const ENABLE_TESTS = { nextjs: "pnpm add -D vitest" };
+
+/** Production server per stack, for the live security-header probe (started after the build, stopped right after). */
+const SERVE = {
+  nextjs: (port) => ["pnpm", ["exec", "next", "start", "-p", String(port), "-H", "127.0.0.1"], "/"],
+  fastapi: (port) => ["uv", ["run", "fastapi", "run", "app/main.py", "--host", "127.0.0.1", "--port", String(port)], "/health"],
+};
+
+async function probeHeaders(pack, dir) {
+  const port = 45000 + Math.floor(Math.random() * 2000);
+  const [cmd, args, path] = SERVE[pack](port);
+  const child = spawn(cmd, args, { cwd: dir, detached: true, stdio: "ignore", env: { ...process.env, NODE_ENV: "production" } });
+  const url = `http://127.0.0.1:${port}${path}`;
+  try {
+    let up = false;
+    for (let i = 0; i < 60 && !up; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      up = await fetch(url).then(() => true, () => false);
+    }
+    suite.check(`${pack} production server answered on ${url}`, up);
+    if (!up) return;
+    const r = await shAsync(process.execPath, [CLI, "security", "headers", url, "--json"], { cwd: dir, env: { ...process.env, ...ENV } });
+    const report = JSON.parse(r.out || "{}");
+    suite.check("live header probe ran against the real framework defaults", Array.isArray(report.checks), r.all.slice(0, 300));
+    const notable = (report.checks ?? []).filter((c) => c.status === "fail" || c.status === "warn").map((c) => `${c.id} (${c.severity}${c.status === "warn" ? ", warn" : ""})`);
+    suite.note(`${pack} defaults — ${report.kind}, ${report.blocking} blocking at high`, notable.join(", ") || "all checks pass");
+  } finally {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {}
+    for (let i = 0; i < 20 && pidAlive(child.pid); i++) await new Promise((r) => setTimeout(r, 250));
+    if (pidAlive(child.pid)) process.kill(-child.pid, "SIGKILL");
+    suite.check(`${pack} server process group stopped`, !pidAlive(child.pid), `pid ${child.pid}`);
+  }
+}
 
 const config = (root) => parse(readFileSync(join(root, "forge.config.yaml"), "utf8"));
 
@@ -111,6 +146,9 @@ for (const pack of packs) {
       const r = sh("sh", ["-c", command], { cwd: P, env: { ...process.env, CI: "1" }, timeout: LONG, maxBuffer: 64 * 1024 * 1024 });
       suite.check(`commands.${key} passes: \`${command}\` (${Math.round((Date.now() - t0) / 1000)} s)`, r.code === 0, tail(r.all, 20));
     }
+    const scan = JSON.parse(forge(P, "security", "scan", "--json").out || "{}");
+    suite.check("security scan of the generated app: nothing at high or above (no false positives)", scan.blocking === 0, JSON.stringify(scan.findings?.slice(0, 5)));
+    if (SERVE[pack]) await probeHeaders(pack, dir);
   });
   dropDependencies(P);
   suite.note("cleanup", "node_modules, .venv and build caches removed");

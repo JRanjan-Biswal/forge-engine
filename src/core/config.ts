@@ -26,6 +26,8 @@ export const ForgeConfig = z.object({
       test: OptionalCommand,
       e2e: OptionalCommand,
       lint: OptionalCommand,
+      /** Dependency vulnerability audit (e.g. pnpm audit --audit-level high). */
+      audit: OptionalCommand,
     })
     .prefault({}),
   gates: z
@@ -50,6 +52,19 @@ export const ForgeConfig = z.object({
           scanDirs: z.array(z.string()).default(["src", "app", "lib", "packages"]),
         })
         .prefault({}),
+    })
+    .prefault({}),
+  security: z
+    .object({
+      /** Lowest severity that fails the verify gate (static scan and header check). */
+      failOn: z.enum(["critical", "high", "medium", "low"]).default("high"),
+      /** Running app (local or preview) whose response headers, cookies and CORS the verify gate checks. */
+      url: z
+        .string()
+        .nullish()
+        .transform((value) => (value && value.trim() ? value.trim() : undefined)),
+      /** Paths (globs) the static scan skips, e.g. vendored code. */
+      ignore: z.array(z.string()).default([]),
     })
     .prefault({}),
   stages: z.object({ skip: z.array(z.string()).default([]) }).prefault({}),
@@ -100,6 +115,7 @@ commands:
   test:
   e2e:
   lint:
+  audit:                  # dependency vulnerabilities, e.g. pnpm audit --audit-level high
 
 gates:
   validate:
@@ -113,6 +129,11 @@ gates:
   gap:
     minCoverage: 0.95     # share of MVP story requirements traced to design, code and tests
     scanDirs: [src, app, lib, packages]
+
+security:
+  failOn: high            # critical | high | medium | low — static scan + header check severity that fails verify
+  url:                    # running app (local or preview) to check headers, cookies and CORS; empty skips that check
+  ignore: []              # globs the static scan skips, e.g. [vendor/**]
 
 stages:
   skip: []                # stage ids to leave out of this project's pipeline

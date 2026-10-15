@@ -80,21 +80,21 @@ describe("stack packs", () => {
     // No app module and no pytest → nothing runnable, and forge says so instead of guessing.
     const svc = stackCommands(root, "fastapi", "svc");
     expect(svc.commands).toEqual({});
-    expect(svc.missing.map((m) => m.key)).toEqual(["build", "test", "lint"]);
+    expect(svc.missing.map((m) => m.key)).toEqual(["build", "test", "lint", "audit"]);
   });
 
   it("derives only the commands the repo can run, with the right runners, and says how to enable the rest", () => {
     const root = monorepo();
     const web = stackCommands(root, "nextjs", "web");
     expect(web.packageManager).toBe("pnpm");
-    expect(web.commands).toEqual({ build: "pnpm build", test: "pnpm exec vitest run", lint: "pnpm lint" });
+    expect(web.commands).toEqual({ build: "pnpm build", test: "pnpm exec vitest run", lint: "pnpm lint", audit: "pnpm audit --prod --audit-level high" });
     expect(web.missing).toEqual([
       expect.objectContaining({ key: "e2e", why: "@playwright/test is not a dependency", fix: expect.stringMatching(/^pnpm dlx create-playwright/) }),
     ]);
 
     const api = stackCommands(root, "fastapi", "api");
     expect(api.commands).toEqual({ build: API_BUILD, test: "uv run python -m pytest -q" });
-    expect(api.missing.map((m) => m.key)).toEqual(["lint"]);
+    expect(api.missing.map((m) => m.key)).toEqual(["lint", "audit"]);
 
     // The template's `jest --watchAll` script is never chosen: jest runs one-shot.
     expect(stackCommands(root, "expo", "apps/mobile").commands.test).toBe("pnpm exec jest --ci --watchAll=false");

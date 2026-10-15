@@ -10,6 +10,7 @@
 - **Data:** SQLAlchemy 2.0 (async) or SQLModel with Alembic migrations; one session per request through a dependency; queries filtered by the caller's tenant/owner.
 - **Auth:** OAuth2/JWT via `fastapi.security`; check authorization in a dependency that every protected router declares, not inside handlers ad hoc.
 - **Tests:** pytest + `TestClient` (or `httpx.AsyncClient` with `ASGITransport`); override dependencies with `app.dependency_overrides` to use a real test database, not mocks of your own code.
+- **Security headers:** a small middleware (or `secure` package) adds `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`, `Referrer-Policy`, `Cache-Control: no-store` on authenticated responses, and `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` for JSON APIs; strip the `server` header in the ASGI server config. `CORSMiddleware` lists origins explicitly. Check with `forge security headers <url>`.
 - **Run:** `fastapi dev app/main.py` locally; `fastapi run` in production behind a process manager.
 
 ## Review lens
@@ -21,6 +22,8 @@
 - [ ] Writes that can be retried accept an idempotency key where the contract says so.
 - [ ] Secrets come from settings/env; CORS origins are explicit (no `*` with credentials).
 - [ ] Tests cover success, validation error, unauthorized and not-found per endpoint.
+- [ ] No f-string/`%`/`.format` SQL, `shell=True`, `eval`, `pickle`/`yaml.load` on input; file paths and redirect targets are allow-listed.
+- [ ] Security headers middleware present; `forge security scan` and `forge security headers` pass.
 - [ ] Generated OpenAPI matches `contracts/openapi.yaml`.
 
 ## Pitfalls

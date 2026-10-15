@@ -217,11 +217,11 @@ export function detectStacks(root: string): Detection[] {
 
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
 
-const RUNNERS: Record<PackageManager, { run: string; exec: string; dlx: string }> = {
-  pnpm: { run: "pnpm", exec: "pnpm exec", dlx: "pnpm dlx" },
-  npm: { run: "npm run", exec: "npx", dlx: "npx" },
-  yarn: { run: "yarn", exec: "yarn", dlx: "yarn dlx" },
-  bun: { run: "bun run", exec: "bunx", dlx: "bunx" },
+const RUNNERS: Record<PackageManager, { run: string; exec: string; dlx: string; audit: string }> = {
+  pnpm: { run: "pnpm", exec: "pnpm exec", dlx: "pnpm dlx", audit: "pnpm audit --prod --audit-level high" },
+  npm: { run: "npm run", exec: "npx", dlx: "npx", audit: "npm audit --omit=dev --audit-level=high" },
+  yarn: { run: "yarn", exec: "yarn", dlx: "yarn dlx", audit: "yarn npm audit --environment production --severity high" },
+  bun: { run: "bun run", exec: "bunx", dlx: "bunx", audit: "bun audit --audit-level=high" },
 };
 
 const LOCKFILES: [string, PackageManager][] = [

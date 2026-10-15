@@ -47,6 +47,19 @@ describe("MCP server", () => {
     expect((await call("stack_info", { pack: "rails" })).isError).toBe(true);
   });
 
+  it("runs the security scan and serves the reviewer skills", async () => {
+    const root = tempDir();
+    const { call } = await connect(root);
+    await call("project_init", { name: "sec-app" });
+    mkdirSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "src", "a.ts"), "const out = eval(req.body.code);\n");
+    const scan = JSON.parse((await call("security_scan", { record: true })).text) as { blocking: number; findings: { rule: string }[]; recorded: { added: number } };
+    expect(scan).toMatchObject({ blocking: 1, findings: [expect.objectContaining({ rule: "js.eval" })], recorded: { added: 1 } });
+    expect((await call("security_headers")).isError).toBe(true); // no url and no security.url
+    const guides = JSON.parse((await call("guide")).text) as string[];
+    expect(guides).toEqual(expect.arrayContaining(["skills/code-review", "skills/security-review", "rubrics/security", "rules/secure-by-default"]));
+  });
+
   it("serves the shipped playbooks through the guide tool, and only those", async () => {
     const { call } = await connect(tempDir());
     const list = JSON.parse((await call("guide")).text) as string[];

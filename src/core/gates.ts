@@ -22,6 +22,8 @@ import type { ProductModel } from "../schemas/product.js";
 import { listEpisodes } from "../memory/episodes.js";
 import { redactSecrets } from "../memory/secrets.js";
 import { computeGaps, scanPlaceholders } from "../trace/trace.js";
+import { blockingHeaders, checkHeaders } from "../security/headers.js";
+import { blocking, scanSecurity } from "../security/scan.js";
 import { ARTIFACTS, checkArtifact, loadArtifact } from "./artifacts.js";
 import type { ForgeConfig } from "./config.js";
 import { layout, nowIso, readJson } from "./paths.js";
@@ -267,7 +269,7 @@ function hasCycle(tasks: Tasks["tasks"]): string | null {
   return null;
 }
 
-type Builtin = (ctx: GateContext) => Outcome;
+type Builtin = (ctx: GateContext) => Outcome | Promise<Outcome>;
 
 /** Every (url, quote) pair cited by the validation scorecard and the competitor teardown. */
 function citedEvidence(ctx: GateContext): { url: string; quote: string; where: string }[] {
@@ -471,6 +473,40 @@ export const BUILTINS: Record<string, Builtin> = {
       .findings.filter((finding) => (finding.severity === "critical" || finding.severity === "high") && finding.status === "open")
       .map((finding) => `${finding.id} (${finding.severity}, ${finding.file})`);
     return listOrPass(blocking, "no open critical/high findings", "open blocking findings");
+  },
+
+  "security.scan": (ctx) => {
+    const { failOn, ignore } = ctx.config.security;
+    const result = scanSecurity(ctx.root, { ignore });
+    const blockers = blocking(result, failOn);
+    const extra = [
+      result.suppressed.length ? `${result.suppressed.length} suppressed with a reason` : "",
+      result.invalidSuppressions.length ? `${result.invalidSuppressions.length} suppression(s) ignored for lacking a reason` : "",
+    ].filter(Boolean);
+    const note = extra.length ? ` (${extra.join("; ")})` : "";
+    return blockers.length
+      ? fail(
+          `${blockers.length} finding(s) at ${failOn} or above${note} — run \`forge security scan\`:\n${blockers
+            .slice(0, 15)
+            .map((f) => `${f.severity} ${f.rule} ${f.file}:${f.line} — ${f.title}`)
+            .join("\n")}`,
+        )
+      : pass(`${result.filesScanned} files, nothing at ${failOn} or above (${result.counts.medium} medium, ${result.counts.low} low)${note}`);
+  },
+
+  "security.headers": async (ctx) => {
+    const { url, failOn } = ctx.config.security;
+    if (!url) return skip("security.url is not configured — set it to the running app (local or preview) to check headers, cookies and CORS");
+    let report;
+    try {
+      report = await checkHeaders(url);
+    } catch (error) {
+      return fail(`${errorMessage(error)} — start the app (and stop it afterwards) or point security.url at a preview deployment`);
+    }
+    const blockers = blockingHeaders(report, failOn);
+    return blockers.length
+      ? fail(`${url}: ${blockers.map((c) => `${c.id} (${c.severity}): ${c.detail}`).join("; ")}`)
+      : pass(`${url}: ${report.checks.filter((c) => c.status === "pass").length}/${report.checks.length} header checks pass, nothing failing at ${failOn} or above`);
   },
 
   "trace.coverage": (ctx) => {

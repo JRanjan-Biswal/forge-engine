@@ -29,6 +29,8 @@ export const StackCommand = z
      * Shell command, with placeholders filled from the detected tooling:
      * `{run}` package script runner (`pnpm`, `npm run`, `yarn`, `bun run`),
      * `{exec}` package binary runner (`pnpm exec`, `npx`, `yarn`, `bunx`),
+     * `{audit}` the package manager's audit of production dependencies at high severity
+     *   (dev tooling never ships; audit it separately when you want to),
      * `{python}` the project's Python (`uv run python`, `poetry run python`, `.venv/bin/python`, `python3`).
      */
     run: z.string().min(1),
@@ -39,7 +41,7 @@ export type StackCommand = z.infer<typeof StackCommand>;
 
 const CommandOptions = z.array(StackCommand).default([]);
 
-export const COMMAND_KEYS = ["build", "test", "e2e", "lint"] as const;
+export const COMMAND_KEYS = ["build", "test", "e2e", "lint", "audit"] as const;
 export type CommandKey = (typeof COMMAND_KEYS)[number];
 
 export const StackPack = z
@@ -68,7 +70,7 @@ export const StackPack = z
       .prefault({}),
     /** Gate commands, keyed like forge.config.yaml `commands`; the first option whose prerequisites hold wins. */
     commands: z
-      .object({ build: CommandOptions, test: CommandOptions, e2e: CommandOptions, lint: CommandOptions })
+      .object({ build: CommandOptions, test: CommandOptions, e2e: CommandOptions, lint: CommandOptions, audit: CommandOptions })
       .strict()
       .prefault({}),
     /** What to do when no option for a command is available yet. */

@@ -13,6 +13,8 @@ import { buildDesign, loadTokens } from "../design/tokens.js";
 import { buildPrototype } from "../design/prototype.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "../build/tasks.js";
 import { mergeTasks } from "../build/workers.js";
+import { blockingHeaders, checkHeaders } from "../security/headers.js";
+import { blocking, recordFindings, scanSecurity } from "../security/scan.js";
 import { detectStacks, listPacks, loadPack, readLens, scaffoldPlan, stackCommands, useStacks } from "../build/stacks.js";
 import { checkProduct, listPageAudits, loadProductMap, savePageAudit, syncProduct, type SyncResult } from "../product/sync.js";
 import { scoreValidation, validationTemplate } from "../core/validation.js";
@@ -40,7 +42,8 @@ Protocol:
 6. Never fabricate evidence, data, keys or results. Research with evidence_search (or your own web search), then save every quote you will cite with evidence_save — forge checks the quote against the source and rejects mismatches. Cite only saved evidence. Unknown research answers stay "unknown"; missing credentials become blockers (blocker_add). Start validation from validation_template and compute the score with validation_score.
 7. Existing products (brownfield): product_adopt once, then product_sync after code changes — the understand gate fails on a stale map. Read product_map and the product model before changing anything; audit pages with skills/pro-page-complete and record them with page_audit_write.
 8. Protect the machine's RAM: call process_snapshot before starting any server, watcher, test runner or browser and reuse what is already running; prefer one-shot commands to watch mode; run one heavy job at a time; stop every process you start (and its children) as soon as it is no longer needed, and verify it exited before you finish. Never kill processes you did not start.
-9. Stacks: in the architect stage call stack_list, then stack_use to record the stacks and their gate commands (only commands the repo can actually run are filled). Builders follow the stack's Conventions (included in task_brief); reviewers check the stack's Review lens from stack_info.`;
+9. Stacks: in the architect stage call stack_list, then stack_use to record the stacks and their gate commands (only commands the repo can actually run are filled). Builders follow the stack's Conventions (included in task_brief); reviewers check the stack's Review lens from stack_info.
+10. Reviews: code review follows guide skills/code-review; security review follows guide skills/security-review — run security_scan (record=true) and, with the app running, security_headers; triage every finding with evidence. The verify gate re-runs the scan and the header check.`;
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -340,7 +343,7 @@ export function createForgeServer(root?: string): McpServer {
     {
       description:
         "Read forge's playbooks: skills (how to run a stage, e.g. skills/validate-idea), rubrics (quality checks, e.g. rubrics/validation) and rules. Call without a name to list them. Follow the skill for the stage you are working on.",
-      inputSchema: { name: z.string().optional().describe("e.g. skills/validate-idea, rubrics/prd, rules/no-fake-data") },
+      inputSchema: { name: z.string().optional().describe("e.g. skills/validate-idea, rubrics/prd, rules/no-fake-data, skills/security-review") },
     },
     guarded(({ name }: { name?: string }) => (name ? readGuide(name) : listGuides())),
   );
@@ -499,6 +502,38 @@ export function createForgeServer(root?: string): McpServer {
       inputSchema: { ids: z.array(z.string()).optional() },
     },
     guarded(({ ids }: { ids?: string[] }) => mergeTasks(forge().root, forge().config(), ids)),
+  );
+
+  server.registerTool(
+    "security_scan",
+    {
+      description:
+        "Deterministic security scan of the repo: code/SQL/NoSQL/shell/template injection, XSS sinks, path traversal, SSRF, open redirects, header injection, unsafe deserialization, disabled TLS verification, CORS with credentials, insecure cookies/randomness, committed secrets and env files. Each finding has file:line, CWE and a fix. record=true files new findings in the reviews artifact. The verify gate re-runs this scan; suppress only with an inline `forge-security-ignore <rule> -- <reason>` comment.",
+      inputSchema: { record: z.boolean().optional().describe("Add new findings to the reviews artifact") },
+    },
+    guarded(({ record }: { record?: boolean }) => {
+      const f = forge();
+      const { failOn, ignore } = f.config().security;
+      const result = scanSecurity(f.root, { ignore });
+      return { ...result, failOn, blocking: blocking(result, failOn).length, ...(record ? { recorded: recordFindings(f.root, result) } : {}) };
+    }),
+  );
+
+  server.registerTool(
+    "security_headers",
+    {
+      description:
+        "Live check of a running app (local dev server or preview URL): Content-Security-Policy strength, HSTS, clickjacking protection, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP, Set-Cookie flags (HttpOnly/Secure/SameSite), CORS with a foreign probe Origin (reflection, credentials) and X-Powered-By/Server leaks. Start the app first and stop it afterwards.",
+      inputSchema: { url: z.string().optional().describe("Defaults to security.url in forge.config.yaml") },
+    },
+    guarded(async ({ url }: { url?: string }) => {
+      const f = forge();
+      const { failOn, url: configured } = f.config().security;
+      const target = url ?? configured;
+      if (!target) throw new Error("Pass url, or set security.url in forge.config.yaml");
+      const report = await checkHeaders(target);
+      return { ...report, failOn, blocking: blockingHeaders(report, failOn).length };
+    }),
   );
 
   server.registerTool(

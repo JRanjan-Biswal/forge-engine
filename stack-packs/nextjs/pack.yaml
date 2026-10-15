@@ -28,6 +28,9 @@ commands:
       requires: { script: lint }
     - run: "{exec} tsc --noEmit"
       requires: { dep: typescript }
+  audit:
+    - run: "{audit}"
+      requires: { file: package.json }
 fixes:
   build: 'add "build": "next build" to package.json scripts'
   test: "{pm} add -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom vite-tsconfig-paths, then add vitest.config.mts (https://nextjs.org/docs/app/guides/testing/vitest)"

@@ -66,7 +66,7 @@ describe("command checks", () => {
     const root = tmpProject();
     writeArtifact(root, "reviews", { findings: [] });
     const { result, skipped } = await gate(root, "verify");
-    expect(skipped).toEqual(["e2e", "lint"]);
+    expect(skipped).toEqual(["security-headers", "e2e", "lint", "audit"]);
     expect(result.passed).toBe(true);
   });
 

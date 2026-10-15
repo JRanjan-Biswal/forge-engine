@@ -80,6 +80,12 @@ await suite.guard("packaging", async () => {
     "stack-packs/expo/review-lens.md",
     "stack-packs/fastapi/pack.yaml",
     "schemas/stack-pack.schema.json",
+    "skills/security-review/SKILL.md",
+    "skills/code-review/SKILL.md",
+    "agents/security-reviewer.md",
+    "agents/code-reviewer.md",
+    "commands/security.md",
+    "rules/secure-by-default.md",
     "README.md",
     "LICENSE",
   ]) {
@@ -690,7 +696,7 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 48 tools, each with an object input schema", tools.length === 48 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 50 tools, each with an object input schema", tools.length === 50 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
   let t = await call("guide", { name: "skills/validate-idea" });
   suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));
@@ -729,6 +735,10 @@ await suite.guard("MCP session", async () => {
   t = await call("process_snapshot");
   const snapshot = JSON.parse(t.text);
   suite.check("process_snapshot reports memory headroom and this project's processes", snapshot.memory?.totalGb > 0 && Array.isArray(snapshot.processes), t.text.slice(0, 200));
+  t = await call("guide", { name: "skills/security-review" });
+  suite.check("guide serves the security-review skill", !t.isError && /Security headers/.test(t.text) && /source/.test(t.text), t.text.slice(0, 120));
+  t = await call("security_scan");
+  suite.check("security_scan runs over MCP", !t.isError && typeof JSON.parse(t.text).filesScanned === "number", t.text.slice(0, 200));
   t = await call("stack_info", { pack: "fastapi" });
   suite.check("stack_info returns a pack's scaffold command and review lens", !t.isError && /uv init/.test(JSON.parse(t.text).scaffold.command) && /## Review lens/.test(JSON.parse(t.text).lens), t.text.slice(0, 200));
   const serverPid = transport.pid;
@@ -802,6 +812,54 @@ await suite.guard("stacks", async () => {
   forge(S, "artifact", "write", "tasks", "--file", join(TMP, "stack-tasks.json"));
   const brief = forge(S, "tasks", "brief", "T-1");
   suite.check("task brief carries the FastAPI conventions and commands", /## Stack: FastAPI/.test(brief.out) && /uv run python -m pytest -q/.test(brief.out) && /Contract first/.test(brief.out), brief.out.slice(0, 300));
+});
+
+// ── 6d ───────────────────────────────────────────────────────────────────────
+suite.begin("6d. Security review: static scan, review recording, verify gate, live header probe");
+await suite.guard("security", async () => {
+  const S = join(RUN, "security-app");
+  cpSync(join(E2E, "fixtures", "app"), S, { recursive: true });
+  forge(S, "init", "--name", "security-app");
+  const clean = forge(S, "security", "scan", "--json");
+  suite.check("the fixture app scans clean (no false positives)", clean.code === 0 && json(clean)?.findings.length === 0, clean.all.slice(0, 300));
+  writeFileSync(
+    join(S, "src", "export.js"),
+    'import { execSync } from "node:child_process";\nexport function exportCsv(req) {\n  return execSync(`zip /tmp/out.zip ${req.query.file}`);\n}\nexport const find = (db, req) => db.query(`SELECT * FROM habits WHERE name = \'${req.query.name}\'`);\n',
+  );
+  const dirty = forge(S, "security", "scan", "--record", "--json");
+  const report = json(dirty);
+  suite.check(
+    "command and SQL injection are found with file:line and CWE (exit 1)",
+    dirty.code === 1 && sameSet(report?.findings.map((f) => `${f.rule}@${f.file}:${f.line}`) ?? [], ["js.shell-interpolation@src/export.js:3", "js.sql-interpolation@src/export.js:5"]) && report.findings.every((f) => /^CWE-/.test(f.cwe)),
+    dirty.all.slice(0, 400),
+  );
+  const reviews = readJson(join(S, ".forge", "reviews", "findings.json"));
+  suite.check("--record files them into the reviews artifact", reviews.findings.filter((f) => f.category.startsWith("security:")).length === 2, JSON.stringify(reviews.findings.map((f) => f.id)));
+  writeFileSync(join(S, "src", "export.js"), "export const x = 1;\n");
+  suite.check("after the fix the scan passes", forge(S, "security", "scan").code === 0);
+
+  const port = 43000 + Math.floor(Math.random() * 2000);
+  const child = spawn(process.execPath, ["src/server.js"], { cwd: S, env: { ...process.env, PORT: String(port), HABIT_DB: join(RUN, "security-db.json") } });
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("server did not start within 10s")), 10_000);
+      child.stdout.on("data", (chunk) => String(chunk).includes("listening") && (clearTimeout(timer), resolve()));
+    });
+    const headers = await shAsync(process.execPath, [CLI, "security", "headers", `http://127.0.0.1:${port}/health`, "--json"], { cwd: S, env: { ...process.env, ...ENV } });
+    const h = json(headers);
+    suite.check(
+      "live header probe on the running app: JSON API, missing nosniff reported with a fix, CORS not granted",
+      h?.kind === "api" && h.checks.find((c) => c.id === "nosniff")?.status === "fail" && /nosniff/.test(h.checks.find((c) => c.id === "nosniff")?.fix ?? "") && h.checks.find((c) => c.id === "cors")?.status === "pass",
+      headers.all.slice(0, 400),
+    );
+    writeFileSync(join(S, "forge.config.yaml"), readFileSync(join(S, "forge.config.yaml"), "utf8").replace(/^ {2}url:.*$/m, `  url: "http://127.0.0.1:${port}/health"`).replace("failOn: high", "failOn: medium"));
+    const strict = await shAsync(process.execPath, [CLI, "security", "headers"], { cwd: S, env: { ...process.env, ...ENV } });
+    suite.check("with security.failOn: medium the missing nosniff header fails (exit 1, uses security.url)", strict.code === 1 && /FAIL/.test(strict.out), strict.all.slice(0, 300));
+  } finally {
+    child.kill("SIGTERM");
+    await new Promise((resolve) => (child.exitCode !== null ? resolve() : child.once("exit", resolve)));
+  }
+  suite.check("the app server started for the header probe has exited", !pidAlive(child.pid), `pid ${child.pid}`);
 });
 
 // ── 7 ────────────────────────────────────────────────────────────────────────
