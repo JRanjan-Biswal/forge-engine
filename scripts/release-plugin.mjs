@@ -72,14 +72,19 @@ execFileSync(
     "--chunk-names=chunk-[hash]",
     "--legal-comments=eof",
     "--log-level=warning",
-    // yaml's parser debug switches (they print YAML syntax tokens): off in the bundle.
-    "--define:process.env.LOG_TOKENS=undefined",
-    "--define:process.env.LOG_STREAM=undefined",
     // CommonJS dependencies inside an ES module bundle still call require().
     "--banner:js=import { createRequire as __forgeRequire } from \"node:module\"; const require = __forgeRequire(import.meta.url);",
   ],
   { cwd: ROOT, stdio: "inherit" },
 );
+// yaml's parser debug switches (they print YAML syntax tokens) are off in the bundle; after
+// that no bundled library may read the environment.
+for (const file of readdirSync(join(pkg, "dist", "vendor"))) {
+  const path = join(pkg, "dist", "vendor", file);
+  const code = readFileSync(path, "utf8").replace(/\b\w*process\.env\.LOG_(TOKENS|STREAM)\b/g, "undefined");
+  if (code.includes("process.env")) throw new Error(`dist/vendor/${file} reads the environment — review it before shipping`);
+  writeFileSync(path, code);
+}
 const rewriteImports = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
