@@ -44,6 +44,32 @@ const CommandOptions = z.array(StackCommand).default([]);
 export const COMMAND_KEYS = ["build", "test", "e2e", "lint", "audit"] as const;
 export type CommandKey = (typeof COMMAND_KEYS)[number];
 
+/** A place this stack can be deployed with its official CLI. Commands run in the stack directory. */
+export const DeployTarget = z
+  .object({
+    id: z.string().regex(/^[a-z0-9-]+$/),
+    name: z.string().min(1),
+    /** CLI that must be on PATH. */
+    bin: z.string().min(1),
+    /** Exits 0 only when the CLI is logged in (never prompts). */
+    auth: z.string().min(1),
+    /** How to log in when `auth` fails. */
+    login: z.string().min(1),
+    /** Files that must exist first (e.g. fly.toml, eas.json), with how to create them. */
+    requires: z.array(z.object({ file: z.string().min(1), create: z.string().min(1) }).strict()).default([]),
+    /** Deploy commands; a target without `preview` only deploys to production. */
+    preview: z.string().min(1).optional(),
+    production: z.string().min(1),
+    /** Regex that finds the deployed URL in the command's output (last match wins). */
+    url: z.string().min(1).optional(),
+    /** Header that lets the smoke test through deployment protection, from an env var. */
+    bypass: z.object({ header: z.string().min(1), env: z.string().min(1) }).strict().optional(),
+    rollback: z.string().min(1),
+    docs: z.url(),
+  })
+  .strict();
+export type DeployTarget = z.infer<typeof DeployTarget>;
+
 export const StackPack = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
@@ -94,6 +120,7 @@ export const StackPack = z
     /** Where things go — surfaced in task briefs. */
     layout: z.record(z.string(), z.string()).default({}),
     docs: z.array(z.url()).default([]),
+    deploy: z.array(DeployTarget).default([]),
   })
   .strict();
 export type StackPack = z.infer<typeof StackPack>;

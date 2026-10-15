@@ -18,12 +18,15 @@ import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./build/
 import { detectStacks, listPacks, loadPack, readLens, scaffoldPlan, scaffoldStack, stackCommands, useStacks } from "./build/stacks.js";
 import { checkHeaders, blockingHeaders } from "./security/headers.js";
 import { blocking, recordFindings, scanSecurity } from "./security/scan.js";
+import { qaCoverage, qaPlan } from "./qa/coverage.js";
+import { writeWorkflow } from "./ship/ci.js";
+import { deploy, deployPlan, releaseNotes } from "./ship/deploy.js";
 import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "./build/workers.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
 import { scoreValidation, validationTemplate } from "./core/validation.js";
 import { searchEvidence } from "./evidence/connectors.js";
 import { loadEvidence, saveEvidence } from "./evidence/store.js";
-import { Validation } from "./schemas/artifacts.js";
+import { Validation, type Release } from "./schemas/artifacts.js";
 import { errorMessage } from "./core/util.js";
 import { saveEpisode, type EpisodeInput } from "./memory/episodes.js";
 import { findGraphify, graphExplain, graphPathBetween, graphQuery, graphStatus, graphUpdate, GRAPHIFY_INSTALL_HINT } from "./memory/graphify.js";
@@ -79,6 +82,15 @@ Build (Phase 4)
   workers run [--host claude|codex|gemini|opencode] [--max <n>] [--tasks a,b]
                                        run ready tasks headless, one git worktree each (default max 1)
   merge [<id> …]                       merge done task worktrees in wave order: tests in the worktree, then --no-ff
+
+Ship & QA
+  qa plan                              one test case per MVP acceptance criterion (@S-1/AC1) with the tool and file to use
+  qa coverage [--link]                 which criteria have a tagged test; --link adds story → test trace links
+  ci [--force]                         write .github/workflows/forge.yml from the stacks' gate commands
+  deploy --plan [--prod]               targets per stack (Vercel, Fly, EAS, Supabase) and what is missing
+  deploy [--prod] [--only a,b]         deploy with the official CLIs, smoke-test, probe headers, run e2e on the URL,
+                                       write the release + notes (--prod needs "forge approve ship")
+  release notes                        release notes for the latest release
 
 Security
   security scan [--record]             static scan: injection sinks, committed secrets, env files (exit 1 at security.failOn)
@@ -159,6 +171,10 @@ const OPTIONS = {
   pm: { type: "string" },
   run: { type: "boolean" },
   record: { type: "boolean" },
+  link: { type: "boolean" },
+  prod: { type: "boolean" },
+  plan: { type: "boolean" },
+  only: { type: "string" },
 } as const;
 
 export interface CliIO {
@@ -705,6 +721,72 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
           for (const r of results) io.out(`${r.status === "done" ? "✓" : "✗"} ${r.task} (${r.seconds}s${r.timedOut ? ", timed out" : ""}) → ${r.worktree}`);
         });
         return results.every((r) => r.status === "done") ? 0 : 1;
+      }
+
+      case "qa": {
+        const root = forge().root;
+        if (args[0] === "plan") {
+          const cases = qaPlan(root);
+          print(cases, () => {
+            for (const c of cases) io.out(`@${c.id.padEnd(12)} ${c.tool.padEnd(10)} ${c.suggestedFile}\n    ${c.text}`);
+            io.out(`\n${cases.length} case(s). Put the tag in the test title (test("checks in @S-1/AC1", …)), a Maestro tags: entry, or a comment.`);
+          });
+          return 0;
+        }
+        if (args[0] === "coverage") {
+          const report = qaCoverage(root, { link: opts.link });
+          const min = forge().config().gates.qa.minCoverage;
+          print(report, () => {
+            for (const c of report.covered) io.out(`  ✓ ${c.id.padEnd(12)} ${c.files.join(", ")}`);
+            for (const m of report.missing) io.out(`  ✗ ${m.id.padEnd(12)} ${m.text}\n      → ${m.tool} in ${m.suggestedFile}`);
+            for (const u of report.unknownTags) io.out(`  ? @${u.tag} in ${u.file} matches no acceptance criterion`);
+            io.out(`\n${report.required - report.missing.length}/${report.required} covered (${Math.round(report.ratio * 100)}%, needs ${Math.round(min * 100)}%) across ${report.testFiles} test files${opts.link ? " · trace links added" : ""}`);
+          });
+          return report.ratio >= min ? 0 : 1;
+        }
+        throw new UsageError("Usage: forge qa plan | forge qa coverage [--link]");
+      }
+
+      case "ci": {
+        const result = writeWorkflow(forge().root, { force: opts.force });
+        print(result, () => {
+          io.out(result.written ? `Wrote ${result.path} — jobs: ${result.jobs.join(", ")}` : `${result.path} unchanged — jobs: ${result.jobs.join(", ")}`);
+          for (const n of result.notes) io.out(`  ! ${n}`);
+        });
+        return 0;
+      }
+
+      case "deploy": {
+        const root = forge().root;
+        const env = opts.prod ? "production" : "preview";
+        const only = opts.only ? opts.only.split(",").map((s) => s.trim()) : undefined;
+        if (opts.plan) {
+          const plan = deployPlan(root, env, only);
+          print(plan, () => {
+            for (const p of plan) {
+              io.out(`${p.problems.length ? "✗" : "✓"} ${p.pack} (${p.dir}) → ${p.target?.name ?? "no target"}: ${p.command ?? `no ${env} deploy`}`);
+              for (const problem of p.problems) io.out(`    ${problem}`);
+            }
+          });
+          return plan.every((p) => !p.problems.length) ? 0 : 1;
+        }
+        const result = await deploy(root, { env, only, onWait: () => io.err("forge: waiting for a free command slot…") });
+        print(result, () => {
+          for (const s of result.steps) io.out(`${s.status === "deployed" ? "✓" : s.status === "skipped" ? "–" : "✗"} ${s.pack} ${s.status}${s.url ? ` → ${s.url}` : ""}${s.status === "deployed" ? "" : `: ${s.detail.split("\n")[0]}`}`);
+          for (const c of result.checks) io.out(`  ${c.pass ? "✓" : "✗"} ${c.name}${c.detail && !c.pass ? ` — ${c.detail.split("\n")[0]}` : ""}`);
+          if (result.release) io.out(`\nRelease ${result.release.version} (${result.env}) recorded · notes: ${result.notesFile}`);
+          io.out(result.ok ? "PASSED" : "FAILED");
+        });
+        return result.ok ? 0 : 1;
+      }
+
+      case "release": {
+        if (args[0] !== "notes") throw new UsageError("Usage: forge release notes");
+        const root = forge().root;
+        const release = loadArtifact<Release>(root, "release");
+        if (!release) throw new Error("No release yet — run `forge deploy`");
+        io.out(releaseNotes(root, release));
+        return 0;
       }
 
       case "security": {

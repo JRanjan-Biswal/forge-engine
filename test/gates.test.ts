@@ -65,6 +65,9 @@ describe("command checks", () => {
   it("skips optional commands that are not configured", async () => {
     const root = tmpProject();
     writeArtifact(root, "reviews", { findings: [] });
+    writeArtifact(root, "prd", prd());
+    mkdirSync(join(root, "tests"), { recursive: true });
+    writeFileSync(join(root, "tests", "streak.test.ts"), 'test("check-in grows the streak @S-1/AC1", () => {});\ntest("reminder arrives @S-2/AC1", () => {});\n');
     const { result, skipped } = await gate(root, "verify");
     expect(skipped).toEqual(["security-headers", "e2e", "lint", "audit"]);
     expect(result.passed).toBe(true);

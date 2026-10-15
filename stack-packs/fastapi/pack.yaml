@@ -50,3 +50,15 @@ docs:
   - https://fastapi.tiangolo.com/
   - https://fastapi.tiangolo.com/tutorial/testing/
   - https://docs.astral.sh/uv/
+deploy:
+  - id: fly
+    name: Fly.io
+    bin: fly
+    auth: fly auth whoami
+    login: fly auth login
+    requires:
+      - { file: fly.toml, create: "fly launch --no-deploy (generates fly.toml and a Dockerfile; review both)" }
+    production: fly deploy --remote-only
+    url: "https://[a-z0-9-]+\\.fly\\.dev"
+    rollback: "fly releases --image, then fly deploy --image <previous image>"
+    docs: https://fly.io/docs/flyctl/deploy/

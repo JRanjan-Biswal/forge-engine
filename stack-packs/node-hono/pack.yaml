@@ -49,3 +49,15 @@ docs:
   - https://hono.dev/docs/
   - https://hono.dev/docs/guides/validation
   - https://hono.dev/docs/guides/testing
+deploy:
+  - id: fly
+    name: Fly.io
+    bin: fly
+    auth: fly auth whoami
+    login: fly auth login
+    requires:
+      - { file: fly.toml, create: "fly launch --no-deploy (generates fly.toml and a Dockerfile; review both)" }
+    production: fly deploy --remote-only
+    url: "https://[a-z0-9-]+\\.fly\\.dev"
+    rollback: "fly releases --image, then fly deploy --image <previous image>"
+    docs: https://fly.io/docs/flyctl/deploy/

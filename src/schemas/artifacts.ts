@@ -285,6 +285,11 @@ export const Release = z.object({
     .array(z.object({ name: z.string().min(1), pass: z.boolean(), detail: z.string().optional() }))
     .min(1),
   rollback: z.string().min(1),
+  /** Deploy target (pack target id, e.g. vercel) and who produced this record. */
+  target: z.string().optional(),
+  source: z.enum(["forge-deploy", "agent"]).optional(),
+  /** Release notes file, relative to the project root. */
+  notes: z.string().optional(),
 });
 export type Release = z.infer<typeof Release>;
 

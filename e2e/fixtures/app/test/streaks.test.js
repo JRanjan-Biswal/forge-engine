@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { createApp } from "../src/server.js";
 import { createStore } from "../src/store.js";
 
-test("S-2: GET /streaks lists every habit's streak", async () => {
+test("S-2: GET /streaks lists every habit's streak @S-2/AC1", async () => {
   const store = createStore(join(mkdtempSync(join(tmpdir(), "habit-")), "db.json"));
   const server = createApp(store).listen(0);
   try {

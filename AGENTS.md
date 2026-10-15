@@ -12,6 +12,8 @@ Instructions for coding agents (Codex, Claude Code, Gemini, Cursor, Copilot…) 
 - `agents/`, `commands/`, `rules/` — portable markdown content loaded by host plugins.
 - `src/build/` — task waves/briefs, worktrees + workers, and `stacks.ts` (stack-pack detection, gate commands, scaffolding).
 - `stack-packs/<id>/` — `pack.yaml` (schema: `src/schemas/stack.ts`) + `review-lens.md` with `## Conventions` (goes into task briefs) and `## Review lens`. A pack only fills a gate command when its `requires` (script, dep, file, bin) hold.
+- `src/security/` — static security scan (`rules.ts`, `scan.ts`) and the live header/cookie/CORS probe (`headers.ts`).
+- `src/qa/` — QA plan and tagged-test coverage; `src/ship/` — CI workflow generation and deploy/release (`deploy.ts`).
 - `test/` — vitest; every behaviour change needs a test. `test/helpers.ts` has fixtures.
 
 ## Commands

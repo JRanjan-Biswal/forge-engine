@@ -13,6 +13,9 @@ import { buildDesign, loadTokens } from "../design/tokens.js";
 import { buildPrototype } from "../design/prototype.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "../build/tasks.js";
 import { mergeTasks } from "../build/workers.js";
+import { qaCoverage, qaPlan } from "../qa/coverage.js";
+import { writeWorkflow } from "../ship/ci.js";
+import { deploy, deployPlan } from "../ship/deploy.js";
 import { blockingHeaders, checkHeaders } from "../security/headers.js";
 import { blocking, recordFindings, scanSecurity } from "../security/scan.js";
 import { detectStacks, listPacks, loadPack, readLens, scaffoldPlan, stackCommands, useStacks } from "../build/stacks.js";
@@ -502,6 +505,43 @@ export function createForgeServer(root?: string): McpServer {
       inputSchema: { ids: z.array(z.string()).optional() },
     },
     guarded(({ ids }: { ids?: string[] }) => mergeTasks(forge().root, forge().config(), ids)),
+  );
+
+  server.registerTool(
+    "qa_plan",
+    { description: "QA plan: one test case per MVP acceptance criterion, id S-1/AC1, with the tool (Playwright for web screens, Maestro for mobile, API tests otherwise) and a suggested file. Tests claim a case by putting @S-1/AC1 in the test title, a Maestro tags entry or a comment.", inputSchema: {} },
+    guarded(() => qaPlan(forge().root)),
+  );
+
+  server.registerTool(
+    "qa_coverage",
+    {
+      description: "Which acceptance criteria have a tagged test on disk, which are missing (with the suggested file), and tags that match nothing. link=true adds story → test verifiedBy trace links. The verify gate requires gates.qa.minCoverage (default 100%).",
+      inputSchema: { link: z.boolean().optional() },
+    },
+    guarded(({ link }: { link?: boolean }) => qaCoverage(forge().root, { link })),
+  );
+
+  server.registerTool(
+    "ci_generate",
+    { description: "Write .github/workflows/forge.yml from the configured stacks: one job per stack installing from its lockfile and running the same build/lint/test/audit/e2e commands as the gates, plus forge's security scan. Keeps an existing different file unless force.", inputSchema: { force: z.boolean().optional() } },
+    guarded(({ force }: { force?: boolean }) => writeWorkflow(forge().root, { force })),
+  );
+
+  server.registerTool(
+    "deploy_plan",
+    { description: "Deploy targets per configured stack (Vercel, Fly.io, EAS, Supabase) with the exact command and everything missing (CLI not installed, project not linked) with its fix. Read-only.", inputSchema: { env: z.enum(["preview", "production"]).optional() } },
+    guarded(({ env }: { env?: "preview" | "production" }) => deployPlan(forge().root, env ?? "preview")),
+  );
+
+  server.registerTool(
+    "deploy",
+    {
+      description:
+        "Deploy with the official CLIs (checks login first; missing login/link → blocked with the fix, never faked), then smoke-test the URL, probe its security headers and run commands.e2e against it, and write the release artifact + notes from those real checks. Defaults to preview; production requires the user's `forge approve ship`. Outward-facing: only call when the user asked to deploy.",
+      inputSchema: { env: z.enum(["preview", "production"]).optional(), only: z.array(z.string()).optional() },
+    },
+    guarded(({ env, only }: { env?: "preview" | "production"; only?: string[] }) => deploy(forge().root, { env: env ?? "preview", only })),
   );
 
   server.registerTool(

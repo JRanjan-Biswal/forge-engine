@@ -379,6 +379,106 @@
         "type": "string",
         "format": "uri"
       }
+    },
+    "deploy": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bin": {
+            "type": "string",
+            "minLength": 1
+          },
+          "auth": {
+            "type": "string",
+            "minLength": 1
+          },
+          "login": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requires": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "create": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "file",
+                "create"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "preview": {
+            "type": "string",
+            "minLength": 1
+          },
+          "production": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bypass": {
+            "type": "object",
+            "properties": {
+              "header": {
+                "type": "string",
+                "minLength": 1
+              },
+              "env": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "header",
+              "env"
+            ],
+            "additionalProperties": false
+          },
+          "rollback": {
+            "type": "string",
+            "minLength": 1
+          },
+          "docs": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "bin",
+          "auth",
+          "login",
+          "production",
+          "rollback",
+          "docs"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [

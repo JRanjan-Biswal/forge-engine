@@ -39,3 +39,14 @@ docs:
   - https://supabase.com/docs/guides/database/postgres/row-level-security
   - https://supabase.com/docs/guides/deployment/database-migrations
   - https://supabase.com/docs/guides/database/testing
+deploy:
+  - id: supabase
+    name: Supabase (database migrations)
+    bin: supabase
+    auth: supabase projects list
+    login: supabase login
+    requires:
+      - { file: supabase/.temp/project-ref, create: "supabase link --project-ref <your project ref>" }
+    production: supabase db push
+    rollback: "migrations are append-only: push a forward migration that reverts the change; restore a backup (PITR) for data loss"
+    docs: https://supabase.com/docs/reference/cli/supabase-db-push

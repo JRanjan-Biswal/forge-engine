@@ -86,6 +86,11 @@ await suite.guard("packaging", async () => {
     "agents/code-reviewer.md",
     "commands/security.md",
     "rules/secure-by-default.md",
+    "skills/qa-e2e/SKILL.md",
+    "skills/ship-release/SKILL.md",
+    "agents/devops-engineer.md",
+    "agents/qa-engineer.md",
+    "commands/ship.md",
     "README.md",
     "LICENSE",
   ]) {
@@ -433,7 +438,7 @@ await stage("gap", {
   },
 });
 
-async function smokeTest(dir) {
+async function smokeTest(dir, { keepRunning = false } = {}) {
   const port = 41000 + Math.floor(Math.random() * 2000);
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: dir,
@@ -460,16 +465,22 @@ async function smokeTest(dir) {
     const bad = await fetch(`${base}/checkins`, { method: "POST" });
     checks.push({ name: "missing habit → 400", pass: bad.status === 400 });
   } finally {
-    child.kill();
+    if (!keepRunning) child.kill();
   }
-  return { url: base, checks };
+  return { url: base, checks, child };
 }
+
+/** The released app stays up until the ship gate has re-checked its URL (release.live), then stops. */
+let releasedApp;
 
 await stage("ship", {
   checkpoint: true,
   initial: ["release-valid"],
   produce: async () => {
-    const smoke = await smokeTest(P);
+    const smoke = await smokeTest(P, { keepRunning: true });
+    releasedApp = smoke.child;
+    // The fixture app answers on /health only; the ship gate re-checks deploy.healthPath on the released URL.
+    writeFileSync(join(P, "forge.config.yaml"), readFileSync(join(P, "forge.config.yaml"), "utf8").replace(/^ {2}healthPath: \/.*$/m, "  healthPath: /health"));
     suite.check("ship: real smoke test against the running server", smoke.checks.every((c) => c.pass), JSON.stringify(smoke.checks));
     put("release", {
       version: "0.1.0",
@@ -481,6 +492,15 @@ await stage("ship", {
     });
   },
 });
+
+const qa = json(forge(P, "qa", "coverage", "--json"));
+suite.check("qa coverage: both MVP acceptance criteria are covered by the fixture's tagged tests", qa?.required === 2 && qa.ratio === 1 && qa.covered.every((c) => c.files.some((f) => f.startsWith("test/"))), JSON.stringify(qa?.covered));
+
+if (releasedApp) {
+  releasedApp.kill();
+  await new Promise((resolve) => (releasedApp.exitCode !== null ? resolve() : releasedApp.once("exit", resolve)));
+  suite.check("ship: the released app server stopped after the gate re-checked its URL", !pidAlive(releasedApp.pid), `pid ${releasedApp.pid}`);
+}
 
 await stage("launch", {
   initial: ["launch-valid"],
@@ -696,7 +716,7 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 50 tools, each with an object input schema", tools.length === 50 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 55 tools, each with an object input schema", tools.length === 55 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
   let t = await call("guide", { name: "skills/validate-idea" });
   suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));
@@ -811,6 +831,19 @@ await suite.guard("stacks", async () => {
   writeTmp("stack-tasks.json", JSON.stringify({ tasks: [{ id: "T-1", title: "Check-in route", dept: "backend", storyIds: [], files: ["api/app/routers/checkins.py"] }] }));
   forge(S, "artifact", "write", "tasks", "--file", join(TMP, "stack-tasks.json"));
   const brief = forge(S, "tasks", "brief", "T-1");
+  const ci = json(forge(S, "ci", "--json"));
+  const workflow = existsSync(join(S, ".github/workflows/forge.yml")) ? readFileSync(join(S, ".github/workflows/forge.yml"), "utf8") : "";
+  suite.check(
+    "forge ci writes a workflow with one job per stack running the gate commands, plus the security scan",
+    ci?.written && JSON.stringify(ci.jobs) === '["fastapi-api","nextjs-web","security"]' && /uv sync --frozen/.test(workflow) && /pnpm exec playwright test/.test(workflow) && /forge-engine security scan/.test(workflow),
+    JSON.stringify(ci?.jobs),
+  );
+  const plan = json(forge(S, "deploy", "--plan", "--json"));
+  suite.check(
+    "forge deploy --plan maps FastAPI → Fly.io and Next.js → Vercel, and names the missing fly.toml with its fix",
+    plan?.find((p) => p.pack === "fastapi")?.target?.id === "fly" && plan?.find((p) => p.pack === "nextjs")?.target?.id === "vercel" && plan.find((p) => p.pack === "fastapi").problems.some((x) => /fly\.toml is missing — fly launch --no-deploy/.test(x)),
+    JSON.stringify(plan?.map((p) => [p.pack, p.target?.id, p.problems])),
+  );
   suite.check("task brief carries the FastAPI conventions and commands", /## Stack: FastAPI/.test(brief.out) && /uv run python -m pytest -q/.test(brief.out) && /Contract first/.test(brief.out), brief.out.slice(0, 300));
 });
 

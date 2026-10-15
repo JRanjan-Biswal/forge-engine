@@ -24,6 +24,8 @@ import { redactSecrets } from "../memory/secrets.js";
 import { computeGaps, scanPlaceholders } from "../trace/trace.js";
 import { blockingHeaders, checkHeaders } from "../security/headers.js";
 import { blocking, scanSecurity } from "../security/scan.js";
+import { qaCoverage } from "../qa/coverage.js";
+import { bypassHeaders, httpStatus } from "../ship/deploy.js";
 import { ARTIFACTS, checkArtifact, loadArtifact } from "./artifacts.js";
 import type { ForgeConfig } from "./config.js";
 import { layout, nowIso, readJson } from "./paths.js";
@@ -531,6 +533,30 @@ export const BUILTINS: Record<string, Builtin> = {
   "release.checksPass": (ctx) => {
     const failing = need<Release>(ctx, "release").checks.filter((check) => !check.pass).map((check) => check.name);
     return listOrPass(failing, "all release checks passed", "failing release checks");
+  },
+
+  "release.live": async (ctx) => {
+    const release = need<Release>(ctx, "release");
+    if (!release.url) return pass(`no URL to check (${release.target ?? "release"} without a web endpoint)`);
+    const health = new URL(ctx.config.deploy.healthPath, release.url).href;
+    const result = await httpStatus(health, bypassHeaders(ctx.root, release.target));
+    if (result.status !== undefined && result.status < 400) return pass(`${health} → HTTP ${result.status}`);
+    return fail(`${health} → ${result.status ? `HTTP ${result.status}` : result.error}${result.status === 401 || result.status === 403 ? " (protected deployment? set the target's bypass env var)" : ""}`);
+  },
+
+  "qa.coverage": (ctx) => {
+    const report = qaCoverage(ctx.root);
+    const min = ctx.config.gates.qa.minCoverage;
+    const pct = Math.round(report.ratio * 100);
+    const typos = report.unknownTags.length ? ` (${report.unknownTags.length} tag(s) match no criterion: ${report.unknownTags.slice(0, 5).map((u) => `${u.tag} in ${u.file}`).join(", ")})` : "";
+    return report.ratio >= min
+      ? pass(`${report.required - report.missing.length}/${report.required} MVP acceptance criteria have a tagged test${typos}`)
+      : fail(
+          `${pct}% of MVP acceptance criteria have a tagged test, needs ${Math.round(min * 100)}% — missing: ${report.missing
+            .slice(0, 12)
+            .map((m) => m.id)
+            .join(", ")}${report.missing.length > 12 ? ", …" : ""}. Tag the test title with @<story>/AC<n> (forge qa plan)${typos}`,
+        );
   },
 
   "memory.episodeSinceStart": (ctx) => {

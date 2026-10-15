@@ -109,6 +109,19 @@ forge stack show fastapi              # conventions and review lens
 
 Workers are capped (`workers.maxConcurrent`, default 1), run in their own process groups with timeouts, and mark tasks done or blocked; review and merge follow. The verify stage runs a reviewer council → fixer (regression test first) → adversarial verifier loop, with a scientific debugger and a test strategist.
 
+## QA, CI and shipping
+
+```bash
+forge qa plan                 # one case per MVP acceptance criterion (S-1/AC1) — Playwright, Maestro or API tests
+forge qa coverage --link      # which criteria have a test tagged @S-1/AC1; the verify gate requires them all
+forge ci                      # .github/workflows/forge.yml: one job per stack running the gate commands + security scan
+forge deploy --plan           # Next.js → Vercel, FastAPI/Hono → Fly.io, Expo → EAS, Supabase → db push — and what's missing
+forge deploy                  # preview: deploy, smoke-test the URL, probe its headers, run e2e against it, write the release
+forge deploy --prod           # production — only after `forge approve ship`
+```
+
+Deploys use the official CLIs and your own logins; a missing login or project link stops with the command to fix it — forge never fakes a deploy. The release record and notes are written from checks forge actually ran, and the ship gate re-checks that the released URL answers.
+
 ## Code & security review
 
 Two reviewer skills ship with forge — `code-review` and `security-review` — each with an agent (`code-reviewer`, `security-reviewer`), a slash command (`/forge:review`, `/forge:security`) and, for security, a rubric and an always-on `secure-by-default` rule for builders. The verify gate doesn't trust the reviewers' word: it re-runs the checks itself.
@@ -192,7 +205,7 @@ These are process rules, not an OS-enforced memory limit.
 
 - **v0.1 Validate** *(in progress)* — evidence engine with quote verification ✅, scorecard ✅, strategy/discovery/PM agents and skills ✅; next: forge-bench Validate track, landing-page smoke test
 - **v0.2 Design + Motion** *(in progress)* — DTCG token pipeline → CSS/Tailwind/TS ✅, contrast + drift audits ✅, design/motion agents and skills ✅; native exporters (Flutter, SwiftUI, Compose) ✅, prototype scaffold ✅; next: screenshot critique automation
-- **v0.5 Build & Verify** *(in progress)* — task waves + briefs ✅, worktrees + bounded headless workers ✅, architecture/build/review/debug/QA agents and skills ✅; merge queue ✅; stack packs (Next.js, Expo, FastAPI, Hono, Supabase) ✅; next: forge-bench Build track
+- **v0.5 Build & Verify** *(in progress)* — task waves + briefs ✅, worktrees + bounded headless workers ✅, architecture/build/review/debug/QA agents and skills ✅; merge queue ✅; stack packs (Next.js, Expo, FastAPI, Hono, Supabase) ✅, code + security review ✅, QA coverage, CI and deploy/release ✅; next: forge-bench Build track
 - **v1.0 Everywhere** — mobile, adapters for every host, published forge-bench evals
 
 ## Development

@@ -56,3 +56,16 @@ docs:
   - https://docs.expo.dev/router/introduction/
   - https://docs.expo.dev/develop/unit-testing/
   - https://docs.expo.dev/build/introduction/
+deploy:
+  - id: eas
+    name: Expo Application Services
+    bin: eas
+    auth: eas whoami
+    login: "npm i -g eas-cli && eas login"
+    requires:
+      - { file: eas.json, create: "eas build:configure" }
+    preview: eas update --branch preview --message "forge preview" --non-interactive
+    production: eas build --platform all --profile production --non-interactive --no-wait
+    url: "https://expo\\.dev/[^\\s)\"']+"
+    rollback: "eas update:republish the previous update to the channel; store builds roll back by releasing the previous build"
+    docs: https://docs.expo.dev/eas-update/introduction/

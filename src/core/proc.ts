@@ -94,13 +94,13 @@ function installHandlers(): void {
 export async function runCommand(
   command: string,
   cwd: string,
-  options: { timeoutMs: number; graceMs?: number; maxOutputChars?: number },
+  options: { timeoutMs: number; graceMs?: number; maxOutputChars?: number; env?: NodeJS.ProcessEnv },
 ): Promise<CommandResult> {
   installHandlers();
   const graceMs = options.graceMs ?? 3_000;
   const maxOutput = options.maxOutputChars ?? 200_000;
   // forge-security-ignore js.spawn-shell -- gate commands are shell strings the project owner configured in forge.config.yaml
-  const child = spawn(command, { cwd, shell: true, env: process.env, detached: !IS_WINDOWS, windowsHide: true });
+  const child = spawn(command, { cwd, shell: true, env: options.env ?? process.env, detached: !IS_WINDOWS, windowsHide: true });
   const pgid = child.pid;
   if (pgid !== undefined) activeGroups.add(pgid);
 

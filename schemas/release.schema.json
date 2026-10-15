@@ -48,6 +48,19 @@
     "rollback": {
       "type": "string",
       "minLength": 1
+    },
+    "target": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "forge-deploy",
+        "agent"
+      ]
+    },
+    "notes": {
+      "type": "string"
     }
   },
   "required": [

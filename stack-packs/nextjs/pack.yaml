@@ -51,3 +51,15 @@ layout:
 docs:
   - https://nextjs.org/docs/app
   - https://nextjs.org/docs/app/guides/testing
+deploy:
+  - id: vercel
+    name: Vercel
+    bin: vercel
+    auth: vercel whoami
+    login: vercel login
+    preview: vercel deploy --yes
+    production: vercel deploy --prod --yes
+    url: "https://[a-z0-9.-]+\\.vercel\\.app"
+    bypass: { header: x-vercel-protection-bypass, env: VERCEL_AUTOMATION_BYPASS_SECRET }
+    rollback: "vercel rollback (production) — or promote the previous deployment in the dashboard"
+    docs: https://vercel.com/docs/cli/deploy

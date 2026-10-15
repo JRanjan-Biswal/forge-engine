@@ -31,7 +31,7 @@ const SESSION_COOKIE = /sess|sid|auth|token|jwt|login|remember/i;
 
 const rank = (s: Severity) => ["critical", "high", "medium", "low"].indexOf(s);
 
-export async function checkHeaders(url: string, options: { timeoutMs?: number } = {}): Promise<HeaderReport> {
+export async function checkHeaders(url: string, options: { timeoutMs?: number; headers?: Record<string, string> } = {}): Promise<HeaderReport> {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -43,7 +43,7 @@ export async function checkHeaders(url: string, options: { timeoutMs?: number } 
   try {
     response = await fetch(parsed, {
       redirect: "manual",
-      headers: { Origin: PROBE_ORIGIN, "User-Agent": "forge-security-headers/1" },
+      headers: { Origin: PROBE_ORIGIN, "User-Agent": "forge-security-headers/1", ...options.headers },
       signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
     });
   } catch (error) {

@@ -8,7 +8,7 @@ import { createStore } from "../src/store.js";
 
 const freshStore = () => createStore(join(mkdtempSync(join(tmpdir(), "habit-")), "db.json"));
 
-test("S-1: each check-in increments the streak", () => {
+test("S-1: each check-in increments the streak @S-1/AC1", () => {
   const store = freshStore();
   assert.equal(store.checkIn("run"), 1);
   assert.equal(store.checkIn("run"), 2);
