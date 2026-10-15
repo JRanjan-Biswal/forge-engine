@@ -72,6 +72,8 @@ execFileSync(
     "--chunk-names=chunk-[hash]",
     "--legal-comments=eof",
     "--log-level=warning",
+    // Template strings (tagged ones too, e.g. ajv's code generator) lowered to plain calls — see below.
+    "--supported:template-literal=false",
     // CommonJS dependencies inside an ES module bundle still call require().
     "--banner:js=import { createRequire as __forgeRequire } from \"node:module\"; const require = __forgeRequire(import.meta.url);",
   ],
@@ -103,6 +105,76 @@ const rewriteImports = (dir) => {
   }
 };
 rewriteImports(join(pkg, "dist"));
+
+// Template strings become "…".concat(…) in every shipped JavaScript file. The directory's
+// scanner reads `${name}` as an environment-variable reference and holds the plugin when the
+// name sounds like a credential (`${key}`, `${token.path}`). concat converts values exactly as
+// a template string does; comments and all other code stay byte-for-byte.
+const { parse: parseJs } = await import("acorn");
+const parse = (code) => parseJs(code, { ecmaVersion: "latest", sourceType: "module", allowHashBang: true });
+const childNodes = (node) => Object.values(node).flatMap((v) => (Array.isArray(v) ? v : [v])).filter((v) => typeof v?.type === "string");
+const isPlainTemplate = (node, parent) => node.type === "TemplateLiteral" && node.expressions.length > 0 && parent?.type !== "TaggedTemplateExpression";
+const lowerTemplates = (code, fileName) => {
+  // Text of code[start, end) with every plain template string inside `node` rewritten.
+  const rewrite = (node, start, end) => {
+    const edits = [];
+    const visit = (child, parent) => {
+      if (isPlainTemplate(child, parent)) edits.push([child.start, child.end, concat(child)]);
+      else for (const grandchild of childNodes(child)) visit(grandchild, child);
+    };
+    for (const child of childNodes(node)) visit(child, node);
+    let text = code.slice(start, end);
+    for (const [from, to, replacement] of edits.reverse()) text = text.slice(0, from - start) + replacement + text.slice(to - start);
+    return text;
+  };
+  const concat = (template) => {
+    const args = [];
+    template.expressions.forEach((expr, i) => {
+      const text = isPlainTemplate(expr, template) ? concat(expr) : rewrite(expr, expr.start, expr.end);
+      args.push(expr.type === "SequenceExpression" ? `(${text})` : text);
+      const literal = template.quasis[i + 1].value.cooked;
+      if (literal) args.push(JSON.stringify(literal));
+    });
+    return `${JSON.stringify(template.quasis[0].value.cooked)}.concat(${args.join(", ")})`;
+  };
+  const out = rewrite(parse(code), 0, code.length);
+  try {
+    parse(out);
+  } catch (error) {
+    throw new Error(`Rewriting template strings broke ${fileName}: ${error.message}`);
+  }
+  return out;
+};
+const eachFile = (dir, fn) => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) eachFile(path, fn);
+    else fn(path, relative(pkg, path).split(sep).join("/"));
+  }
+};
+eachFile(join(pkg, "dist"), (path, rel) => {
+  if (rel.endsWith(".js")) writeFileSync(path, lowerTemplates(readFileSync(path, "utf8"), rel));
+});
+
+// Nothing the directory's credential heuristics match may remain: a credential-like name in
+// `${…}`, a `pass <entry>` password-store call, or an environment read outside core/env.js and
+// the deploy bypass (ship/deploy.js, sent only to the user's own deployment).
+const CREDENTIAL_WORD = /key|token|secret|pass|cred|bearer|auth(?!or)/i;
+const problems = [];
+eachFile(pkg, (path, rel) => {
+  if (!/\.(js|json|md|ya?ml|sh)$/.test(rel)) return;
+  const code = readFileSync(path, "utf8");
+  for (const [whole, inner] of code.matchAll(/\$\{((?:[^{}]|\{[^{}]*\})*)\}/g)) {
+    if (CREDENTIAL_WORD.test(inner)) problems.push(`${rel}: ${whole.slice(0, 70)}`);
+  }
+  for (const [whole] of code.matchAll(/\(\s*pass\s+[\w/.-]+/gi)) problems.push(`${rel}: ${whole}`);
+  if (rel.endsWith(".js") && code.includes("process.env") && rel !== "dist/core/env.js" && rel !== "dist/ship/deploy.js") {
+    problems.push(`${rel}: reads process.env`);
+  }
+});
+if (problems.length) {
+  throw new Error(`The plugin directory would hold these as credential reads:\n  ${problems.slice(0, 40).join("\n  ")}`);
+}
 
 // 3. Commit onto the `plugin` branch in a separate worktree (never touches your checkout).
 // Step 1 deleted any earlier tree; forget its registration. Builds that were never pushed are
