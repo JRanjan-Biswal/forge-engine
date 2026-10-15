@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse, parseDocument } from "yaml";
 import { loadConfig } from "../core/config.js";
+import { findOnPath } from "../core/env.js";
 import { appendLedger } from "../core/ledger.js";
 import { withLock } from "../core/lock.js";
 import { layout } from "../core/paths.js";
@@ -233,8 +234,7 @@ const LOCKFILES: [string, PackageManager][] = [
 ];
 
 export function onPath(bin: string): boolean {
-  const exts = process.platform === "win32" ? (process.env.PATHEXT ?? ".EXE;.CMD").split(";") : [""];
-  return (process.env.PATH ?? "").split(delimiter).some((dir) => dir && exts.some((ext) => existsSync(join(dir, bin + ext))));
+  return findOnPath(bin) !== null;
 }
 
 /** Lockfile in the stack directory or any parent up to the root, then `packageManager`, then what is installed. */

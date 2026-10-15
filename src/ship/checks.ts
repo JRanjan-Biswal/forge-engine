@@ -2,6 +2,7 @@ import { appendFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadArtifact } from "../core/artifacts.js";
 import { loadConfig } from "../core/config.js";
+import { setting } from "../core/env.js";
 import { auditDrift } from "../design/audit.js";
 import { qaCoverage } from "../qa/coverage.js";
 import type { Reviews } from "../schemas/artifacts.js";
@@ -207,6 +208,6 @@ export function markdownSummary(result: CiCheckResult): string {
 /** Print annotations and append the job summary when running in GitHub Actions. */
 export function reportToGithub(result: CiCheckResult, out: (line: string) => void): void {
   for (const line of githubAnnotations(result)) out(line);
-  const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+  const summaryFile = setting("GITHUB_STEP_SUMMARY");
   if (summaryFile) appendFileSync(summaryFile, markdownSummary(result));
 }

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
+import { setting } from "./env.js";
 
 export const FORGE_DIR = ".forge";
 export const CONFIG_FILE = "forge.config.yaml";
@@ -10,7 +11,8 @@ export const CONFIG_FILE = "forge.config.yaml";
  * `start` (default: cwd) containing .forge/ or forge.config.yaml, otherwise `start`.
  */
 export function findRoot(start?: string): string {
-  if (!start && process.env.FORGE_ROOT) return resolve(process.env.FORGE_ROOT);
+  const forgeRoot = setting("FORGE_ROOT");
+  if (!start && forgeRoot) return resolve(forgeRoot);
   const origin = resolve(start ?? process.cwd());
   const top = parse(origin).root;
   let dir = origin;
@@ -45,7 +47,8 @@ export type Layout = ReturnType<typeof layout>;
 
 /** User-level forge directory (~/.forge), overridable with FORGE_HOME. */
 export function forgeHome(): string {
-  return process.env.FORGE_HOME ? resolve(process.env.FORGE_HOME) : join(homedir(), ".forge");
+  const forgeHome = setting("FORGE_HOME");
+  return forgeHome ? resolve(forgeHome) : join(homedir(), ".forge");
 }
 
 export function nowIso(): string {

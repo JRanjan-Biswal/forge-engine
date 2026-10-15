@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { onPath } from "../build/stacks.js";
@@ -38,7 +39,7 @@ export interface SetupOptions {
 
 /** A local path becomes absolute; anything else (owner/repo, git URL) is passed through. */
 function normalizeSource(source: string): string {
-  if (source.startsWith("~/")) return resolve(process.env.HOME ?? "", source.slice(2));
+  if (source.startsWith("~/")) return resolve(homedir(), source.slice(2));
   if (source.startsWith(".") || source.startsWith("/") || existsSync(source)) return resolve(source);
   return source;
 }
@@ -92,7 +93,7 @@ export interface SetupResult {
 function runArgv(argv: string[], timeout = 300_000): { ok: boolean; output: string } {
   const [command, ...args] = argv;
   if (!command) return { ok: false, output: "empty command" };
-  const result = spawnSync(command, args, { encoding: "utf8", timeout, stdio: ["ignore", "pipe", "pipe"], env: process.env });
+  const result = spawnSync(command, args, { encoding: "utf8", timeout, stdio: ["ignore", "pipe", "pipe"] });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}${result.error ? String(result.error) : ""}`.trim();
   return { ok: result.status === 0, output };
 }

@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { accessSync, constants, existsSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { existsSync } from "node:fs";
+import { findOnPath, setting } from "../core/env.js";
 import { layout } from "../core/paths.js";
 
 /**
@@ -12,19 +12,9 @@ export const GRAPHIFY_INSTALL_HINT = "install graphify with `uv tool install gra
 
 export function findGraphify(): string | null {
   // FORGE_GRAPHIFY_BIN overrides discovery; an empty value disables graphify.
-  const override = process.env.FORGE_GRAPHIFY_BIN;
+  const override = setting("FORGE_GRAPHIFY_BIN");
   if (override !== undefined) return override || null;
-  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
-    if (!dir) continue;
-    const candidate = join(dir, process.platform === "win32" ? "graphify.exe" : "graphify");
-    try {
-      accessSync(candidate, constants.X_OK);
-      return candidate;
-    } catch {
-      // keep looking
-    }
-  }
-  return null;
+  return findOnPath("graphify", { executable: true });
 }
 
 export interface GraphStatus {
