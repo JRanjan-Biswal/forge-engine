@@ -71,13 +71,29 @@ export function fingerprint(root: string, files: string[]): { files: number; has
   return { files: count, hash: hash.digest("hex") };
 }
 
-function readDeps(root: string): Record<string, string> {
+function readDeps(dir: string): Record<string, string> {
   try {
-    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as Record<string, Record<string, string> | undefined>;
+    const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as Record<string, Record<string, string> | undefined>;
     return { ...pkg.dependencies, ...pkg.devDependencies };
   } catch {
     return {};
   }
+}
+
+/** Dependencies of the nearest package.json above a file (monorepos: apps/mobile vs apps/web), merged with the root's. */
+function depsResolver(root: string): (file: string) => Record<string, string> {
+  const cache = new Map<string, Record<string, string>>();
+  const rootDeps = readDeps(root);
+  return (file: string) => {
+    const parts = file.split("/").slice(0, -1);
+    for (let i = parts.length; i > 0; i--) {
+      const dir = parts.slice(0, i).join("/");
+      if (!cache.has(dir)) cache.set(dir, existsSync(join(root, dir, "package.json")) ? readDeps(join(root, dir)) : {});
+      const deps = cache.get(dir) ?? {};
+      if (Object.keys(deps).length) return { ...rootDeps, ...deps };
+    }
+    return rootDeps;
+  };
 }
 
 /** Convert file-system route segments ((group), @slot, [id], [...rest]) into a URL pattern. */
@@ -120,16 +136,114 @@ export interface Extraction {
 }
 
 /** Normalise a route or a client-side URL literal for matching: params → ":p". */
-function routeKey(route: string): string {
+export function routeKey(route: string): string {
   return route
     .replace(/\$\{[^}]*\}/g, ":p")
+    .replace(/\{[^}]+\}/g, ":p")
     .replace(/:[A-Za-z_][\w]*/g, ":p")
     .replace(/\*[A-Za-z_]\w*/g, ":p")
     .replace(/\/+$/, "") || "/";
 }
 
+/** Join a mount prefix and a route: ("/books", "/") → "/books", ("", "/x") → "/x". */
+function joinRoute(prefix: string, route: string): string {
+  const joined = `${prefix.replace(/\/+$/, "")}${route === "/" || route === "" ? "" : route.startsWith("/") ? route : `/${route}`}`;
+  return joined || "/";
+}
+
+const JS_FILE = /\.(?:tsx?|jsx?|mjs|cjs)$/;
+const ROUTER_CTOR = /(?:const|let|var)\s+(\w+)\s*=\s*(?:new\s+(?:Hono|Elysia|Router)\b|(?:express\.)?Router\s*\()/g;
+
+/**
+ * Where each routing file is mounted: Hono `app.route("/x", child)` / basePath, Express
+ * `app.use("/x", router)`, FastAPI `include_router(mod.router, prefix=…)` and Flask
+ * `register_blueprint(bp, url_prefix=…)`, resolved through imports to the child file.
+ * Returns every full prefix a file's routes live under ("" when not mounted).
+ */
+function mountPrefixes(codeFiles: string[], read: (file: string) => string): Map<string, string[]> {
+  const known = new Set(codeFiles.map(toPosix));
+  const resolveJs = (from: string, spec: string): string | undefined => {
+    const base = posixJoin(from.split("/").slice(0, -1).join("/"), spec).replace(/\.(?:m?js|cjs)$/, "");
+    return [base, ...[".ts", ".tsx", ".js", ".mjs", ".jsx", "/index.ts", "/index.js"].map((ext) => base + ext)].find((f) => known.has(f));
+  };
+  const resolvePy = (from: string, module: string, name: string): string | undefined => {
+    const dots = /^\.+/.exec(module)?.[0].length ?? 0;
+    const dir = from.split("/").slice(0, -1);
+    const pkg = dots ? [...dir.slice(0, dir.length - (dots - 1)), ...module.slice(dots).split(".").filter(Boolean)] : module.split(".");
+    const candidates = [`${pkg.join("/")}/${name}.py`, `${pkg.join("/")}.py`];
+    return [...known].find((f) => candidates.some((c) => f === c || f.endsWith(`/${c}`)));
+  };
+  /** child file → [parent file, mount path] */
+  const edges: [string, string, string][] = [];
+  const own = new Map<string, string>();
+  for (const file of known) {
+    const source = read(file);
+    if (!source) continue;
+    if (JS_FILE.test(file)) {
+      const imports = new Map<string, string>();
+      for (const m of source.matchAll(/import\s+(?:(\w+)|\{([^}]+)\})\s+from\s+["'](\.{1,2}\/[^"']+)["']/g)) {
+        const target = resolveJs(file, m[3] ?? "");
+        if (!target) continue;
+        if (m[1]) imports.set(m[1], target);
+        for (const part of (m[2] ?? "").split(",")) {
+          const alias = part.trim().split(/\s+as\s+/).pop()?.trim();
+          if (alias) imports.set(alias, target);
+        }
+      }
+      for (const m of source.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g)) {
+        const target = resolveJs(file, m[2] ?? "");
+        if (target && m[1]) imports.set(m[1], target);
+      }
+      const base = /basePath\(\s*["'`](\/[^"'`]*)["'`]\s*\)/.exec(source)?.[1];
+      if (base) own.set(file, base);
+      for (const m of source.matchAll(/\.(?:route|use)\(\s*["'`](\/[^"'`]*)["'`]\s*,\s*(\w+)\s*[,)]/g)) {
+        const child = imports.get(m[2] ?? "");
+        if (child && m[1]) edges.push([child, file, m[1]]);
+      }
+    } else if (file.endsWith(".py")) {
+      const imports = new Map<string, string>();
+      for (const m of source.matchAll(/^\s*from\s+([\w.]+)\s+import\s+([\w\s,]+)$/gm)) {
+        for (const part of (m[2] ?? "").split(",")) {
+          const [name, alias] = part.trim().split(/\s+as\s+/);
+          const target = name ? resolvePy(file, m[1] ?? "", name) : undefined;
+          if (target) imports.set(alias ?? name ?? "", target);
+        }
+      }
+      const prefix = /(?:APIRouter|Blueprint)\([^)]*?\b(?:url_)?prefix\s*=\s*["'](\/[^"']*)["']/.exec(source)?.[1];
+      if (prefix) own.set(file, prefix);
+      for (const m of source.matchAll(/(?:include_router|register_blueprint)\(\s*(\w+)(?:\.\w+)?\s*(?:,[^)]*?\b(?:url_)?prefix\s*=\s*["'](\/[^"']*)["'])?/g)) {
+        const child = imports.get(m[1] ?? "");
+        if (child) edges.push([child, file, m[2] ?? ""]);
+      }
+    }
+  }
+  const memo = new Map<string, string[]>();
+  const prefixesOf = (file: string, depth = 0): string[] => {
+    const cached = memo.get(file);
+    if (cached) return cached;
+    const parents = edges.filter(([child]) => child === file);
+    const ownPrefix = own.get(file) ?? "";
+    const result =
+      parents.length && depth < 6
+        ? [...new Set(parents.flatMap(([, parent, path]) => prefixesOf(parent, depth + 1).map((p) => joinRoute(joinRoute(p, path), ownPrefix))))]
+        : [ownPrefix];
+    memo.set(file, result.map((p) => (p === "/" ? "" : p)));
+    return memo.get(file) ?? [""];
+  };
+  return new Map([...known].map((file) => [file, prefixesOf(file)]));
+}
+
+function posixJoin(dir: string, spec: string): string {
+  const out = dir ? dir.split("/") : [];
+  for (const part of spec.split("/")) {
+    if (part === "..") out.pop();
+    else if (part && part !== ".") out.push(part);
+  }
+  return out.join("/");
+}
+
 export function extractProduct(root: string, files: string[]): Extraction {
-  const deps = readDeps(root);
+  const depsOf = depsResolver(root);
   const frameworks = new Set<string>();
   const surfaces = new Map<string, Surface>();
   const add = (surface: Surface) => {
@@ -151,12 +265,13 @@ export function extractProduct(root: string, files: string[]): Extraction {
 
   const codeFiles = files.filter((file) => CODE.test(file) && !TEST.test(file));
   const declaring = new Set<string>();
+  const mounts = mountPrefixes(codeFiles, read);
 
   for (const file of codeFiles) {
     const posix = toPosix(file);
     let match: RegExpExecArray | null;
 
-    if (deps.next) {
+    if (depsOf(posix).next) {
       if ((match = /(?:^|\/)app\/(?:(.*)\/)?page\.(?:tsx|ts|jsx|js|mdx)$/.exec(posix))) add(page(fsRoute((match[1] ?? "").split("/")), posix, "nextjs"));
       if ((match = /(?:^|\/)app\/(?:(.*)\/)?route\.(?:ts|js)$/.exec(posix))) {
         for (const method of exportedMethods(read(file))) add(endpoint(method, fsRoute((match[1] ?? "").split("/")), posix, "nextjs"));
@@ -172,19 +287,19 @@ export function extractProduct(root: string, files: string[]): Extraction {
         }
       }
     }
-    if (deps["expo-router"] && (match = /(?:^|\/)app\/(.*)\.(?:tsx|ts|jsx|js)$/.exec(posix))) {
+    if (depsOf(posix)["expo-router"] && (match = /(?:^|\/)app\/(.*)\.(?:tsx|ts|jsx|js)$/.exec(posix))) {
       const segments = (match[1] ?? "").split("/");
       const last = segments[segments.length - 1] ?? "";
       if (!last.startsWith("_") && !last.startsWith("+")) add(page(fsRoute(segments), posix, "expo-router"));
     }
-    if (deps["@sveltejs/kit"]) {
+    if (depsOf(posix)["@sveltejs/kit"]) {
       if ((match = /(?:^|\/)src\/routes\/(?:(.*)\/)?\+page\.svelte$/.exec(posix))) add(page(fsRoute((match[1] ?? "").split("/")), posix, "sveltekit"));
       if ((match = /(?:^|\/)src\/routes\/(?:(.*)\/)?\+server\.(?:ts|js)$/.exec(posix))) {
         for (const method of exportedMethods(read(file))) add(endpoint(method, fsRoute((match[1] ?? "").split("/")), posix, "sveltekit"));
         declaring.add(posix);
       }
     }
-    if (deps.nuxt) {
+    if (depsOf(posix).nuxt) {
       if ((match = /(?:^|\/)pages\/(.*)\.vue$/.exec(posix))) add(page(fsRoute((match[1] ?? "").split("/")), posix, "nuxt"));
       if ((match = /(?:^|\/)server\/api\/(.*?)(?:\.(get|post|put|patch|delete))?\.(?:ts|js)$/.exec(posix))) {
         add(endpoint(match[2]?.toUpperCase() ?? "ANY", fsRoute(["api", ...(match[1] ?? "").split("/")]), posix, "nuxt"));
@@ -203,21 +318,33 @@ export function extractProduct(root: string, files: string[]): Extraction {
     }
 
     const before = surfaces.size;
-    if (/\.(tsx?|jsx?|mjs|cjs)$/.test(posix)) {
-      for (const m of source.matchAll(/\b(?:app|router|server|api|fastify|hono|routes?)\.(get|post|put|patch|delete|all)\(\s*["'`](\/[^"'`]*)["'`]/g)) {
-        if (m[1] && m[2]) add(endpoint(m[1] === "all" ? "ANY" : m[1].toUpperCase(), m[2], posix, "node-http"));
+    const prefixes = mounts.get(posix) ?? [""];
+    if (JS_FILE.test(posix)) {
+      // Receivers: the usual names plus any variable holding a Hono/Express/Elysia router in this file.
+      const receivers = new Set(["app", "router", "server", "api", "fastify", "hono", "route", "routes"]);
+      for (const m of source.matchAll(ROUTER_CTOR)) if (m[1]) receivers.add(m[1]);
+      const routerFile = /new\s+(?:Hono|Elysia|Router)\b|(?:express\.)?Router\s*\(/.test(source);
+      const pattern = new RegExp(`(?:\\b(${[...receivers].join("|")})|${routerFile ? "\\)" : "(?!)"})\\s*\\.(get|post|put|patch|delete|all)\\(\\s*["'\`](\\/[^"'\`]*)["'\`]`, "g");
+      for (const m of source.matchAll(pattern)) {
+        if (!m[2] || !m[3]) continue;
+        for (const prefix of prefixes) add(endpoint(m[2] === "all" ? "ANY" : m[2].toUpperCase(), joinRoute(prefix, m[3]), posix, "node-http"));
       }
       for (const m of source.matchAll(new RegExp(`method\\s*===\\s*["'](${HTTP_METHODS})["']\\s*&&\\s*[\\w.]+\\s*===\\s*["'](\\/[^"']*)["']`, "g"))) {
         if (m[1] && m[2]) add(endpoint(m[1], m[2], posix, "node-http"));
       }
     }
     if (posix.endsWith(".py")) {
-      for (const m of source.matchAll(/@\w+\.(get|post|put|patch|delete)\(\s*["'](\/[^"']*)["']/g)) {
-        if (m[1] && m[2]) add(endpoint(m[1].toUpperCase(), m[2], posix, "python"));
+      // Mount prefixes already include the file's own APIRouter(prefix=…) / Blueprint(url_prefix=…); `app` routes are never prefixed.
+      const routeFor = (receiver: string, path: string) => (receiver === "app" ? [path || "/"] : prefixes.map((p) => joinRoute(p, path)));
+      for (const m of source.matchAll(/@(\w+)\.(get|post|put|patch|delete)\(\s*["'](\/?[^"']*)["']/g)) {
+        const [, receiver = "", method = "", path = ""] = m;
+        if (!path && receiver === "app") continue;
+        for (const route of routeFor(receiver, path)) add(endpoint(method.toUpperCase(), route, posix, "python"));
       }
-      for (const m of source.matchAll(/@\w+\.route\(\s*["'](\/[^"']*)["'](?:[^)]*methods\s*=\s*\[([^\]]*)\])?/g)) {
-        const methods = m[2] ? [...m[2].matchAll(/["'](\w+)["']/g)].map((x) => (x[1] ?? "").toUpperCase()) : ["GET"];
-        for (const method of methods) if (m[1]) add(endpoint(method, m[1], posix, "python"));
+      for (const m of source.matchAll(/@(\w+)\.route\(\s*["'](\/?[^"']*)["'](?:[^)]*methods\s*=\s*\[([^\]]*)\])?/g)) {
+        const [, receiver = "", path = "", list] = m;
+        const methods = list ? [...list.matchAll(/["'](\w+)["']/g)].map((x) => (x[1] ?? "").toUpperCase()) : ["GET"];
+        for (const method of methods) for (const route of routeFor(receiver, path)) add(endpoint(method, route, posix, "python"));
       }
     }
     if (surfaces.size > before) declaring.add(posix);

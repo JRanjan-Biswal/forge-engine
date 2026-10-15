@@ -25,6 +25,7 @@ import { computeGaps, scanPlaceholders } from "../trace/trace.js";
 import { blockingHeaders, checkHeaders } from "../security/headers.js";
 import { blocking, scanSecurity } from "../security/scan.js";
 import { shotProblems } from "../design/shots.js";
+import { contractDrift, platformParity } from "../trace/drift.js";
 import { qaCoverage } from "../qa/coverage.js";
 import { answered, bypassHeaders, describeHttp, httpStatus } from "../ship/deploy.js";
 import { ARTIFACTS, checkArtifact, loadArtifact } from "./artifacts.js";
@@ -526,6 +527,27 @@ export const BUILTINS: Record<string, Builtin> = {
     const sample = report.gaps.slice(0, 8).map((gap) => `${gap.story}:${gap.missing}`);
     const notes = report.notes.length ? ` — ${report.notes.join("; ")}` : "";
     return fail(`trace coverage ${pct(report.coverage)}, needs ${pct(min)}; missing ${sample.join(", ")}${report.gaps.length > 8 ? ", …" : ""}${notes}`);
+  },
+
+  "gap.contractDrift": (ctx) => {
+    const report = contractDrift(ctx.root);
+    if (!report.contract) return skip("no contracts/openapi.yaml — nothing to compare the code with");
+    const problems = [
+      ...report.missing.map((op) => `missing ${op.method} ${op.path}`),
+      ...report.undocumented.map((e) => `undocumented ${e.method} ${e.route} (${e.file})`),
+    ];
+    return problems.length
+      ? fail(`${report.contract} vs code: ${problems.slice(0, 15).join("; ")}${problems.length > 15 ? "; …" : ""} — implement or remove from the contract; allow infrastructure routes with gates.gap.contractIgnore`)
+      : pass(`${report.operations} contract operations all implemented, ${report.endpoints} endpoints all documented${report.suffixMatches.length ? ` (${report.suffixMatches.length} matched under a router prefix)` : ""}`);
+  },
+
+  "gap.parity": (ctx) => {
+    const report = platformParity(ctx.root);
+    if (report.groups.length < 2) return skip(`one UI platform targeted (${report.groups.join(", ") || "none"}) — nothing to compare`);
+    if (!report.stories.length) return skip("no PRD or screens to compare");
+    return report.gaps.length
+      ? fail(`stories without screens on every platform: ${report.gaps.map((g) => `${g.id} (no ${g.missing.join(", ")})`).join("; ")} — design them, or list deliberate single-platform stories in gates.gap.parityExempt`)
+      : pass(`${report.stories.length} MVP stories have ${report.groups.join(" + ")} screens${report.stories.some((s) => s.exempt) ? ` (${report.stories.filter((s) => s.exempt).length} exempt)` : ""}`);
   },
 
   "gap.noPlaceholders": (ctx) => {

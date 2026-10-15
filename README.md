@@ -112,6 +112,8 @@ Workers are capped (`workers.maxConcurrent`, default 1), run in their own proces
 ## QA, CI and shipping
 
 ```bash
+forge drift                   # contracts/openapi.yaml vs the routes the code serves (Next, Express, Hono, FastAPI, Flask, SvelteKit — mounts resolved)
+forge parity                  # web + mobile products: every MVP story has screens on both
 forge qa plan                 # one case per MVP acceptance criterion (S-1/AC1) — Playwright, Maestro or API tests
 forge qa coverage --link      # which criteria have a test tagged @S-1/AC1; the verify gate requires them all
 forge ci                      # .github/workflows/forge.yml: one job per stack running the gate commands + security scan

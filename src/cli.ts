@@ -36,6 +36,7 @@ import { queryMemory } from "./memory/query.js";
 import { PUBLISHED_SCHEMAS } from "./schemas/index.js";
 import type { GateResult, StageStatus } from "./schemas/runtime.js";
 import { computeGaps, linkTrace } from "./trace/trace.js";
+import { contractDrift, platformParity } from "./trace/drift.js";
 import { VERSION } from "./version.js";
 
 const HELP = `forge ${VERSION} — idea → validated → designed → built → verified → shipped
@@ -131,6 +132,8 @@ Memory
 Traceability & code graph
   trace link <from> <to> <type>        e.g. trace link story:S-4 test:e2e/checkin.spec.ts verifiedBy
   gaps                                 MVP stories missing design / code / test links
+  drift                                contracts/openapi.yaml vs the endpoints the code serves (missing / undocumented)
+  parity                               web vs mobile: MVP stories without screens on every targeted platform
   graph status | update | query "<q>" | path <a> <b> | explain <node>
 
 Integration
@@ -464,6 +467,33 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
         const trace = linkTrace(forge().root, need(args[1], "from node"), need(args[2], "to node"), need(args[3], "edge type"));
         print(trace, () => io.out(`Linked ${args[1]} → ${args[2]} (${args[3]}); ${trace.edges.length} edges`));
         return 0;
+      }
+
+      case "drift": {
+        const report = contractDrift(forge().root);
+        print(report, () => {
+          if (!report.contract) {
+            io.out("No contracts/openapi.yaml — nothing to compare.");
+            return;
+          }
+          for (const m of report.missing) io.out(`  ✗ missing       ${m.method} ${m.path}`);
+          for (const u of report.undocumented) io.out(`  ✗ undocumented  ${u.method} ${u.route}  (${u.file})`);
+          for (const s of report.suffixMatches) io.out(`  ~ ${s.operation} matched ${s.route} in ${s.file} (router prefix)`);
+          io.out(`${report.contract}: ${report.operations} operations · code: ${report.endpoints} endpoints · ${report.missing.length} missing · ${report.undocumented.length} undocumented`);
+        });
+        return report.missing.length || report.undocumented.length ? 1 : 0;
+      }
+
+      case "parity": {
+        const report = platformParity(forge().root);
+        print(report, () => {
+          if (report.groups.length < 2) {
+            io.out(`One UI platform targeted (${report.groups.join(", ") || "none"}) — nothing to compare.`);
+            return;
+          }
+          for (const s of report.stories) io.out(`  ${s.missing.length && !s.exempt ? "✗" : "✓"} ${s.id.padEnd(8)} ${s.has.join(" + ") || "no screens"}${s.missing.length ? ` — missing ${s.missing.join(", ")}${s.exempt ? " (exempt)" : ""}` : ""}`);
+        });
+        return report.gaps.length ? 1 : 0;
       }
 
       case "gaps": {

@@ -14,6 +14,7 @@ import { buildPrototype } from "../design/prototype.js";
 import { captureShots, readManifest, shotProblems, VIEWPORTS, type ViewportId } from "../design/shots.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "../build/tasks.js";
 import { mergeTasks } from "../build/workers.js";
+import { contractDrift, platformParity } from "../trace/drift.js";
 import { qaCoverage, qaPlan } from "../qa/coverage.js";
 import { writeWorkflow } from "../ship/ci.js";
 import { deploy, deployPlan } from "../ship/deploy.js";
@@ -506,6 +507,18 @@ export function createForgeServer(root?: string): McpServer {
       inputSchema: { ids: z.array(z.string()).optional() },
     },
     guarded(({ ids }: { ids?: string[] }) => mergeTasks(forge().root, forge().config(), ids)),
+  );
+
+  server.registerTool(
+    "contract_drift",
+    { description: "Compare contracts/openapi.yaml with the endpoints the code actually serves (Next.js route handlers, Express/Fastify/Hono, FastAPI/Flask, SvelteKit, node:http): operations missing from the code, endpoints missing from the contract, and matches made under a router prefix. The gap gate fails on any drift.", inputSchema: {} },
+    guarded(() => contractDrift(forge().root)),
+  );
+
+  server.registerTool(
+    "platform_parity",
+    { description: "When the project targets web and mobile (forge.config.yaml platforms), list MVP stories without screens on every platform. Deliberate single-platform stories go in gates.gap.parityExempt.", inputSchema: {} },
+    guarded(() => platformParity(forge().root)),
   );
 
   server.registerTool(

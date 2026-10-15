@@ -237,6 +237,8 @@ const STAGE_INPUTS: StageInput[] = [
     gate: [
       artifact("trace"),
       builtin("trace.coverage", "Trace coverage meets gates.gap.minCoverage"),
+      builtin("gap.contractDrift", "Code serves exactly the API contract (contracts/openapi.yaml) — nothing missing, nothing undocumented"),
+      builtin("gap.parity", "Every MVP story has screens on every targeted UI platform (web and mobile)"),
       builtin("gap.noPlaceholders", "No placeholder, fake or mock data in product code"),
       builtin("pages.noMustFix", "Every audited page has no open must-fix atoms (pro-page-complete)"),
       builtin("design.noDrift", "No hard-coded colours in product code — use design tokens"),

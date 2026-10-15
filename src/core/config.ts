@@ -60,6 +60,10 @@ export const ForgeConfig = z.object({
         .object({
           minCoverage: z.number().min(0).max(1).default(0.95),
           scanDirs: z.array(z.string()).default(["src", "app", "lib", "packages"]),
+          /** Implemented endpoints allowed outside the contract, as "METHOD /path". */
+          contractIgnore: z.array(z.string()).default(["GET /health", "GET /healthz", "GET /readyz", "GET /livez"]),
+          /** MVP stories that are deliberately on one platform only (parity check). */
+          parityExempt: z.array(z.string()).default([]),
         })
         .prefault({}),
     })
@@ -152,6 +156,8 @@ gates:
   gap:
     minCoverage: 0.95     # share of MVP story requirements traced to design, code and tests
     scanDirs: [src, app, lib, packages]
+    contractIgnore: [GET /health, GET /healthz, GET /readyz, GET /livez]  # endpoints allowed outside contracts/openapi.yaml
+    parityExempt: []      # MVP stories deliberately on one platform (web vs mobile parity)
 
 security:
   failOn: high            # critical | high | medium | low — static scan + header check severity that fails verify
