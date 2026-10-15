@@ -6,6 +6,7 @@
 // Either way the server speaks MCP on stdio and exits when the host closes stdin.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -18,14 +19,16 @@ if (existsSync(cli)) {
 } else {
   const { name, version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const npx = process.platform === "win32" ? "npx.cmd" : "npx";
-  const child = spawn(npx, ["--yes", `${name}@${version}`, "mcp", ...process.argv.slice(2)], { stdio: "inherit" });
+  // --prefix: resolve the package from a neutral folder, so a project that is itself named
+  // forge-engine (the forge repo) cannot shadow it; the server still runs in the project's cwd.
+  const child = spawn(npx, ["--yes", `--prefix=${tmpdir()}`, `${name}@${version}`, "mcp", ...process.argv.slice(2)], { stdio: "inherit" });
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, () => child.kill(signal));
   child.on("error", (error) => {
     process.stderr.write(`forge: could not start ${name}@${version} with npx (${error.message}). Install Node.js 20+ or run \`npm i -g ${name}\`.\n`);
     process.exit(127);
   });
   child.on("exit", (code, signal) => {
-    if (code) process.stderr.write(`forge: \`npx ${name}@${version} mcp\` exited ${code}. Is ${name}@${version} published and are you online? Alternatives: \`npm i -g ${name}\`, or install the plugin from npm (\`claude plugin install ${name}@npm\`).\n`);
+    if (code) process.stderr.write(`forge: \`npx ${name}@${version} mcp\` exited ${code}. Is ${name}@${version} published and are you online? Alternatives: \`npm i -g ${name}\`.\n`);
     process.exit(code ?? (signal ? 1 : 0));
   });
 }

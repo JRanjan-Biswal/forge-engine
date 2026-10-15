@@ -26,7 +26,7 @@ It finds Claude Code and Codex on your machine, **prints the exact commands it w
 
 ```text
 Will run:
-  claude plugin install forge-engine@npm --scope user
+  claude plugin install forge-engine --marketplace JRanjan-Biswal/forge-engine --scope user
   codex plugin marketplace add JRanjan-Biswal/forge-engine
   codex plugin add forge-engine@forge-engine
 Proceed? [y/N]
@@ -38,28 +38,22 @@ Proceed? [y/N]
 | `--yes` | don't ask (CI, scripts) |
 | `--host claude` / `--host codex` | only one host |
 | `--scope user\|project\|local` | Claude Code install scope (default `user`; Codex has no scopes) |
-| `--source <path\|owner/repo>` | install from a checkout or a fork instead of npm / the main repo |
+| `--source <path\|owner/repo>` | install from a checkout or a fork instead of the main repo |
 | `--remove` | uninstall from the hosts again |
 
 Restart Claude Code / Codex afterwards.
 
 ## Claude Code
 
-Pick one (they install the same plugin):
-
-**From npm** — bundles the built server, works offline after install:
+**From the GitHub marketplace** — in a terminal:
 
 ```bash
-claude plugin install forge-engine@npm --scope user
+claude plugin install forge-engine --marketplace JRanjan-Biswal/forge-engine --scope user
 ```
 
-**From the GitHub marketplace** — inside Claude Code:
+or inside Claude Code: `/plugin install forge-engine --marketplace JRanjan-Biswal/forge-engine` (two steps on older versions: `/plugin marketplace add JRanjan-Biswal/forge-engine`, then `/plugin install forge-engine@forge-engine`). The plugin starts its MCP server with `npx forge-engine@<version>` — downloaded from npm once, on first use.
 
-```text
-/plugin install forge-engine --marketplace JRanjan-Biswal/forge-engine
-```
-
-or in two steps: `/plugin marketplace add JRanjan-Biswal/forge-engine`, then `/plugin install forge-engine@forge-engine`. Installed from GitHub, the plugin starts its MCP server with `npx forge-engine@<version>` (downloaded once, on first use).
+**From npm**, where your Claude Code account has npm plugin installs enabled: `claude plugin install forge-engine@npm` (bundles the built server, works offline afterwards). If it says npm installs are not enabled for your account, use the marketplace command above.
 
 **Scopes:** `user` (all your projects), `project` (shared with the repo through `.claude/settings.json`), `local` (this repo, only you).
 
@@ -87,6 +81,13 @@ Restart Codex (or open `/plugins`). You get forge's **MCP server** (pipeline, me
 > Use the security-review skill on this repository.
 
 The server explains its protocol when the agent connects, and the `guide` tool returns any playbook (`guide skills/security-review`).
+
+Codex asks before each MCP tool call. Approve forge's tools when asked, or pre-approve the ones you trust in `~/.codex/config.toml` (one block per tool):
+
+```toml
+[mcp_servers.forge.tools.forge_status]
+approval_mode = "approve"
+```
 
 **Update:** `codex plugin marketplace upgrade forge-engine && codex plugin add forge-engine@forge-engine` · **Remove:** `codex plugin remove forge-engine@forge-engine && codex plugin marketplace remove forge-engine`.
 
@@ -162,6 +163,7 @@ Then, in Claude Code, `/forge-engine:forge "a habit tracker for busy professiona
 | Codex doesn't see the tools | restart Codex; `codex mcp list` must show `forge`; the first start downloads the package (needs network once) |
 | `forge design shots`: no browser found | install Chrome, or `npx playwright install chromium-headless-shell`, or set `FORGE_BROWSER` |
 | `forge deploy` blocked: not logged in | run the login it names (`vercel login`, `fly auth login`, …) — forge never fakes a deploy |
+| Working **on forge itself** (inside this repo): the Codex plugin's server doesn't start | npx sees the repo's own `package.json` (also named forge-engine) — in this repo use the local build: `codex mcp add forge -- node <repo>/dist/cli.js mcp` |
 | Anything else | `forge-engine doctor`, then open an issue: https://github.com/JRanjan-Biswal/forge-engine/issues |
 
 ## Uninstall

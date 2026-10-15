@@ -2,15 +2,24 @@
 // forge on real agent hosts. Each host gets one short agent task, so this costs a little.
 // Usage (from the open-source folder):  node e2e/hosts.mjs [claude] [codex] [opencode]
 // Writes e2e/runs/<timestamp>-hosts/REPORT.md and e2e/LATEST-hosts.md.
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CLI, E2E, FORGE, Suite, makeRunDir, readJson, sh, shAsync, tail, writeJson, writeText } from "./lib.mjs";
 
 const suite = new Suite("agent hosts — Claude Code plugin · Codex MCP · OpenCode MCP");
-const RUN = makeRunDir("hosts");
+// npm mode tests what users get: their project is somewhere else, not inside the forge repo
+// (inside it, npx would see the repo's own package.json — also named forge-engine — and not fetch the package).
+const RUN = process.env.FORGE_E2E_SERVER === "npm" ? mkdtempSync(join(tmpdir(), "forge-hosts-")) : makeRunDir("hosts");
 const wanted = process.argv.slice(2);
 const enabled = (host) => (!wanted.length && host !== "claude-validate") || wanted.includes(host);
 const FORGE_HOME = join(RUN, "forge-home");
+// FORGE_E2E_SERVER=npm: run the published package (npx forge-engine@<version> mcp) instead of this checkout's dist/.
+// FORGE_E2E_PLUGIN_DIR: load the Claude Code plugin from an installed copy (e.g. one installed from GitHub).
+const VERSION = readJson(join(FORGE, "package.json")).version;
+const SERVER = process.env.FORGE_E2E_SERVER === "npm" ? ["npx", "--yes", `forge-engine@${VERSION}`, "mcp"] : [process.execPath, CLI, "mcp"];
+const PLUGIN_DIR = process.env.FORGE_E2E_PLUGIN_DIR ?? FORGE;
+const TOOL_COUNT = (readFileSync(join(FORGE, "src", "mcp", "server.ts"), "utf8").match(/server\.registerTool\(/g) ?? []).length;
 
 const TASK = `You are testing the forge MCP server. Use ONLY the forge MCP tools — no shell commands and no file edits.
 1. Call project_init with name "host-test".
@@ -51,7 +60,8 @@ if (enabled("claude")) {
     mkdirSync(dir, { recursive: true });
     // FORGE_ROOT pins the MCP server to this test project whatever cwd the host gives it.
     const env = { ...process.env, FORGE_HOME, FORGE_ROOT: dir };
-    const base = ["--plugin-dir", FORGE, "--model", "sonnet", "--max-budget-usd", "1"];
+    const base = ["--plugin-dir", PLUGIN_DIR, "--model", "sonnet", "--max-budget-usd", "1"];
+    suite.note("plugin", `${PLUGIN_DIR} (server: ${existsSync(join(PLUGIN_DIR, "dist", "cli.js")) ? "bundled dist/" : "npx from npm"})`);
 
     let r = await shAsync("claude", ["-p", "Reply with OK.", ...base, "--output-format", "stream-json", "--verbose"], { cwd: dir, env, timeoutMs: 180_000 });
     const events = r.out.split("\n").map(parse).filter(Boolean);
@@ -61,9 +71,9 @@ if (enabled("claude")) {
     const server = (init?.mcp_servers ?? []).find((s) => /forge/.test(s.name));
     suite.check("forge MCP server connects", server?.status === "connected", JSON.stringify(init?.mcp_servers));
     const tools = (init?.tools ?? []).filter((t) => t.startsWith("mcp__") && /forge/.test(t));
-    suite.check("all 45 forge tools are exposed to the model", tools.length === 45, `${tools.length}: ${tools.slice(0, 3).join(", ")}`);
-    const slash = (init?.slash_commands ?? []).filter((c) => /forge/.test(c));
-    suite.check("/forge slash command is registered", slash.length > 0, JSON.stringify(slash));
+    suite.check(`all ${TOOL_COUNT} forge tools are exposed to the model`, tools.length === TOOL_COUNT, `${tools.length}: ${tools.slice(0, 3).join(", ")}`);
+    const slash = (init?.slash_commands ?? []).filter((c) => /(^|:)forge$/.test(c));
+    suite.check("/forge-engine:forge slash command is registered", slash.length > 0, JSON.stringify((init?.slash_commands ?? []).filter((c) => /forge/.test(c))));
     const agents = (init?.agents ?? []).filter((a) => /conductor/.test(a));
     suite.check("conductor agent is registered", agents.length > 0, JSON.stringify(init?.agents));
     const toolPrefix = tools[0]?.split("__").slice(0, 2).join("__") ?? "mcp__plugin_forge_forge";
@@ -158,10 +168,12 @@ if (enabled("codex")) {
       "--skip-git-repo-check",
       "-C", dir,
       "-s", "workspace-write",
-      "-c", `mcp_servers.forge.command=${JSON.stringify(process.execPath)}`,
-      "-c", `mcp_servers.forge.args=[${JSON.stringify(CLI)},"mcp"]`,
+      "-c", `mcp_servers.forge.command=${JSON.stringify(SERVER[0])}`,
+      "-c", `mcp_servers.forge.args=[${SERVER.slice(1).map((a) => JSON.stringify(a)).join(",")}]`,
       "-c", `mcp_servers.forge.env={FORGE_ROOT=${JSON.stringify(dir)},FORGE_HOME=${JSON.stringify(FORGE_HOME)}}`,
       "-c", 'approval_policy="never"',
+      // Codex asks before every MCP tool call unless that tool is approved; approve the ones this task uses.
+      ...["project_init", "forge_status", "stage_start", "artifact_write", "stage_complete", "ledger_add"].flatMap((tool) => ["-c", `mcp_servers.forge.tools.${tool}.approval_mode="approve"`]),
       TASK,
     ];
     const r = await shAsync("codex", args, { cwd: dir, env: process.env, timeoutMs: 600_000, input: "" });
@@ -178,7 +190,7 @@ if (enabled("opencode")) {
     mkdirSync(dir, { recursive: true });
     writeJson(join(dir, "opencode.json"), {
       $schema: "https://opencode.ai/config.json",
-      mcp: { forge: { type: "local", command: [process.execPath, CLI, "mcp"], enabled: true, environment: { FORGE_ROOT: dir, FORGE_HOME } } },
+      mcp: { forge: { type: "local", command: SERVER, enabled: true, environment: { FORGE_ROOT: dir, FORGE_HOME } } },
     });
     // e.g. FORGE_E2E_OPENCODE_MODEL=xai/grok-4.7 to run the same test on Grok.
     const model = process.env.FORGE_E2E_OPENCODE_MODEL ?? "opencode/big-pickle";

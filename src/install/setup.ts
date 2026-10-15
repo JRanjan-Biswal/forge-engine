@@ -30,7 +30,7 @@ export interface SetupPlan {
 
 export interface SetupOptions {
   hosts?: Host[];
-  /** Marketplace source: a local path or owner/repo (default: npm for Claude Code, the GitHub repo for Codex). */
+  /** Marketplace source: a local path or owner/repo (default: the GitHub repo, for both hosts). */
   source?: string;
   scope?: Scope;
   remove?: boolean;
@@ -59,10 +59,10 @@ export function setupPlan(options: SetupOptions = {}): SetupPlan {
     if (host === "claude") {
       if (options.remove) {
         steps.push({ host, label: "Uninstall the Claude Code plugin", argv: ["claude", "plugin", "uninstall", PLUGIN, "--scope", scope] });
-      } else if (source) {
-        steps.push({ host, label: `Install the Claude Code plugin from the ${source} marketplace (${scope} scope)`, argv: ["claude", "plugin", "install", PLUGIN, "--marketplace", source, "--scope", scope] });
       } else {
-        steps.push({ host, label: `Install the Claude Code plugin from npm (${scope} scope)`, argv: ["claude", "plugin", "install", `${PLUGIN}@npm`, "--scope", scope] });
+        // The GitHub marketplace works for every account; `forge-engine@npm` installs are not enabled for all accounts.
+        const from = source ?? REPO;
+        steps.push({ host, label: `Install the Claude Code plugin from the ${from} marketplace (${scope} scope)`, argv: ["claude", "plugin", "install", PLUGIN, "--marketplace", from, "--scope", scope] });
       }
     } else if (options.remove) {
       steps.push({ host, label: "Remove the Codex plugin", argv: ["codex", "plugin", "remove", `${PLUGIN}@${PLUGIN}`] });

@@ -1,6 +1,6 @@
 {
   "name": "forge-engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Idea → validated → designed → built → verified → shipped. A gated, memory-backed product pipeline for coding agents: evidence-checked validation, design system + screenshot critique, stack packs, code & security review, QA coverage, deploy with real checks.",
   "author": {
     "name": "JRanjan-Biswal",

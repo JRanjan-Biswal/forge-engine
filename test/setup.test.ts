@@ -52,14 +52,14 @@ afterEach(() => {
 });
 
 describe("forge-engine setup", () => {
-  it("plans npm for Claude Code and the GitHub marketplace for Codex, and skips hosts that are not installed", () => {
+  it("plans the GitHub marketplace for Claude Code and Codex, and skips hosts that are not installed", () => {
     fakeHosts(["claude"]);
     const plan = setupPlan();
     expect(plan.hosts).toEqual([
       { host: "claude", found: true },
       { host: "codex", found: false },
     ]);
-    expect(plan.steps.map((s) => s.argv.join(" "))).toEqual(["claude plugin install forge-engine@npm --scope user"]);
+    expect(plan.steps.map((s) => s.argv.join(" "))).toEqual(["claude plugin install forge-engine --marketplace JRanjan-Biswal/forge-engine --scope user"]);
     expect(plan.notes).toEqual(["Codex (`codex`) is not installed — skipped"]);
   });
 
@@ -95,7 +95,7 @@ describe("forge-engine setup", () => {
     const out: string[] = [];
     const io = { out: (line: string) => out.push(line), err: () => undefined };
     expect(await run(["setup", "--dry-run"], io)).toBe(0);
-    expect(out.join("\n")).toMatch(/Will run:\n {2}claude plugin install forge-engine@npm --scope user[\s\S]*codex plugin marketplace add JRanjan-Biswal\/forge-engine[\s\S]*codex plugin add forge-engine@forge-engine/);
+    expect(out.join("\n")).toMatch(/Will run:\n {2}claude plugin install forge-engine --marketplace JRanjan-Biswal\/forge-engine --scope user[\s\S]*codex plugin marketplace add JRanjan-Biswal\/forge-engine[\s\S]*codex plugin add forge-engine@forge-engine/);
     expect(fake.calls()).toEqual([]);
     out.length = 0;
     expect(await run(["setup", "--host", "codex", "--yes"], io)).toBe(0);
