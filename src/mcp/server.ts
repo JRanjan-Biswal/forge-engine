@@ -11,6 +11,7 @@ import { adoptProject } from "../product/adopt.js";
 import { auditContrast, auditDrift } from "../design/audit.js";
 import { buildDesign, loadTokens } from "../design/tokens.js";
 import { buildPrototype } from "../design/prototype.js";
+import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "../build/tasks.js";
 import { checkProduct, listPageAudits, loadProductMap, savePageAudit, syncProduct, type SyncResult } from "../product/sync.js";
 import { scoreValidation, validationTemplate } from "../core/validation.js";
 import { SOURCES, searchEvidence } from "../evidence/connectors.js";
@@ -456,6 +457,36 @@ export function createForgeServer(root?: string): McpServer {
     "page_audit_list",
     { description: "All page audits with their open must-fix atoms.", inputSchema: {} },
     guarded(() => listPageAudits(forge().root)),
+  );
+
+  server.registerTool(
+    "task_waves",
+    { description: "The task DAG as parallel waves (dependencies + file conflicts), with each task's status.", inputSchema: {} },
+    guarded(() => {
+      const tasks = loadTasks(forge().root);
+      return planWaves(tasks).map((wave) => wave.map((id) => ({ id, status: tasks.find((t) => t.id === id)?.status })));
+    }),
+  );
+
+  server.registerTool(
+    "task_next",
+    { description: "Tasks that can start now (todo, dependencies done), from the earliest wave. Dispatch these in parallel — at most workers.maxConcurrent at once.", inputSchema: {} },
+    guarded(() => nextTasks(loadTasks(forge().root))),
+  );
+
+  server.registerTool(
+    "task_brief",
+    {
+      description: "Self-contained brief for one task: acceptance, linked stories with Given/When/Then, screens, motion specs, API contract, related decisions, learnings and rules. Give it to the builder (subagent or worker) verbatim.",
+      inputSchema: { id: z.string() },
+    },
+    guarded(({ id }: { id: string }) => taskBrief(forge().root, id)),
+  );
+
+  server.registerTool(
+    "task_update",
+    { description: "Set a task's status (todo | doing | done | blocked) with an optional note; recorded in the ledger.", inputSchema: { id: z.string(), status: z.enum(["todo", "doing", "done", "blocked"]), note: z.string().optional() } },
+    guarded(({ id, status, note }: { id: string; status: "todo" | "doing" | "done" | "blocked"; note?: string }) => updateTask(forge().root, id, status, note)),
   );
 
   server.registerTool(

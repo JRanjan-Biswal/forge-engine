@@ -89,6 +89,16 @@ Gemini CLI / Cursor (`settings.json` / `mcp.json`):
 
 Check your host's MCP documentation for the exact file. The server's instructions teach the agent the protocol: status → start → write artifacts → complete → record decisions → save an episode.
 
+## Build & verify (parallel, bounded)
+
+```bash
+forge tasks waves          # the task DAG as parallel waves (dependencies + file ownership conflicts)
+forge tasks brief T-4      # everything one task needs: stories, acceptance, screens, motion, contract, decisions
+forge workers run --max 1  # ready tasks run headless (Claude Code, Codex, Gemini, OpenCode), one git worktree each
+```
+
+Workers are capped (`workers.maxConcurrent`, default 1), run in their own process groups with timeouts, and mark tasks done or blocked; review and merge follow. The verify stage runs a reviewer council → fixer (regression test first) → adversarial verifier loop, with a scientific debugger and a test strategist.
+
 ## Existing products (brownfield)
 
 Most teams are mid-build, not starting from scratch. forge can adopt a product that already exists and keep an always-current understanding of it:
@@ -158,7 +168,7 @@ These are process rules, not an OS-enforced memory limit.
 
 - **v0.1 Validate** *(in progress)* — evidence engine with quote verification ✅, scorecard ✅, strategy/discovery/PM agents and skills ✅; next: forge-bench Validate track, landing-page smoke test
 - **v0.2 Design + Motion** *(in progress)* — DTCG token pipeline → CSS/Tailwind/TS ✅, contrast + drift audits ✅, design/motion agents and skills ✅; native exporters (Flutter, SwiftUI, Compose) ✅, prototype scaffold ✅; next: screenshot critique automation
-- **v0.5 Build & Verify** — architecture, frontend/backend/web teams, task DAG + worktrees + headless workers, review/debug/fix, QA, gap
+- **v0.5 Build & Verify** *(in progress)* — task waves + briefs ✅, worktrees + bounded headless workers ✅, architecture/build/review/debug/QA agents and skills ✅; next: merge queue, stack packs (Next.js, Expo, FastAPI), forge-bench Build track
 - **v1.0 Everywhere** — mobile, adapters for every host, published forge-bench evals
 
 ## Development

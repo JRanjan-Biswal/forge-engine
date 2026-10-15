@@ -29,3 +29,5 @@ export { loadTokens, buildDesign, type Token, type TokenSet } from "./design/tok
 export { auditContrast, auditDrift, contrastRatio } from "./design/audit.js";
 export { exportNative } from "./design/native.js";
 export { buildPrototype } from "./design/prototype.js";
+export { planWaves, nextTasks, taskBrief, updateTask, loadTasks } from "./build/tasks.js";
+export { createWorktree, removeWorktree, listWorktrees, runWorkers } from "./build/workers.js";

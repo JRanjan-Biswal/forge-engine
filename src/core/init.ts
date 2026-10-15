@@ -66,7 +66,7 @@ function initUnlocked(root: string, options: InitOptions): InitResult {
   }
   const gitignore = `${paths.forge}/.gitignore`;
   if (!existsSync(gitignore)) {
-    writeTextAtomic(gitignore, "# local-only forge files\nindex.db\ncache/\n*.tmp\n");
+    writeTextAtomic(gitignore, "# local-only forge files\nindex.db\ncache/\n*.tmp\nworktrees/\n");
     created.push(".forge/.gitignore");
   }
 

@@ -351,6 +351,10 @@ await stage("plan", {
     put("tasks", tasks(true));
     expectFail("plan", ["tasks-dag"], "dependency cycle T-1 → T-3 → T-2 → T-1");
     put("tasks", tasks(false));
+    const waves = json(forge(P, "tasks", "waves", "--json"));
+    suite.check("plan: tasks schedule into dependency waves", JSON.stringify(waves) === JSON.stringify([["T-1"], ["T-2"], ["T-3"]]), JSON.stringify(waves));
+    const brief = forge(P, "tasks", "brief", "T-2").out;
+    suite.check("plan: the task brief carries stories, acceptance and the contract", /Story S-2/.test(brief) && /Given a habit/.test(brief) && /\/checkins/.test(brief), brief.slice(0, 300));
   },
 });
 
@@ -679,7 +683,7 @@ await suite.guard("MCP session", async () => {
     return { text: res.content?.[0]?.text ?? "", isError: res.isError === true };
   };
   const tools = (await client.listTools()).tools;
-  suite.check("server lists 40 tools, each with an object input schema", tools.length === 40 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
+  suite.check("server lists 44 tools, each with an object input schema", tools.length === 44 && tools.every((t) => t.inputSchema?.type === "object"), String(tools.length));
   suite.check("server sends usage instructions on initialize", /Never fabricate/.test(client.getInstructions() ?? ""));
   let t = await call("guide", { name: "skills/validate-idea" });
   suite.check("guide serves the validate-idea playbook from the installed package", /evidence_save/.test(t.text) && !t.isError, t.text.slice(0, 120));

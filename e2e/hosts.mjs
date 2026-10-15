@@ -61,7 +61,7 @@ if (enabled("claude")) {
     const server = (init?.mcp_servers ?? []).find((s) => /forge/.test(s.name));
     suite.check("forge MCP server connects", server?.status === "connected", JSON.stringify(init?.mcp_servers));
     const tools = (init?.tools ?? []).filter((t) => t.startsWith("mcp__") && /forge/.test(t));
-    suite.check("all 40 forge tools are exposed to the model", tools.length === 40, `${tools.length}: ${tools.slice(0, 3).join(", ")}`);
+    suite.check("all 44 forge tools are exposed to the model", tools.length === 44, `${tools.length}: ${tools.slice(0, 3).join(", ")}`);
     const slash = (init?.slash_commands ?? []).filter((c) => /forge/.test(c));
     suite.check("/forge slash command is registered", slash.length > 0, JSON.stringify(slash));
     const agents = (init?.agents ?? []).filter((a) => /conductor/.test(a));

@@ -49,6 +49,17 @@ export const ForgeConfig = z.object({
     })
     .prefault({}),
   stages: z.object({ skip: z.array(z.string()).default([]) }).prefault({}),
+  workers: z
+    .object({
+      /** Agent CLI used by `forge workers run`: claude | codex | gemini | opencode. */
+      host: z.string().default("claude"),
+      /** Headless workers alive at once (RAM protection — raise only with headroom). */
+      maxConcurrent: z.number().int().min(1).max(8).default(1),
+      timeoutMs: z.number().int().positive().default(1_800_000),
+      /** Extra CLI arguments for the host (e.g. --allowedTools …); empty uses forge's safe default. */
+      args: z.string().default(""),
+    })
+    .prefault({}),
   resources: z
     .object({
       /** Heavy gate commands (builds, test suites) allowed at once across all agents. */

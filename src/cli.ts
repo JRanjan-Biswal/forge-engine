@@ -14,6 +14,8 @@ import { adoptProject } from "./product/adopt.js";
 import { auditContrast, auditDrift } from "./design/audit.js";
 import { buildDesign, loadTokens } from "./design/tokens.js";
 import { buildPrototype } from "./design/prototype.js";
+import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./build/tasks.js";
+import { createWorktree, listWorktrees, removeWorktree, runWorkers } from "./build/workers.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
 import { scoreValidation, validationTemplate } from "./core/validation.js";
 import { searchEvidence } from "./evidence/connectors.js";
@@ -65,6 +67,14 @@ Existing products (brownfield)
   product [pages|endpoints|calls|docs] what forge knows about the product
   pages [<slug>]                       pro-page-complete audits and open must-fix atoms
   hooks install                        git hooks that run "forge sync" after commit / merge / checkout
+
+Build (Phase 4)
+  tasks [waves|next]                   task DAG as parallel waves (deps + file conflicts) / runnable now
+  tasks brief <id>                     everything one task needs: stories, acceptance, screens, motion, contract, decisions
+  tasks update <id> --status <s>       todo | doing | done | blocked [--note <text>]
+  worktree [list|create <id>|remove <id>] [--force]
+  workers run [--host claude|codex|gemini|opencode] [--max <n>] [--tasks a,b]
+                                       run ready tasks headless, one git worktree each (default max 1)
 
 Design
   design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)
@@ -120,6 +130,10 @@ const OPTIONS = {
   url: { type: "string" },
   quote: { type: "string" },
   fresh: { type: "boolean" },
+  status: { type: "string" },
+  host: { type: "string" },
+  max: { type: "string" },
+  tasks: { type: "string" },
   check: { type: "boolean" },
   hook: { type: "boolean" },
   quiet: { type: "boolean" },
@@ -593,6 +607,68 @@ export async function run(argv: string[], io: CliIO = defaultIO): Promise<number
         const installed = installGitHooks(forge().root);
         print(installed, () => io.out(installed.length ? `Installed: ${installed.join(", ")}` : "forge git hooks already installed"));
         return 0;
+      }
+
+      case "tasks": {
+        const root = forge().root;
+        const view = args[0] ?? "waves";
+        if (view === "brief") {
+          io.out(taskBrief(root, need(args[1], "task id")));
+          return 0;
+        }
+        if (view === "update") {
+          const status = need(opts.status, "--status");
+          if (!["todo", "doing", "done", "blocked"].includes(status)) throw new UsageError("--status must be todo, doing, done or blocked");
+          const task = updateTask(root, need(args[1], "task id"), status as "todo", opts.note);
+          print(task, () => io.out(`${task.id} → ${task.status}`));
+          return 0;
+        }
+        const tasks = loadTasks(root);
+        if (view === "next") {
+          const ready = nextTasks(tasks);
+          print(ready, () => io.out(ready.length ? ready.map((t) => `${t.id}  ${t.title}`).join("\n") : "No runnable tasks (all done, blocked, or waiting on dependencies)."));
+          return 0;
+        }
+        const waves = planWaves(tasks);
+        print(waves, () =>
+          waves.forEach((wave, i) =>
+            io.out(`wave ${i + 1}: ${wave.map((id) => `${id} [${tasks.find((t) => t.id === id)?.status}]`).join("  ")}`),
+          ),
+        );
+        return 0;
+      }
+
+      case "worktree": {
+        const root = forge().root;
+        const view = args[0] ?? "list";
+        if (view === "create") {
+          const wt = createWorktree(root, need(args[1], "task id"));
+          print(wt, () => io.out(`${wt.path} on ${wt.branch}`));
+          return 0;
+        }
+        if (view === "remove") {
+          removeWorktree(root, need(args[1], "task id"), opts.force);
+          print({ removed: args[1] }, () => io.out(`Removed worktree for ${args[1]}`));
+          return 0;
+        }
+        const list = listWorktrees(root);
+        print(list, () => io.out(list.length ? list.map((w) => `${w.branch}  ${w.path}`).join("\n") : "No forge task worktrees."));
+        return 0;
+      }
+
+      case "workers": {
+        if (args[0] !== "run") throw new UsageError("Usage: forge workers run [--host h] [--max n] [--tasks a,b]");
+        const f = forge();
+        const results = await runWorkers(f.root, f.config(), {
+          host: opts.host,
+          max: opts.max ? toInt(opts.max, 1) : undefined,
+          tasks: opts.tasks ? opts.tasks.split(",").map((t) => t.trim()) : undefined,
+        });
+        print(results, () => {
+          if (!results.length) io.out("No runnable tasks.");
+          for (const r of results) io.out(`${r.status === "done" ? "✓" : "✗"} ${r.task} (${r.seconds}s${r.timedOut ? ", timed out" : ""}) → ${r.worktree}`);
+        });
+        return results.every((r) => r.status === "done") ? 0 : 1;
       }
 
       case "design": {
