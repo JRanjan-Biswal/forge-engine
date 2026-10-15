@@ -31,10 +31,10 @@ function put(root: string, file: string, content: string | object): void {
 }
 
 /** A real local HTTP server standing in for a deployed app. */
-async function liveServer(handler: (req: { headers: Record<string, string | string[] | undefined> }) => { status: number }): Promise<string> {
+async function liveServer(handler: (req: { url?: string; headers: Record<string, string | string[] | undefined> }) => { status: number; location?: string }): Promise<string> {
   const server = createServer((req, res) => {
-    const { status } = handler(req);
-    res.writeHead(status, { "content-type": "application/json", "x-content-type-options": "nosniff" });
+    const { status, location } = handler(req);
+    res.writeHead(status, { "content-type": "application/json", "x-content-type-options": "nosniff", ...(location ? { location } : {}) });
     res.end("{}");
   });
   servers.push(server);
@@ -211,7 +211,7 @@ describe("deploy", () => {
     projectWithTarget(root, { url: broken });
     const result = await deploy(root);
     expect(result.ok).toBe(false);
-    expect(result.checks.find((c) => c.name.startsWith("smoke"))).toMatchObject({ pass: false, detail: "HTTP 500" });
+    expect(result.checks.find((c) => c.name.startsWith("smoke"))).toMatchObject({ pass: false, detail: expect.stringMatching(/^HTTP 500/) });
     const ship = findStage("ship")!;
     expect(await BUILTINS["release.checksPass"]!({ root, config: loadConfig(root), stage: ship, state: new Forge(root).readState() })).toMatchObject({ status: "fail" });
 
@@ -222,6 +222,32 @@ describe("deploy", () => {
     expect(denied.checks.find((c) => c.name.startsWith("smoke"))?.detail).toMatch(/HTTP 401 — the deployment is protected; set FORGE_TEST_BYPASS/);
     process.env.FORGE_TEST_BYPASS = "let-me-in";
     expect((await deploy(root2)).ok).toBe(true);
+  });
+
+  it("does not mistake a protected deployment's login redirect for the app (regression: Vercel SSO)", async () => {
+    const login = await liveServer(() => ({ status: 200 })); // a login page on another origin that answers 200
+    const app = await liveServer((req) =>
+      req.headers["x-test-bypass"] === "let-me-in"
+        ? req.url === "/"
+          ? { status: 307, location: "/home" } // same-origin redirects are followed
+          : { status: 200 }
+        : { status: 302, location: `${login}/sso-api?url=x&nonce=secret` },
+    );
+    const root = tmpProject();
+    projectWithTarget(root, { url: app });
+    const blocked = await deploy(root);
+    expect(blocked.ok).toBe(false);
+    const smoke = blocked.checks.find((c) => c.name.startsWith("smoke"));
+    expect(smoke?.detail).toMatch(new RegExp(`HTTP 302 redirect to ${login.replace(/\./g, "\\.")}/sso-api \\(login wall or deployment protection, not the app\\) — the deployment is protected; set FORGE_TEST_BYPASS`));
+    expect(smoke?.detail).not.toMatch(/nonce/);
+    const ctx = { root, config: loadConfig(root), stage: findStage("ship")!, state: new Forge(root).readState() };
+    expect(await BUILTINS["release.live"]!(ctx)).toMatchObject({ status: "fail", message: expect.stringMatching(/not the app/) });
+
+    process.env.FORGE_TEST_BYPASS = "let-me-in";
+    const passed = await deploy(root);
+    expect(passed.ok).toBe(true);
+    expect(passed.checks.find((c) => c.name.startsWith("smoke"))?.detail).toBe(`HTTP 200 (${app}/home)`);
+    expect(await BUILTINS["release.live"]!({ ...ctx, state: new Forge(root).readState() })).toMatchObject({ status: "pass" });
   });
 
   it("skips targets that only deploy to production when deploying a preview", async () => {

@@ -64,6 +64,25 @@ export function analyzeHeaders(url: string, status: number, headers: Headers): H
   const add = (check: HeaderCheck) => checks.push(check);
   const get = (name: string) => headers.get(name)?.trim() ?? "";
 
+  // ── Redirects ─────────────────────────────────────────────────────────────
+  const location = get("location");
+  if (status >= 300 && status < 400 && location) {
+    let target = location;
+    try {
+      const next = new URL(location, url);
+      target = `${next.origin}${next.pathname}`;
+    } catch {
+      // keep the raw value
+    }
+    add({
+      id: "redirect",
+      status: "warn",
+      severity: "medium",
+      detail: `HTTP ${status} → ${target} — these are the redirect's headers, not the page's; check the final URL`,
+      fix: "Point the check at the URL that serves the page (or provide the deployment-protection bypass header).",
+    });
+  }
+
   // ── Content-Security-Policy ───────────────────────────────────────────────
   const csp = get("content-security-policy");
   const directives = parseCsp(csp);

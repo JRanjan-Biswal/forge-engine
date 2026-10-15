@@ -182,16 +182,12 @@ async function verifyDeployment(
   const checks: Release["checks"] = [];
 
   const smoke = await httpStatus(healthUrl, headers);
-  const protectedHint =
-    (smoke.status === 401 || smoke.status === 403) && target.bypass && !bypassValue
-      ? ` — the deployment is protected; set ${target.bypass.env} so forge can send ${target.bypass.header}`
-      : "";
-  const up = smoke.status !== undefined && smoke.status < 400;
-  checks.push({ name: `smoke GET ${healthUrl}`, pass: up, detail: smoke.status ? `HTTP ${smoke.status}${protectedHint}` : (smoke.error ?? "no response") });
+  const up = answered(smoke);
+  checks.push({ name: `smoke GET ${healthUrl}`, pass: up, detail: describeHttp(smoke, target, Boolean(bypassValue)) });
   if (!up) return checks;
 
   try {
-    const report = await checkHeaders(healthUrl, { headers });
+    const report = await checkHeaders(smoke.finalUrl ?? healthUrl, { headers });
     const blockers = blockingHeaders(report, config.security.failOn);
     checks.push({
       name: "security headers",
@@ -211,15 +207,51 @@ async function verifyDeployment(
   return checks;
 }
 
-export async function httpStatus(url: string, headers: Record<string, string> = {}, timeoutMs = 15_000): Promise<{ status?: number; error?: string }> {
+export interface HttpCheck {
+  status?: number;
+  /** The same-origin URL that finally answered (after following same-origin redirects). */
+  finalUrl?: string;
+  /** Set when the app redirected to another site (login wall, deployment protection, parked domain). */
+  offsite?: string;
+  error?: string;
+}
+
+/**
+ * GET a deployed URL, following redirects only within its own origin. A redirect to
+ * another host (e.g. a protected preview bouncing to the platform's login) is NOT the
+ * app answering — following it would turn a login page into a passing smoke test.
+ */
+export async function httpStatus(url: string, headers: Record<string, string> = {}, timeoutMs = 15_000): Promise<HttpCheck> {
+  const origin = new URL(url).origin;
+  let current = url;
   try {
-    const response = await fetch(url, { headers: { "User-Agent": "forge-deploy-smoke/1", ...headers }, signal: AbortSignal.timeout(timeoutMs) });
-    await response.body?.cancel().catch(() => undefined);
-    return { status: response.status };
+    for (let hop = 0; hop < 6; hop++) {
+      const response = await fetch(current, { redirect: "manual", headers: { "User-Agent": "forge-deploy-smoke/1", ...headers }, signal: AbortSignal.timeout(timeoutMs) });
+      await response.body?.cancel().catch(() => undefined);
+      const location = response.headers.get("location");
+      if (response.status >= 300 && response.status < 400 && location) {
+        const next = new URL(location, current);
+        if (next.origin !== origin) return { status: response.status, finalUrl: current, offsite: `${next.origin}${next.pathname}` };
+        current = next.href;
+        continue;
+      }
+      return { status: response.status, finalUrl: current };
+    }
+    return { finalUrl: current, error: "more than 5 redirects" };
   } catch (error) {
     const cause = (error as Error).cause;
     return { error: `unreachable: ${cause instanceof Error ? cause.message : (error as Error).message}` };
   }
+}
+
+/** Did the app itself answer successfully? */
+export const answered = (check: HttpCheck): boolean => !check.offsite && check.status !== undefined && check.status < 400;
+
+export function describeHttp(check: HttpCheck, target?: DeployTarget, bypassSet = false): string {
+  const hint = target?.bypass && !bypassSet ? ` — the deployment is protected; set ${target.bypass.env} so forge can send ${target.bypass.header}` : "";
+  if (check.offsite) return `HTTP ${check.status} redirect to ${check.offsite} (login wall or deployment protection, not the app)${hint}`;
+  if (check.status === 401 || check.status === 403) return `HTTP ${check.status}${hint}`;
+  return check.status !== undefined ? `HTTP ${check.status}${check.finalUrl ? ` (${check.finalUrl})` : ""}` : (check.error ?? "no response");
 }
 
 /** Bypass header for a release's targets, when the env var is set (the ship gate's live check uses it). */

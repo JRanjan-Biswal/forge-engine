@@ -191,6 +191,12 @@ describe("security headers", () => {
     expect(check(report, "cookie:theme")?.detail).toMatch(/SameSite=None without Secure/);
   });
 
+  it("says when it only saw a redirect, not the page", () => {
+    const report = analyzeHeaders("https://app.example/", 302, new Headers({ "content-type": "text/plain", location: "https://vercel.com/sso-api?url=x&nonce=abc" }));
+    expect(report.checks.find((c) => c.id === "redirect")).toMatchObject({ status: "warn", detail: expect.stringMatching(/^HTTP 302 → https:\/\/vercel\.com\/sso-api — these are the redirect's headers/) });
+    expect(JSON.stringify(report)).not.toContain("nonce");
+  });
+
   it("treats JSON APIs differently and does not demand HSTS over plain http", () => {
     const report = analyzeHeaders("http://localhost:8000/api", 200, new Headers({ "content-type": "application/json", "x-content-type-options": "nosniff" }));
     expect(report.kind).toBe("api");

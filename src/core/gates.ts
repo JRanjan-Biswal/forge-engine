@@ -25,7 +25,7 @@ import { computeGaps, scanPlaceholders } from "../trace/trace.js";
 import { blockingHeaders, checkHeaders } from "../security/headers.js";
 import { blocking, scanSecurity } from "../security/scan.js";
 import { qaCoverage } from "../qa/coverage.js";
-import { bypassHeaders, httpStatus } from "../ship/deploy.js";
+import { answered, bypassHeaders, describeHttp, httpStatus } from "../ship/deploy.js";
 import { ARTIFACTS, checkArtifact, loadArtifact } from "./artifacts.js";
 import type { ForgeConfig } from "./config.js";
 import { layout, nowIso, readJson } from "./paths.js";
@@ -540,8 +540,9 @@ export const BUILTINS: Record<string, Builtin> = {
     if (!release.url) return pass(`no URL to check (${release.target ?? "release"} without a web endpoint)`);
     const health = new URL(ctx.config.deploy.healthPath, release.url).href;
     const result = await httpStatus(health, bypassHeaders(ctx.root, release.target));
-    if (result.status !== undefined && result.status < 400) return pass(`${health} → HTTP ${result.status}`);
-    return fail(`${health} → ${result.status ? `HTTP ${result.status}` : result.error}${result.status === 401 || result.status === 403 ? " (protected deployment? set the target's bypass env var)" : ""}`);
+    const detail = describeHttp(result);
+    if (answered(result)) return pass(`${health} → ${detail}`);
+    return fail(`${health} → ${detail}${result.status === 401 || result.status === 403 || result.offsite ? " — if the deployment is protected, set the target's bypass env var" : ""}`);
   },
 
   "qa.coverage": (ctx) => {

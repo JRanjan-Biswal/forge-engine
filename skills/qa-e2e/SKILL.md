@@ -18,7 +18,7 @@ description: forge's QA — turn every MVP acceptance criterion into a tagged, d
 - **When** = what a user does: Playwright `getByRole` / `getByLabel` / `getByText` locators (no CSS/XPath chains); Maestro `tapOn` by visible text or accessibility id.
 - **Then** = the user-visible outcome with web-first assertions (`await expect(locator).toHaveText(…)`), plus the API status for HTTP tests. No `waitForTimeout` or sleeps; wait on state.
 - **States:** for every screen the story touches, reach empty, loading (throttle or intercept the request), error (make the request fail) and success.
-- **Base URL** from `PLAYWRIGHT_BASE_URL` / `BASE_URL` (forge sets both when testing a deployment). Locally, `webServer` in `playwright.config.ts` runs `build && start` — not a dev server — and Playwright stops it.
+- **Base URL** from `PLAYWRIGHT_BASE_URL` / `BASE_URL` (forge sets both when testing a deployment). Assert you are on the app's origin: a protected preview redirects to the platform's login page, which answers 200 and can look like a real page — HTTP checks use `redirect: "manual"`, browser tests assert the URL after navigation. Locally, `webServer` in `playwright.config.ts` runs `build && start` — not a dev server — and Playwright stops it.
 - **Accessibility:** an `@axe-core/playwright` scan on each screen's success state; fail on serious/critical violations.
 - Mobile (Maestro): one flow per story under `.maestro/`, run against a development or preview build on a simulator.
 

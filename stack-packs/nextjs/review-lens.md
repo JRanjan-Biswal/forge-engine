@@ -1,6 +1,7 @@
 # Next.js (App Router) — conventions & review lens
 
 ## Conventions
+- **Read the installed version's docs first:** Next.js ships its guides in `node_modules/next/dist/docs/` (the generated `AGENTS.md` says so). APIs change between majors — check there before writing framework code.
 - **Server first.** Components in `src/app` are Server Components by default; add `"use client"` only on the leaf that needs state, effects or browser APIs. Never import server-only modules (DB clients, secrets) into a client component — guard them with `import "server-only"`.
 - **Data:** fetch in Server Components or a server-side data layer (`src/server/*`), never from a client component to your own route handler just to read data. Writes go through Server Actions (`"use server"`) or route handlers that follow `contracts/openapi.yaml`.
 - **Request APIs are async** (Next 15+): `await params`, `await searchParams`, `await cookies()`, `await headers()`.
@@ -11,7 +12,7 @@
 - **Styling:** Tailwind with the forge tokens (`@import` of `design/dist/tailwind.css` in `src/app/globals.css`); no hex/rgb literals in components.
 - **Images & fonts:** `next/image` with width/height or `fill` + `sizes`; `next/font` for fonts (no layout shift).
 - **Env:** only `NEXT_PUBLIC_*` reaches the browser — never put secrets behind that prefix. Read env in one module and validate it at startup.
-- **Security headers** in `next.config.ts` `headers()` for every route: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`, `X-Frame-Options: DENY`; set `poweredByHeader: false`. The CSP is nonce-based and set in `proxy.ts` (generate a nonce per request, pass it via a request header, `script-src 'self' 'nonce-…' 'strict-dynamic'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`). Check the running app with `forge security headers <url>`.
+- **Security headers** in `next.config.ts` `headers()` for every route: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`, `X-Frame-Options: DENY`; set `poweredByHeader: false`. The CSP is nonce-based and set in `proxy.ts` (generate a nonce per request, set it on the request and response `Content-Security-Policy`, `script-src 'self' 'nonce-…' 'strict-dynamic'; style-src 'self' 'nonce-…'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`). Nonces need per-request rendering: `await connection()` in the page, and with Cache Components (`cacheComponents: true`, the default in new apps) also `export const instant = false` on that page or layout — otherwise the build fails or the prerendered shell's scripts lack the nonce. Verify on the running app that every `<script>` carries the response's nonce, and run `forge security headers <url>`.
 - **Tests:** Vitest + Testing Library for client components and pure logic (async Server Components are covered by Playwright), Playwright for story-level flows.
 
 ## Review lens
@@ -29,6 +30,7 @@
 - [ ] Accessibility: semantic elements, labels on inputs, focus visible, keyboard paths in Playwright specs.
 
 ## Pitfalls
+- Vercel preview deployments are usually behind Vercel Authentication: an unauthenticated request gets a 302 to `vercel.com/sso-api`. Smoke and e2e checks must not follow it (forge doesn't); set `VERCEL_AUTOMATION_BYPASS_SECRET` (`vercel project protection enable <project> --protection-bypass`) so checks send `x-vercel-protection-bypass`.
 - A `"use client"` at the top of a layout turns the whole subtree into client code.
 - `redirect()` inside `try/catch` is swallowed — call it outside the try.
 - `cookies().set()` only works in Server Actions and route handlers, not while rendering.
