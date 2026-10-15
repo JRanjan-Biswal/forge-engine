@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../vendor/zod.js";
 /**
  * A stack pack (`stack-packs/<id>/pack.yaml`): how forge recognises a stack in a repo,
  * which gate commands it can run there (only when their prerequisites exist), how to

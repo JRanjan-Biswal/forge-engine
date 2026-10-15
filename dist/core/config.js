@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { parse } from "yaml";
-import { z } from "zod";
+import { parse } from "../vendor/yaml.js";
+import { z } from "../vendor/zod.js";
 import { layout } from "./paths.js";
 import { formatIssues } from "./util.js";
 /** Empty YAML values (`build:`) arrive as null; treat them as "not configured". */

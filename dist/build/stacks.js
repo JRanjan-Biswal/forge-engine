@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse, parseDocument } from "yaml";
+import { parse, parseDocument } from "../vendor/yaml.js";
 import { loadConfig } from "../core/config.js";
 import { findOnPath } from "../core/env.js";
 import { appendLedger } from "../core/ledger.js";

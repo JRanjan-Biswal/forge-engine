@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../vendor/zod.js";
 /** ISO-8601 timestamp, e.g. 2026-10-14T09:30:00.000Z */
 export const IsoDate = z.iso.datetime({ offset: true });
 export const Id = z.string().min(1).max(120);

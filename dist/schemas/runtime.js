@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../vendor/zod.js";
 import { IsoDate } from "./common.js";
 export const StageStatus = z.enum([
     "pending",

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../vendor/zod.js";
 import { Evidence, Id, IsoDate } from "./common.js";
 // ── Strategy & vision ────────────────────────────────────────────────────────
 export const BrainstormIdea = z.object({

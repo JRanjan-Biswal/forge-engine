@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { parse, stringify } from "yaml";
+import { parse, stringify } from "../vendor/yaml.js";
 import { loadPack, packageManager, stackCommands } from "../build/stacks.js";
 import { loadConfig } from "../core/config.js";
 import { appendLedger } from "../core/ledger.js";

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { z } from "zod";
+import { z } from "./vendor/zod.js";
 import { ARTIFACTS, checkArtifact, listArtifacts, loadArtifact, readArtifactText, writeArtifact } from "./core/artifacts.js";
 import { Forge } from "./core/engine.js";
 import { gateChecks } from "./core/gates.js";

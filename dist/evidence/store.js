@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { z } from "zod";
+import { z } from "../vendor/zod.js";
 import { withLock } from "../core/lock.js";
 import { layout, nowIso, readJson, writeJsonAtomic } from "../core/paths.js";
 import { formatIssues } from "../core/util.js";

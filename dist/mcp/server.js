@@ -1,9 +1,9 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { McpServer } from "../vendor/mcp-server.js";
+import { StdioServerTransport } from "../vendor/mcp-stdio.js";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { z } from "zod";
+import { z } from "../vendor/zod.js";
 import { ARTIFACTS, listArtifacts, loadArtifact, readArtifactText, writeArtifact } from "../core/artifacts.js";
 import { Forge } from "../core/engine.js";
 import { listProjectProcesses, memorySnapshot } from "../core/procs.js";

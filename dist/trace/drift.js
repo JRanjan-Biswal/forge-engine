@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse } from "yaml";
+import { parse } from "../vendor/yaml.js";
 import { loadArtifact } from "../core/artifacts.js";
 import { loadConfig } from "../core/config.js";
 import { extractProduct, listProjectFiles, routeKey } from "../product/scan.js";
