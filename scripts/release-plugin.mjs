@@ -72,6 +72,9 @@ execFileSync(
     "--chunk-names=chunk-[hash]",
     "--legal-comments=eof",
     "--log-level=warning",
+    // yaml's parser debug switches (they print YAML syntax tokens): off in the bundle.
+    "--define:process.env.LOG_TOKENS=undefined",
+    "--define:process.env.LOG_STREAM=undefined",
     // CommonJS dependencies inside an ES module bundle still call require().
     "--banner:js=import { createRequire as __forgeRequire } from \"node:module\"; const require = __forgeRequire(import.meta.url);",
   ],
