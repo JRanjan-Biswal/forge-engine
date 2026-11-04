@@ -6,7 +6,8 @@ export const FORGE_DIR = ".forge";
 export const CONFIG_FILE = "forge.config.yaml";
 /**
  * Resolve the project root: FORGE_ROOT if set, otherwise the nearest ancestor of
- * `start` (default: cwd) containing .forge/ or forge.config.yaml, otherwise `start`.
+ * `start` (default: cwd) containing .forge/state.json or forge.config.yaml, otherwise
+ * `start`. A bare .forge/ is no marker: ~/.forge is forge's user-level folder, not a project.
  */
 export function findRoot(start) {
     const forgeRoot = setting("FORGE_ROOT");
@@ -16,7 +17,7 @@ export function findRoot(start) {
     const top = parse(origin).root;
     let dir = origin;
     for (;;) {
-        if (existsSync(join(dir, FORGE_DIR)) || existsSync(join(dir, CONFIG_FILE)))
+        if (existsSync(join(dir, FORGE_DIR, "state.json")) || existsSync(join(dir, CONFIG_FILE)))
             return dir;
         if (dir === top)
             return origin;

@@ -54,7 +54,7 @@ export function setupPlan(options = {}) {
         }
     }
     if (!steps.length)
-        notes.push("Nothing to do: install Claude Code or Codex first, or use any MCP client with `forge-engine mcp` (see INSTALL.md)");
+        notes.push("Nothing to do: install Claude Code or Codex first, or use any MCP client with `forge-engine mcp` (see https://github.com/JRanjan-Biswal/forge-engine/blob/main/INSTALL.md)");
     return { action: options.remove ? "remove" : "install", hosts, steps, notes };
 }
 function runArgv(argv, timeout = 300_000) {

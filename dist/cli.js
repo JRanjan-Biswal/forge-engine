@@ -701,7 +701,7 @@ export async function run(argv, io = defaultIO) {
                     for (const v of result.verified)
                         io.out("".concat((plan.action === "install") === v.installed ? "✓" : "✗", " ", v.host === "claude" ? "Claude Code" : "Codex", ": ", v.detail));
                     if (plan.action === "install" && result.verified.some((v) => v.installed))
-                        io.out("\nRestart the host, then run /forge-engine:forge in Claude Code, or ask Codex to \"use forge\" (see INSTALL.md).");
+                        io.out("\nRestart the host, then run /forge-engine:forge in Claude Code, or ask Codex to \"use forge\" (see https://github.com/JRanjan-Biswal/forge-engine/blob/main/INSTALL.md).");
                 });
                 const ok = result.results.every((r) => r.ok) && result.verified.every((v) => v.installed === (plan.action === "install"));
                 return ok ? 0 : 1;

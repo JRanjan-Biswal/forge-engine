@@ -4,7 +4,7 @@
 
 forge is an open-source product pipeline for coding agents. Instead of a bag of prompts, it gives your agent (Claude Code, Codex, Gemini CLI, Cursor, or anything that speaks MCP) a **gated, resumable pipeline**: every stage writes a schema-validated artifact, every stage has a machine-checked gate, and every decision lands in a ledger that the next session — in any tool — can recall.
 
-> **Status: early (v0.1.4).** Working today: the gated 14-stage pipeline (state machine, gates, artifacts, decision ledger, memory with graphify), the evidence-checked validate stage, the design engine (tokens, contrast, screenshot critique), stack packs (Next.js, Expo, FastAPI, Hono, Supabase), code and security review, QA coverage, CI generation, deploy with real post-deploy checks, contract-drift and parity gap checks — as a Claude Code plugin, a Codex plugin, an MCP server and a CLI. Still to come: mobile/AI/growth packs, more host adapters, published benchmarks — see [Roadmap](#roadmap).
+> **Status: early (v0.1.5).** Working today: the gated 14-stage pipeline (state machine, gates, artifacts, decision ledger, memory with graphify), the evidence-checked validate stage, the design engine (tokens, contrast, screenshot critique), stack packs (Next.js, Expo, FastAPI, Hono, Supabase), code and security review, QA coverage, CI generation, deploy with real post-deploy checks, contract-drift and parity gap checks — as a Claude Code plugin, a Codex plugin, an MCP server and a CLI. Still to come: mobile/AI/growth packs, more host adapters, published benchmarks — see [Roadmap](#roadmap).
 
 ## Why
 
@@ -37,20 +37,7 @@ Run `forge stages` for the exact checks. Thresholds live in `forge.config.yaml`.
 
 ## Install
 
-```bash
-npx forge-engine setup      # finds Claude Code and Codex, shows the commands, asks, installs, verifies
-```
-
-Or directly:
-
-| Host | Install |
-|---|---|
-| **Claude Code** | `claude plugin install forge-engine --marketplace JRanjan-Biswal/forge-engine` — or inside Claude Code: `/plugin install forge-engine --marketplace JRanjan-Biswal/forge-engine` |
-| **Codex** | `codex plugin marketplace add JRanjan-Biswal/forge-engine && codex plugin add forge-engine@forge-engine` |
-| **Gemini CLI, Cursor, OpenCode, any MCP client** | MCP server `npx --yes forge-engine mcp` |
-| **Command line** | `npm install -g forge-engine` → `forge-engine` (also `forge`) |
-
-Full guide — requirements, scopes, verifying, updating, uninstalling, troubleshooting: **[INSTALL.md](INSTALL.md)**.
+Add **forge-engine** from the Claude plugin directory, on claude.ai or through `/plugin` in Claude Code. Other hosts and install methods are in the [install guide](https://github.com/JRanjan-Biswal/forge-engine/blob/main/INSTALL.md).
 
 ## Quick start
 
@@ -208,6 +195,7 @@ forge has no telemetry and no account. It runs on your machine and only does the
 - **Requests URLs you give it:** `security_headers` and the deploy smoke check request the app URL you or your deploy produced, including its redirects.
 - **Sends one secret, only if you set it:** a Vercel protection-bypass value (this plugin's `deploy_preview_access` option) goes as the `x-vercel-protection-bypass` header to the deployment under test, and to your e2e command as an environment variable. forge sends no other credential.
 - **Runs programs you already use, when you ask for that step:** gate commands from your project configuration, `git`, agent CLIs for headless workers (`claude`, `codex`, `gemini`, `opencode`), deploy CLIs (`vercel`, `fly`, `eas`, `supabase`) with your existing login, `graphify` and a local Chromium for screenshots. Production deploys wait for your approval.
+- **Downloads code only in steps you ask for:** `forge stack scaffold` (and the scaffold command `stack_info` shows your agent) runs the stack's official generator, such as `create-next-app`, through your package manager's one-off runner, which fetches the generator at that moment. `forge ci` writes a GitHub Actions workflow whose security step runs the published `forge-engine` package, fetched by your CI at run time and not pinned to a version. Review the workflow before you commit it.
 - **Stores:** project state in `.forge/`, including saved evidence, memory and release records. Writes to memory pass a secret scan. Nothing is uploaded by forge itself.
 
 ## Roadmap
