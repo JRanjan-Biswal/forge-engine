@@ -53,7 +53,7 @@ export const DeployTarget = z
     /** Regex that finds the deployed URL in the command's output (last match wins). */
     url: z.string().min(1).optional(),
     /** Header that lets the smoke test through deployment protection, from an env var. */
-    bypass: z.object({ header: z.string().min(1), env: z.string().min(1) }).strict().optional(),
+    bypass: z.object({ header: z.string().min(1), env: z.string().min(1), setup: z.string().min(1).optional() }).strict().optional(),
     rollback: z.string().min(1),
     docs: z.url(),
 })

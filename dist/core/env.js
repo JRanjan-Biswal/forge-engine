@@ -1,13 +1,16 @@
 // The one place forge reads its environment: PATH lookups, FORGE_* overrides and CI detection.
-// Values here are settings, never account data; forge reads no other variables (except the
-// deploy bypass variable a stack pack names, read in ship/deploy.ts and sent only to the
-// user's own deployment).
+// Values here are settings, never account data — except the deploy bypass variable a stack pack
+// names, which ship/deploy.ts reads through setting() and sends only to the user's own deployment.
 import { accessSync, constants, existsSync } from "node:fs";
 import { userInfo } from "node:os";
 import { delimiter, join } from "node:path";
 /** A forge override or CI variable (FORGE_BROWSER, FORGE_HOME, GITHUB_ACTIONS, …). */
 export function setting(name) {
     return process.env[name];
+}
+/** Environment for a child process: forge's own plus the given overrides. */
+export function childEnv(extra) {
+    return { ...process.env, ...extra };
 }
 /** Full path of a program on PATH (with Windows extensions), or null. */
 export function findOnPath(bin, { executable = false } = {}) {

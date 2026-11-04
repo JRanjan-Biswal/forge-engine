@@ -1,6 +1,6 @@
 {
   "name": "forge-engine",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Idea → validated → designed → built → verified → shipped. A gated, memory-backed product pipeline for coding agents: evidence-checked validation, design system + screenshot critique, stack packs, code & security review, QA coverage, deploy with real checks.",
   "author": {
     "name": "JRanjan-Biswal",
@@ -20,5 +20,14 @@
     "qa",
     "deploy",
     "memory"
-  ]
+  ],
+  "userConfig": {
+    "deploy_preview_access": {
+      "type": "string",
+      "title": "Vercel preview access (optional)",
+      "description": "Only for Vercel previews behind Deployment Protection: the protection-bypass value from your own Vercel project. forge sends it as x-vercel-protection-bypass to the deployment under test and gives it to your e2e command. Leave empty otherwise.",
+      "sensitive": true,
+      "required": false
+    }
+  }
 }

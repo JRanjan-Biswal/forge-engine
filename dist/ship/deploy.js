@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { listPacks, loadPack, onPath } from "../build/stacks.js";
 import { loadArtifact, writeArtifact } from "../core/artifacts.js";
 import { loadConfig } from "../core/config.js";
+import { childEnv, setting } from "../core/env.js";
 import { appendLedger, readLedger } from "../core/ledger.js";
 import { layout, nowIso, readJson } from "../core/paths.js";
 import { runCommand, withCommandSlot } from "../core/proc.js";
@@ -125,7 +126,7 @@ export async function deploy(root, options = {}) {
 /** Smoke test, security headers and the e2e suite against the live URL. */
 async function verifyDeployment(root, url, target, slot) {
     const config = loadConfig(root);
-    const bypassValue = target.bypass ? process.env[target.bypass.env] : undefined;
+    const bypassValue = target.bypass ? setting(target.bypass.env) : undefined;
     const headers = target.bypass && bypassValue ? { [target.bypass.header]: bypassValue } : {};
     const healthUrl = new URL(config.deploy.healthPath, url).href;
     const checks = [];
@@ -148,7 +149,7 @@ async function verifyDeployment(root, url, target, slot) {
     }
     const e2e = config.commands.e2e;
     if (config.deploy.e2e && e2e) {
-        const e2eEnv = { ...process.env, BASE_URL: url, PLAYWRIGHT_BASE_URL: url, ...(bypassValue && target.bypass ? { [target.bypass.env]: bypassValue } : {}) };
+        const e2eEnv = childEnv({ BASE_URL: url, PLAYWRIGHT_BASE_URL: url, ...(bypassValue && target.bypass ? { [target.bypass.env]: bypassValue } : {}) });
         const result = await withCommandSlot(root, { ...slot, task: "forge deploy e2e" }, () => runCommand(e2e, root, { timeoutMs: 1_800_000, env: e2eEnv }));
         checks.push({ name: "e2e against ".concat(url), pass: result.code === 0 && !result.timedOut, detail: tail(redactSecrets(result.output).trim(), 800) });
     }
@@ -186,7 +187,7 @@ export async function httpStatus(url, headers = {}, timeoutMs = 15_000) {
 /** Did the app itself answer successfully? */
 export const answered = (check) => !check.offsite && check.status !== undefined && check.status < 400;
 export function describeHttp(check, target, bypassSet = false) {
-    const hint = target?.bypass && !bypassSet ? " — the deployment is protected; set ".concat(target.bypass.env, " so forge can send ", target.bypass.header) : "";
+    const hint = target?.bypass && !bypassSet ? " — the deployment is protected; ".concat(target.bypass.setup ?? "set ".concat(target.bypass.env), " so forge can send ", target.bypass.header) : "";
     if (check.offsite)
         return "HTTP ".concat(check.status, " redirect to ", check.offsite, " (login wall or deployment protection, not the app)", hint);
     if (check.status === 401 || check.status === 403)
@@ -200,7 +201,7 @@ export function bypassHeaders(root, targetIds) {
     const ids = targetIds.split(",");
     for (const { pack } of listPacks(root)) {
         for (const target of pack.deploy) {
-            const value = target.bypass ? process.env[target.bypass.env] : undefined;
+            const value = target.bypass ? setting(target.bypass.env) : undefined;
             if (ids.includes(target.id) && target.bypass && value)
                 return { [target.bypass.header]: value };
         }

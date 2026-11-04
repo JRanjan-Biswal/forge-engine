@@ -519,7 +519,7 @@ export const BUILTINS = {
         const detail = describeHttp(result);
         if (answered(result))
             return pass("".concat(health, " → ", detail));
-        return fail("".concat(health, " → ", detail, result.status === 401 || result.status === 403 || result.offsite ? " — if the deployment is protected, set the target's bypass env var" : ""));
+        return fail("".concat(health, " → ", detail, result.status === 401 || result.status === 403 || result.offsite ? " — if the deployment is protected, configure the target's bypass value" : ""));
     },
     "qa.coverage": (ctx) => {
         const report = qaCoverage(ctx.root);

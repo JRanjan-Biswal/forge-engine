@@ -18,7 +18,7 @@ description: forge's ship stage — generate CI from the stacks, deploy a previe
 
 ## 2. Preview
 - `deploy` (CLI `forge deploy`) goes database → services → apps. For each, forge checks the login, runs the deploy, captures the URL, then:
-  - smoke `GET <url><deploy.healthPath>` must be < 400 (protected previews: set the target's bypass env var, e.g. `VERCEL_AUTOMATION_BYPASS_SECRET`);
+  - smoke `GET <url><deploy.healthPath>` must be < 400 (protected previews: set this plugin's `deploy_preview_access` option);
   - security headers at `security.failOn`;
   - `commands.e2e` with `BASE_URL` / `PLAYWRIGHT_BASE_URL` set to the deployed URL.
 - Any failure → fix it through the build/verify loop and deploy again. Never edit the release record by hand.

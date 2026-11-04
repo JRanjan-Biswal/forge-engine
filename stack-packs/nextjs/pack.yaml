@@ -60,6 +60,6 @@ deploy:
     preview: vercel deploy --yes
     production: vercel deploy --prod --yes
     url: "https://[a-z0-9.-]+\\.vercel\\.app"
-    bypass: { header: x-vercel-protection-bypass, env: VERCEL_AUTOMATION_BYPASS_SECRET }
+    bypass: { header: x-vercel-protection-bypass, env: FORGE_DEPLOY_PREVIEW_ACCESS, setup: "set the plugin's deploy_preview_access option" }
     rollback: "vercel rollback (production) — or promote the previous deployment in the dashboard"
     docs: https://vercel.com/docs/cli/deploy

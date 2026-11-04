@@ -30,7 +30,7 @@
 - [ ] Accessibility: semantic elements, labels on inputs, focus visible, keyboard paths in Playwright specs.
 
 ## Pitfalls
-- Vercel preview deployments are usually behind Vercel Authentication: an unauthenticated request gets a 302 to `vercel.com/sso-api`. Smoke and e2e checks must not follow it (forge doesn't); set `VERCEL_AUTOMATION_BYPASS_SECRET` (`vercel project protection enable <project> --protection-bypass`) so checks send `x-vercel-protection-bypass`.
+- Vercel preview deployments are usually behind Vercel Authentication: an unauthenticated request gets a 302 to `vercel.com/sso-api`. Smoke and e2e checks must not follow it (forge doesn't); set this plugin's `deploy_preview_access` option to the value from `vercel project protection enable <project> --protection-bypass` so checks send `x-vercel-protection-bypass`.
 - A `"use client"` at the top of a layout turns the whole subtree into client code.
 - `redirect()` inside `try/catch` is swallowed — call it outside the try.
 - `cookies().set()` only works in Server Actions and route handlers, not while rendering.

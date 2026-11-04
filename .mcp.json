@@ -5,7 +5,10 @@
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/dist/cli.js",
         "mcp"
-      ]
+      ],
+      "env": {
+        "FORGE_DEPLOY_PREVIEW_ACCESS": "${user_config.deploy_preview_access}"
+      }
     }
   }
 }
