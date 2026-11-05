@@ -8,7 +8,7 @@ import { ARTIFACTS, checkArtifact, listArtifacts, loadArtifact, readArtifactText
 import { Forge } from "./core/engine.js";
 import { gateChecks } from "./core/gates.js";
 import { appendLedger, readLedger } from "./core/ledger.js";
-import { currentUser, findOnPath, setting } from "./core/env.js";
+import { currentUser, findOnPath } from "./core/env.js";
 import { findRoot } from "./core/paths.js";
 import { listProjectProcesses, memorySnapshot, registryTemplate } from "./core/procs.js";
 import { adoptProject } from "./product/adopt.js";
@@ -23,7 +23,7 @@ import { blocking, recordFindings, scanSecurity } from "./security/scan.js";
 import { qaCoverage, qaPlan } from "./qa/coverage.js";
 import { writeWorkflow } from "./ship/ci.js";
 import { quoteArgv, runSetup, setupPlan } from "./install/setup.js";
-import { markdownSummary, reportToGithub, runCiCheck } from "./ship/checks.js";
+import { inGithubActions, markdownSummary, reportToGithub, runCiCheck } from "./ship/checks.js";
 import { deploy, deployPlan, releaseNotes } from "./ship/deploy.js";
 import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "./build/workers.js";
 import { checkProduct, installGitHooks, listPageAudits, loadProductMap, syncProduct } from "./product/sync.js";
@@ -701,7 +701,7 @@ export async function run(argv, io = defaultIO) {
                     for (const v of result.verified)
                         io.out("".concat((plan.action === "install") === v.installed ? "✓" : "✗", " ", v.host === "claude" ? "Claude Code" : "Codex", ": ", v.detail));
                     if (plan.action === "install" && result.verified.some((v) => v.installed))
-                        io.out("\nRestart the host, then run /forge-engine:forge in Claude Code, or ask Codex to \"use forge\" (see https://github.com/JRanjan-Biswal/forge-engine/blob/main/INSTALL.md).");
+                        io.out("\nRestart the host, then run /forge-engine:forge in Claude Code, or ask Codex to \"use forge\" (see INSTALL.md in the forge-engine repository).");
                 });
                 const ok = result.results.every((r) => r.ok) && result.verified.every((v) => v.installed === (plan.action === "install"));
                 return ok ? 0 : 1;
@@ -738,7 +738,7 @@ export async function run(argv, io = defaultIO) {
                     const kind = args[1];
                     if (kind !== "review" && kind !== "gap")
                         throw new UsageError("Usage: forge ci check review|gap [--format text|github|json]");
-                    const format = opts.json ? "json" : (opts.format ?? (setting("GITHUB_ACTIONS") === "true" ? "github" : "text"));
+                    const format = opts.json ? "json" : (opts.format ?? (inGithubActions() ? "github" : "text"));
                     if (!["text", "github", "json"].includes(format))
                         throw new UsageError("--format must be text, github or json");
                     const check = runCiCheck(forge().root, kind);

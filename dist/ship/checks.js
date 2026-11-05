@@ -153,6 +153,10 @@ export function markdownSummary(result) {
     }
     return "".concat(lines.join("\n"), "\n");
 }
+/** True inside a GitHub Actions job. */
+export function inGithubActions() {
+    return setting("GITHUB_ACTIONS") === "true";
+}
 /** Print annotations and append the job summary when running in GitHub Actions. */
 export function reportToGithub(result, out) {
     for (const line of githubAnnotations(result))
