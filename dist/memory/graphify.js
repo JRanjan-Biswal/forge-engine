@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { findOnPath, setting } from "../core/env.js";
 import { layout } from "../core/paths.js";
 /**
@@ -12,7 +14,9 @@ export function findGraphify() {
     const override = setting("FORGE_GRAPHIFY_BIN");
     if (override !== undefined)
         return override || null;
-    return findOnPath("graphify", { executable: true });
+    // uv and pipx put tools in ~/.local/bin, which is not always on a GUI app's PATH.
+    const local = join(homedir(), ".local", "bin", "graphify");
+    return findOnPath("graphify", { executable: true }) ?? (existsSync(local) ? local : null);
 }
 export function graphStatus(root) {
     const binary = findGraphify();

@@ -31,6 +31,7 @@ import { errorMessage } from "../core/util.js";
 import { LedgerKind } from "../schemas/runtime.js";
 import { saveEpisode } from "../memory/episodes.js";
 import { graphExplain, graphPathBetween, graphStatus, graphUpdate } from "../memory/graphify.js";
+import { detectGraphify, graphifyOffer, installGraphify, readOnboarding, recordGraphifyDecision } from "../install/graphify.js";
 import { addLearning } from "../memory/learnings.js";
 import { queryMemory } from "../memory/query.js";
 import { computeGaps, linkTrace } from "../trace/trace.js";
@@ -103,11 +104,27 @@ export function createForgeServer(root) {
     // A fresh Forge per call: state lives on disk and may change between calls.
     const forge = () => new Forge(root);
     const stage = z.string().describe("Stage id, e.g. validate");
+    // The graphify offer goes out at most once per server session.
+    let offered = false;
     server.registerTool("project_init", {
         description: "Initialise forge in the project (creates forge.config.yaml and .forge/). Safe to call twice.",
         inputSchema: { name: z.string().optional().describe("Project name") },
     }, guarded(({ name }) => Forge.init(forge().root, { name })));
-    server.registerTool("forge_status", { description: "Pipeline dashboard: every stage's status, the next stage and its command, blockers.", inputSchema: {} }, guarded(() => forge().status()));
+    server.registerTool("forge_status", { description: "Pipeline dashboard: every stage's status, the next stage and its command, blockers, and notices to act on (a stale product map, a one-time graphify offer).", inputSchema: {} }, guarded(() => {
+        const f = forge();
+        const notices = [];
+        if (loadProductMap(f.root)) {
+            const check = checkProduct(f.root);
+            if (check.stale)
+                notices.push("The product map is stale — ".concat(check.reason, ". Call product_sync before relying on product memory."));
+        }
+        const offer = offered ? undefined : graphifyOffer(/codex/i.test(server.server.getClientVersion()?.name ?? "") ? "codex" : "claude");
+        if (offer) {
+            offered = true;
+            notices.push(offer);
+        }
+        return notices.length ? { ...f.status(), notices } : f.status();
+    }));
     server.registerTool("stage_list", { description: "Enabled stages with their outputs and gate checks.", inputSchema: {} }, guarded(() => forge()
         .stages()
         .map((s) => ({ id: s.id, title: s.title, command: s.command, outputs: s.outputs, checkpoint: s.checkpoint, gate: s.gate.map((c) => "".concat(c.id, ": ", c.description)) }))));
@@ -198,6 +215,20 @@ export function createForgeServer(root) {
     }));
     server.registerTool("trace_gaps", { description: "Traceability gaps: MVP stories missing design, implementation or test links.", inputSchema: {} }, guarded(() => computeGaps(forge().root)));
     server.registerTool("graph_status", { description: "Whether graphify is installed and a code graph exists.", inputSchema: {} }, guarded(() => graphStatus(forge().root)));
+    server.registerTool("graphify_setup", {
+        description: "graphify onboarding, acting on the user's answer: install (graphify CLI via uv/pipx/pip plus its /graphify skill for the hosts; runs the commands it lists, no shell), later (offer again in 14 days), decline (never offer again), or status. Only install when the user said yes.",
+        inputSchema: {
+            action: z.enum(["status", "install", "later", "decline"]),
+            hosts: z.array(z.enum(["claude", "codex"])).optional().describe("Hosts to add graphify's skill to (default: the host the user is in — pass it)"),
+        },
+    }, guarded(({ action, hosts }) => {
+        const targets = hosts?.length ? hosts : ["claude"];
+        if (action === "install")
+            return installGraphify(targets);
+        if (action === "later" || action === "decline")
+            return recordGraphifyDecision(action === "later" ? "later" : "declined", targets);
+        return { ...detectGraphify(), decision: readOnboarding().graphify ?? null };
+    }));
     server.registerTool("graph_update", { description: "Incrementally refresh the graphify code graph (no LLM needed).", inputSchema: {} }, guarded(() => graphUpdate(forge().root)));
     server.registerTool("graph_path", { description: "Shortest path between two code-graph nodes.", inputSchema: { from: z.string(), to: z.string() } }, guarded(({ from, to }) => graphPathBetween(forge().root, from, to)));
     server.registerTool("graph_explain", { description: "Plain-language explanation of a code-graph node and its neighbours.", inputSchema: { node: z.string() } }, guarded(({ node }) => graphExplain(forge().root, node)));

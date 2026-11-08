@@ -4,7 +4,7 @@
 
 forge is an open-source product pipeline for coding agents. Instead of a bag of prompts, it gives your agent (Claude Code, Codex, Gemini CLI, Cursor, or anything that speaks MCP) a **gated, resumable pipeline**: every stage writes a schema-validated artifact, every stage has a machine-checked gate, and every decision lands in a ledger that the next session — in any tool — can recall.
 
-> **Status: early (v0.1.6).** Working today: the gated 14-stage pipeline (state machine, gates, artifacts, decision ledger, memory with graphify), the evidence-checked validate stage, the design engine (tokens, contrast, screenshot critique), stack packs (Next.js, Expo, FastAPI, Hono, Supabase), code and security review, QA coverage, CI generation, deploy with real post-deploy checks, contract-drift and parity gap checks — as a Claude Code plugin, a Codex plugin, an MCP server and a CLI. Still to come: mobile/AI/growth packs, more host adapters, published benchmarks — see [Roadmap](#roadmap).
+> **Status: early (v0.1.7).** Working today: the gated 14-stage pipeline (state machine, gates, artifacts, decision ledger, memory with graphify), the evidence-checked validate stage, the design engine (tokens, contrast, screenshot critique), stack packs (Next.js, Expo, FastAPI, Hono, Supabase), code and security review, QA coverage, CI generation, deploy with real post-deploy checks, contract-drift and parity gap checks — as a Claude Code plugin, a Codex plugin, an MCP server and a CLI. Still to come: mobile/AI/growth packs, more host adapters, published benchmarks — see [Roadmap](#roadmap).
 
 ## Why
 
@@ -131,7 +131,7 @@ forge product pages    # what forge found: pages, endpoints, calls, docs
 
 - **Product map** — every page and API endpoint (Next.js app/pages, Expo Router, SvelteKit, Nuxt, React Router, Express/Hono/Fastify, FastAPI/Flask, plain `node:http`), which code calls which endpoint, all docs, each linked to its graphify node and into the traceability graph.
 - **Product model** — personas and features, each tied to real pages, endpoints and files with a verified status, gaps, and facts kept apart from assumptions. The `understand` gate fails until **every** page and endpoint is accounted for and the map is fresh.
-- **Always in sync** — a fingerprint detects code changes instantly; git hooks and a Claude Code SessionStart hook keep the map current; `forge sync` reports added/removed surfaces and features that reference removed code.
+- **Always in sync** — a fingerprint detects code changes instantly; git hooks (`forge hooks install`) keep the map current and `forge_status` flags a stale map; `forge sync` reports added/removed surfaces and features that reference removed code.
 - **`/forge-engine:productize-vision`** — the product vision for what is actually built: facts vs assumptions, 3–5 options, one chosen, gaps to close, next move.
 - **`/forge-engine:page <route>`** — pro-page-complete: inventory every atom on a page, trace API → DTO → mapper → render, fix the musts, prove them; the gap gate holds open musts.
 
@@ -190,12 +190,12 @@ These are process rules, not an OS-enforced memory limit.
 
 forge has no telemetry and no account. It runs on your machine and only does the following:
 
-- **Starts automatically:** a local MCP server (`dist/cli.js mcp`) and a `SessionStart` hook that checks whether the project's product map is stale. Neither makes a network call.
+- **Starts automatically:** a local MCP server (`dist/cli.js mcp`), which makes no network call on its own. The plugin has no hooks.
 - **Sends search queries, when you or your agent use `evidence_search`:** to Hacker News (`hn.algolia.com`), GitHub (`api.github.com`), npm (`registry.npmjs.org`), the App Store (`itunes.apple.com`) and Reddit (`www.reddit.com`). Requests are unauthenticated. `evidence_save` fetches the page you cite to check the quote.
 - **Requests URLs you give it:** `security_headers` and the deploy smoke check request the app URL you or your deploy produced, including its redirects.
 - **Sends one secret, only if you set it:** a Vercel protection-bypass value (this plugin's `deploy_preview_access` option) goes as the `x-vercel-protection-bypass` header to the deployment under test, and to your e2e command as an environment variable. forge sends no other credential.
 - **Runs programs you already use, when you ask for that step:** gate commands from your project configuration, `git`, agent CLIs for headless workers (`claude`, `codex`, `gemini`, `opencode`), deploy CLIs (`vercel`, `fly`, `eas`, `supabase`) with your existing login, `graphify` and a local Chromium for screenshots. Production deploys wait for your approval.
-- **Downloads code only in steps you ask for:** `forge stack scaffold` (and the scaffold command `stack_info` shows your agent) runs the stack's official generator, such as `create-next-app`, through your package manager's one-off runner, which fetches the generator at that moment. `forge ci` writes a GitHub Actions workflow whose security step runs the published `forge-engine` package, fetched by your CI at run time and not pinned to a version. Review the workflow before you commit it.
+- **Downloads code only in steps you ask for:** `forge stack scaffold` (and the scaffold command `stack_info` shows your agent) runs the stack's official generator, such as `create-next-app`, through your package manager's one-off runner, which fetches the generator at that moment. Installing graphify, only after you say yes to the one-time offer (`forge-engine setup`, `forge graphify install`, or the `graphify_setup` tool), runs `uv tool install graphifyy` (or `pipx` / `pip --user`) to fetch it from PyPI, then `graphify install --platform claude|codex`. `forge ci` writes a GitHub Actions workflow whose security step runs the published `forge-engine` package, fetched by your CI at run time and not pinned to a version. Review the workflow before you commit it.
 - **Stores:** project state in `.forge/`, including saved evidence, memory and release records. Writes to memory pass a secret scan. Nothing is uploaded by forge itself.
 
 ## Roadmap

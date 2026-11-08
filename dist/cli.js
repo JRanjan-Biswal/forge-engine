@@ -17,12 +17,13 @@ import { buildDesign, loadTokens } from "./design/tokens.js";
 import { buildPrototype } from "./design/prototype.js";
 import { captureShots, shotProblems, VIEWPORTS } from "./design/shots.js";
 import { loadTasks, nextTasks, planWaves, taskBrief, updateTask } from "./build/tasks.js";
-import { detectStacks, listPacks, loadPack, readLens, scaffoldPlan, scaffoldStack, stackCommands, useStacks } from "./build/stacks.js";
+import { detectStacks, listPacks, loadPack, onPath, readLens, scaffoldPlan, scaffoldStack, stackCommands, useStacks } from "./build/stacks.js";
 import { checkHeaders, blockingHeaders } from "./security/headers.js";
 import { blocking, recordFindings, scanSecurity } from "./security/scan.js";
 import { qaCoverage, qaPlan } from "./qa/coverage.js";
 import { writeWorkflow } from "./ship/ci.js";
 import { quoteArgv, runSetup, setupPlan } from "./install/setup.js";
+import { detectGraphify, graphifyOnboardingDue, graphifyPlan, installGraphify, readOnboarding, recordGraphifyDecision } from "./install/graphify.js";
 import { inGithubActions, markdownSummary, reportToGithub, runCiCheck } from "./ship/checks.js";
 import { deploy, deployPlan, releaseNotes } from "./ship/deploy.js";
 import { createWorktree, listWorktrees, mergeTasks, removeWorktree, runWorkers } from "./build/workers.js";
@@ -40,7 +41,7 @@ import { PUBLISHED_SCHEMAS } from "./schemas/index.js";
 import { computeGaps, linkTrace } from "./trace/trace.js";
 import { contractDrift, platformParity } from "./trace/drift.js";
 import { VERSION } from "./version.js";
-const HELP = "forge ".concat(VERSION, " — idea → validated → designed → built → verified → shipped\n\nUsage: forge <command> [options]          (also available as `forge-engine`)\n\nInstall\n  setup [--host claude,codex] [--scope user|project|local] [--source <path|owner/repo>] [--dry-run] [--yes]\n                                       install the forge-engine plugin in Claude Code and Codex (shows the commands first)\n  setup --remove                       uninstall it again\n\nProject\n  init [--name <n>] [--force]          create forge.config.yaml and .forge/ here\n  status                               pipeline dashboard\n  stages                               enabled stages and their gate checks\n  doctor                               check node, memory, config, graphify and agent CLIs\n  procs                                processes belonging to this project, with RSS memory\n  procs init                           create an AGENT_PROCESSES.md process registry here\n\nStages\n  start <stage> [--force]              begin a stage\n  complete <stage>                     run the stage gate (alias: gate)\n  approve <stage> [--note <text>]      record human approval for a checkpoint stage\n  skip <stage> --reason <text>         skip a stage (recorded in the ledger)\n  override <stage> --reason <text>     pass a stage despite its gate (recorded)\n  reopen <stage> --reason <text> [--cascade]\n  archive --reason <text>              archive the project (e.g. verdict = kill)\n  block \"<need>\" [--stage <s>]         record a blocker instead of faking a dependency\n  unblock <B-n> [--note <text>]\n\nArtifacts\n  artifact list\n  artifact read <name>\n  artifact write <name> [--file <path>]   (reads stdin when --file is omitted)\n  artifact validate <name>\n\nExisting products (brownfield)\n  adopt [--name <n>] [--no-graph]      init + build the product map and code graph; adds the understand stage\n  sync [--no-graph] [--quiet]          refresh product map, graphify graph and trace links from the code\n  sync --check                         is the product map stale? (exit 1 when stale)\n  product [pages|endpoints|calls|docs] what forge knows about the product\n  pages [<slug>]                       pro-page-complete audits and open must-fix atoms\n  hooks install                        git hooks that run \"forge sync\" after commit / merge / checkout\n\nBuild (Phase 4)\n  tasks [waves|next]                   task DAG as parallel waves (deps + file conflicts) / runnable now\n  tasks brief <id>                     everything one task needs: stories, acceptance, screens, motion, contract, decisions\n  tasks update <id> --status <s>       todo | doing | done | blocked [--note <text>]\n  worktree [list|create <id>|remove <id>] [--force]\n  workers run [--host claude|codex|gemini|opencode] [--max <n>] [--tasks a,b]\n                                       run ready tasks headless, one git worktree each (default max 1)\n  merge [<id> …]                       merge done task worktrees in wave order: tests in the worktree, then --no-ff\n\nShip & QA\n  qa plan                              one test case per MVP acceptance criterion (@S-1/AC1) with the tool and file to use\n  qa coverage [--link]                 which criteria have a tagged test; --link adds story → test trace links\n  ci [--force]                         write .github/workflows/forge.yml from the stacks' gate commands\n  ci check review|gap [--format text|github|json]\n                                       the verify/gap checks for any repo; github = PR annotations + job summary\n  deploy --plan [--prod]               targets per stack (Vercel, Fly, EAS, Supabase) and what is missing\n  deploy [--prod] [--only a,b]         deploy with the official CLIs, smoke-test, probe headers, run e2e on the URL,\n                                       write the release + notes (--prod needs \"forge approve ship\")\n  release notes                        release notes for the latest release\n\nSecurity\n  security scan [--record]             static scan: injection sinks, committed secrets, env files (exit 1 at security.failOn)\n                                       --record files new findings into the reviews artifact\n  security headers <url>               live check: CSP, HSTS, clickjacking, nosniff, cookies, CORS, info leaks\n\nStacks\n  stack [list]                         stack packs, what this repo has, and what is configured\n  stack detect                         stacks found here and the gate commands each could run\n  stack use [<pack>] [--dir <d>] [--force]\n                                       record stacks in forge.config.yaml and fill empty gate commands\n  stack show <pack>                    a pack's manifest, conventions and review lens\n  stack scaffold <pack> [--dir <d>] [--pm pnpm|npm|yarn|bun] [--run]\n                                       the official generator command (runs it with --run, then \"stack use\")\n\nDesign\n  design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)\n  design audit                         token validity, WCAG contrast pairs, hard-coded colour drift\n  design prototype [--force]           single-file prototype scaffold: every screen × state, on the tokens\n  design shots [--url <base>] [--viewport mobile,tablet,desktop,phone] [--screens a,b]\n                                       screenshot every screen × state × viewport (headless Chromium) for the critique\n\nEvidence & validation\n  evidence search <source> \"<query>\" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit\n  evidence save --url <url> --quote \"<exact words>\" [--source <s>]   checked against the source\n  evidence list\n  validate template \"<idea>\"           standard 12-criteria scorecard (JSON)\n  validate score [--file <json>]       weighted score + suggested verdict (default: the validation artifact)\n\nMemory\n  ledger list [--limit <n>]\n  ledger add --summary <text> [--why <text>] [--rejected <a,b>] [--stage <s>]\n  memory query \"<question>\" [--budget <tokens>] [--no-graph]\n  memory episode --file <episode.json>\n  memory learn \"<text>\" [--source <s>] [--global]\n\nTraceability & code graph\n  trace link <from> <to> <type>        e.g. trace link story:S-4 test:e2e/checkin.spec.ts verifiedBy\n  gaps                                 MVP stories missing design / code / test links\n  drift                                contracts/openapi.yaml vs the endpoints the code serves (missing / undocumented)\n  parity                               web vs mobile: MVP stories without screens on every targeted platform\n  graph status | update | query \"<q>\" | path <a> <b> | explain <node>\n\nIntegration\n  mcp                                  run the forge MCP server on stdio\n  schemas export [--out <dir>]         write JSON Schemas for every artifact\n\nGlobal options: --json (machine-readable output), --root <dir> (target another project)");
+const HELP = "forge ".concat(VERSION, " — idea → validated → designed → built → verified → shipped\n\nUsage: forge <command> [options]          (also available as `forge-engine`)\n\nInstall\n  setup [--host claude,codex] [--scope user|project|local] [--source <path|owner/repo>] [--dry-run] [--yes]\n                                       install the forge-engine plugin in Claude Code and Codex (shows the commands first)\n                                       also offers graphify (code-graph memory); --with-graphify / --no-graphify answer up front\n  setup --remove                       uninstall it again\n  graphify status                      graphify CLI, /graphify skills and the onboarding answer\n  graphify install [--host claude,codex] [--yes] [--dry-run]\n                                       install graphify (uv/pipx/pip) and its skill for the hosts (shows the commands first)\n  graphify skip [--later]              don't offer graphify again (--later: offer again in 14 days)\n\nProject\n  init [--name <n>] [--force]          create forge.config.yaml and .forge/ here\n  status                               pipeline dashboard\n  stages                               enabled stages and their gate checks\n  doctor                               check node, memory, config, graphify and agent CLIs\n  procs                                processes belonging to this project, with RSS memory\n  procs init                           create an AGENT_PROCESSES.md process registry here\n\nStages\n  start <stage> [--force]              begin a stage\n  complete <stage>                     run the stage gate (alias: gate)\n  approve <stage> [--note <text>]      record human approval for a checkpoint stage\n  skip <stage> --reason <text>         skip a stage (recorded in the ledger)\n  override <stage> --reason <text>     pass a stage despite its gate (recorded)\n  reopen <stage> --reason <text> [--cascade]\n  archive --reason <text>              archive the project (e.g. verdict = kill)\n  block \"<need>\" [--stage <s>]         record a blocker instead of faking a dependency\n  unblock <B-n> [--note <text>]\n\nArtifacts\n  artifact list\n  artifact read <name>\n  artifact write <name> [--file <path>]   (reads stdin when --file is omitted)\n  artifact validate <name>\n\nExisting products (brownfield)\n  adopt [--name <n>] [--no-graph]      init + build the product map and code graph; adds the understand stage\n  sync [--no-graph] [--quiet]          refresh product map, graphify graph and trace links from the code\n  sync --check                         is the product map stale? (exit 1 when stale)\n  product [pages|endpoints|calls|docs] what forge knows about the product\n  pages [<slug>]                       pro-page-complete audits and open must-fix atoms\n  hooks install                        git hooks that run \"forge sync\" after commit / merge / checkout\n\nBuild (Phase 4)\n  tasks [waves|next]                   task DAG as parallel waves (deps + file conflicts) / runnable now\n  tasks brief <id>                     everything one task needs: stories, acceptance, screens, motion, contract, decisions\n  tasks update <id> --status <s>       todo | doing | done | blocked [--note <text>]\n  worktree [list|create <id>|remove <id>] [--force]\n  workers run [--host claude|codex|gemini|opencode] [--max <n>] [--tasks a,b]\n                                       run ready tasks headless, one git worktree each (default max 1)\n  merge [<id> …]                       merge done task worktrees in wave order: tests in the worktree, then --no-ff\n\nShip & QA\n  qa plan                              one test case per MVP acceptance criterion (@S-1/AC1) with the tool and file to use\n  qa coverage [--link]                 which criteria have a tagged test; --link adds story → test trace links\n  ci [--force]                         write .github/workflows/forge.yml from the stacks' gate commands\n  ci check review|gap [--format text|github|json]\n                                       the verify/gap checks for any repo; github = PR annotations + job summary\n  deploy --plan [--prod]               targets per stack (Vercel, Fly, EAS, Supabase) and what is missing\n  deploy [--prod] [--only a,b]         deploy with the official CLIs, smoke-test, probe headers, run e2e on the URL,\n                                       write the release + notes (--prod needs \"forge approve ship\")\n  release notes                        release notes for the latest release\n\nSecurity\n  security scan [--record]             static scan: injection sinks, committed secrets, env files (exit 1 at security.failOn)\n                                       --record files new findings into the reviews artifact\n  security headers <url>               live check: CSP, HSTS, clickjacking, nosniff, cookies, CORS, info leaks\n\nStacks\n  stack [list]                         stack packs, what this repo has, and what is configured\n  stack detect                         stacks found here and the gate commands each could run\n  stack use [<pack>] [--dir <d>] [--force]\n                                       record stacks in forge.config.yaml and fill empty gate commands\n  stack show <pack>                    a pack's manifest, conventions and review lens\n  stack scaffold <pack> [--dir <d>] [--pm pnpm|npm|yarn|bun] [--run]\n                                       the official generator command (runs it with --run, then \"stack use\")\n\nDesign\n  design build                         design/tokens → design/dist (CSS, Tailwind, TS, JSON, Flutter, SwiftUI, Compose)\n  design audit                         token validity, WCAG contrast pairs, hard-coded colour drift\n  design prototype [--force]           single-file prototype scaffold: every screen × state, on the tokens\n  design shots [--url <base>] [--viewport mobile,tablet,desktop,phone] [--screens a,b]\n                                       screenshot every screen × state × viewport (headless Chromium) for the critique\n\nEvidence & validation\n  evidence search <source> \"<query>\" [--limit <n>] [--fresh]   sources: hackernews github npm appstore reddit\n  evidence save --url <url> --quote \"<exact words>\" [--source <s>]   checked against the source\n  evidence list\n  validate template \"<idea>\"           standard 12-criteria scorecard (JSON)\n  validate score [--file <json>]       weighted score + suggested verdict (default: the validation artifact)\n\nMemory\n  ledger list [--limit <n>]\n  ledger add --summary <text> [--why <text>] [--rejected <a,b>] [--stage <s>]\n  memory query \"<question>\" [--budget <tokens>] [--no-graph]\n  memory episode --file <episode.json>\n  memory learn \"<text>\" [--source <s>] [--global]\n\nTraceability & code graph\n  trace link <from> <to> <type>        e.g. trace link story:S-4 test:e2e/checkin.spec.ts verifiedBy\n  gaps                                 MVP stories missing design / code / test links\n  drift                                contracts/openapi.yaml vs the endpoints the code serves (missing / undocumented)\n  parity                               web vs mobile: MVP stories without screens on every targeted platform\n  graph status | update | query \"<q>\" | path <a> <b> | explain <node>\n\nIntegration\n  mcp                                  run the forge MCP server on stdio\n  schemas export [--out <dir>]         write JSON Schemas for every artifact\n\nGlobal options: --json (machine-readable output), --root <dir> (target another project)");
 const OPTIONS = {
     json: { type: "boolean" },
     force: { type: "boolean" },
@@ -70,7 +71,6 @@ const OPTIONS = {
     max: { type: "string" },
     tasks: { type: "string" },
     check: { type: "boolean" },
-    hook: { type: "boolean" },
     quiet: { type: "boolean" },
     dir: { type: "string" },
     pm: { type: "string" },
@@ -87,6 +87,9 @@ const OPTIONS = {
     "dry-run": { type: "boolean" },
     remove: { type: "boolean" },
     screens: { type: "string" },
+    "with-graphify": { type: "boolean" },
+    "no-graphify": { type: "boolean" },
+    later: { type: "boolean" },
 };
 const defaultIO = {
     out: (line) => process.stdout.write("".concat(line, "\n")),
@@ -99,6 +102,29 @@ const defaultIO = {
     },
 };
 class UsageError extends Error {
+}
+async function confirm(question, defaultYes) {
+    const { createInterface } = await import("node:readline/promises");
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = (await rl.question(question)).trim().toLowerCase();
+    rl.close();
+    return answer ? answer === "y" || answer === "yes" : defaultYes;
+}
+function parseHosts(value) {
+    const hosts = value ? value.split(",").map((h) => h.trim()) : undefined;
+    if (hosts?.some((h) => h !== "claude" && h !== "codex"))
+        throw new UsageError("--host must be claude, codex or both (claude,codex)");
+    return hosts;
+}
+function describeGraphifyPlan(plan, io) {
+    const missing = plan.hosts.filter((h) => !plan.state.skills[h]).map((h) => (h === "claude" ? "Claude Code" : "Codex"));
+    io.out(plan.state.cli ? "graphify is installed (".concat(plan.state.cli, "); its /graphify skill is missing for ", missing.join(" and "), ".") : "graphify (optional code-graph memory for forge's graph tools, product map and reviews) is not installed.");
+    if (plan.blocker)
+        io.out("  ! ".concat(plan.blocker));
+    for (const step of plan.steps)
+        io.out("  ".concat(quoteArgv(step.argv), "\n      ", step.label));
+    if (plan.steps.some((s) => s.argv.includes("claude")))
+        io.out("  (graphify's Claude Code install also adds a short graphify section to ~/.claude/CLAUDE.md)");
 }
 const ICONS = {
     pending: "·",
@@ -508,12 +534,6 @@ export async function run(argv, io = defaultIO) {
                 const root = forge().root;
                 if (opts.check) {
                     const check = checkProduct(root);
-                    if (opts.hook) {
-                        // SessionStart hook: speak only for adopted projects whose map went stale.
-                        if (check.mapExists && check.stale)
-                            io.out("forge: the product map is stale — ".concat(check.reason, ". Call product_sync before relying on product memory."));
-                        return 0;
-                    }
                     print(check, () => io.out(check.stale ? "stale: ".concat(check.reason) : "fresh: ".concat(check.reason)));
                     return check.stale ? 1 : 0;
                 }
@@ -655,14 +675,18 @@ export async function run(argv, io = defaultIO) {
                 return results.every((r) => r.status === "done") ? 0 : 1;
             }
             case "setup": {
-                const hosts = opts.host ? opts.host.split(",").map((h) => h.trim()) : undefined;
-                if (hosts?.some((h) => h !== "claude" && h !== "codex"))
-                    throw new UsageError("--host must be claude, codex or both (claude,codex)");
+                const hosts = parseHosts(opts.host);
                 if (opts.scope && !["user", "project", "local"].includes(opts.scope))
                     throw new UsageError("--scope must be user, project or local");
-                const plan = setupPlan({ hosts: hosts, source: opts.source, scope: opts.scope, remove: opts.remove });
+                if (opts["with-graphify"] && opts["no-graphify"])
+                    throw new UsageError("Pass --with-graphify or --no-graphify, not both");
+                const plan = setupPlan({ hosts, source: opts.source, scope: opts.scope, remove: opts.remove });
+                // graphify is offered for the hosts being installed, unless it is fully set up already.
+                const targets = [...new Set(plan.steps.map((s) => s.host))];
+                const graphify = plan.action === "install" && !opts["no-graphify"] && targets.length ? graphifyPlan(targets) : undefined;
+                const offerGraphify = Boolean(graphify && (graphify.steps.length || graphify.blocker));
                 if (opts.json && (opts["dry-run"] || !opts.yes)) {
-                    io.out(JSON.stringify(plan, null, 2));
+                    io.out(JSON.stringify({ ...plan, graphify: offerGraphify ? graphify : null }, null, 2));
                     return 0;
                 }
                 if (!opts.json) {
@@ -675,36 +699,116 @@ export async function run(argv, io = defaultIO) {
                         io.out("  ".concat(quoteArgv(step.argv), "\n      ", step.label));
                     for (const note of plan.notes)
                         io.out("  ! ".concat(note));
+                    if (graphify && offerGraphify) {
+                        io.out("");
+                        describeGraphifyPlan(graphify, io);
+                    }
+                    if (plan.action === "remove" && detectGraphify().cli)
+                        io.out("  · graphify stays installed — remove it with `graphify uninstall`, then `uv tool uninstall graphifyy`");
                 }
                 if (!plan.steps.length || opts["dry-run"])
                     return plan.steps.length || opts["dry-run"] ? 0 : 1;
+                // --yes alone never installs graphify (CI-safe); --with-graphify opts in.
+                let withGraphify = offerGraphify && !graphify?.blocker && Boolean(opts["with-graphify"]);
                 if (!opts.yes) {
                     if (!process.stdin.isTTY) {
                         io.out("\nRe-run with --yes to apply (no terminal to confirm in).");
                         return 0;
                     }
-                    const { createInterface } = await import("node:readline/promises");
-                    const rl = createInterface({ input: process.stdin, output: process.stdout });
-                    const answer = (await rl.question("\nProceed? [y/N] ")).trim().toLowerCase();
-                    rl.close();
-                    if (answer !== "y" && answer !== "yes") {
+                    if (!(await confirm("\nProceed? [y/N] ", false))) {
                         io.out("Nothing changed.");
                         return 0;
                     }
+                    if (offerGraphify && !graphify?.blocker && !opts["with-graphify"]) {
+                        withGraphify = await confirm("Also install graphify? [Y/n] ", true);
+                        if (!withGraphify)
+                            recordGraphifyDecision("declined", targets, "declined in forge-engine setup");
+                    }
                 }
                 const result = runSetup(plan, (step) => !opts.json && io.out("\n→ ".concat(quoteArgv(step.argv))));
-                print(result, () => {
+                const graphifyResult = withGraphify ? installGraphify(targets, (step) => !opts.json && io.out("\n→ ".concat(quoteArgv(step.argv)))) : undefined;
+                print({ ...result, graphify: graphifyResult ?? null }, () => {
                     for (const r of result.results)
+                        if (!r.ok)
+                            io.out("  ✗ ".concat(r.label, " failed:\n", r.output.split("\n").slice(-6).map((l) => "      ".concat(l)).join("\n")));
+                    for (const r of graphifyResult?.steps ?? [])
                         if (!r.ok)
                             io.out("  ✗ ".concat(r.label, " failed:\n", r.output.split("\n").slice(-6).map((l) => "      ".concat(l)).join("\n")));
                     io.out("");
                     for (const v of result.verified)
                         io.out("".concat((plan.action === "install") === v.installed ? "✓" : "✗", " ", v.host === "claude" ? "Claude Code" : "Codex", ": ", v.detail));
+                    if (graphifyResult)
+                        io.out(graphifyResult.ok ? "✓ graphify: ".concat(graphifyResult.state.cli, " (skill for ", targets.join(", "), ")") : "✗ graphify: not installed — log: ".concat(graphifyResult.log));
+                    else if (offerGraphify && !opts["no-graphify"])
+                        io.out("· graphify: skipped — install later with `forge-engine graphify install`");
                     if (plan.action === "install" && result.verified.some((v) => v.installed))
                         io.out("\nRestart the host, then run /forge-engine:forge in Claude Code, or ask Codex to \"use forge\" (see INSTALL.md in the forge-engine repository).");
                 });
-                const ok = result.results.every((r) => r.ok) && result.verified.every((v) => v.installed === (plan.action === "install"));
+                const ok = result.results.every((r) => r.ok) && result.verified.every((v) => v.installed === (plan.action === "install")) && (graphifyResult?.ok ?? true);
                 return ok ? 0 : 1;
+            }
+            case "graphify": {
+                const sub = args[0] ?? "status";
+                const hosts = parseHosts(opts.host) ?? ["claude", "codex"].filter((h) => onPath(h));
+                if (sub === "status") {
+                    const state = detectGraphify();
+                    const decision = readOnboarding().graphify ?? null;
+                    const due = hosts.map((host) => {
+                        const { due: asking, reason } = graphifyOnboardingDue(host);
+                        return { host, due: asking, reason };
+                    });
+                    print({ ...state, decision, hosts: due }, () => {
+                        io.out("graphify CLI: ".concat(state.cli ?? "not installed"));
+                        for (const host of ["claude", "codex"])
+                            io.out("  ".concat(state.skills[host] ? "✓" : "·", " /graphify skill for ", host === "claude" ? "Claude Code" : "Codex"));
+                        io.out("onboarding: ".concat(decision ? "".concat(decision.decision, " on ", decision.at, decision.detail ? " — ".concat(decision.detail) : "") : "not asked yet"));
+                        for (const d of due)
+                            io.out("  ".concat(d.host, ": ", d.due ? "will ask in the next session" : d.reason));
+                    });
+                    return 0;
+                }
+                if (sub === "skip") {
+                    const record = recordGraphifyDecision(opts.later ? "later" : "declined", hosts);
+                    print(record, () => io.out(opts.later ? "OK — forge will offer graphify again in 14 days." : "OK — forge won't offer graphify again (`forge-engine graphify install` any time)."));
+                    return 0;
+                }
+                if (sub === "install") {
+                    const plan = graphifyPlan(hosts);
+                    if (!plan.steps.length && !plan.blocker) {
+                        print({ ok: true, state: plan.state }, () => io.out("graphify is already set up (".concat(plan.state.cli, ").")));
+                        return 0;
+                    }
+                    if (opts.json && (opts["dry-run"] || !opts.yes)) {
+                        io.out(JSON.stringify(plan, null, 2));
+                        return 0;
+                    }
+                    if (!opts.json && !opts.quiet)
+                        describeGraphifyPlan(plan, io);
+                    if (opts["dry-run"])
+                        return 0;
+                    if (!opts.yes && !plan.blocker) {
+                        if (!process.stdin.isTTY) {
+                            io.out("\nRe-run with --yes to install (no terminal to confirm in).");
+                            return 0;
+                        }
+                        if (!(await confirm("\nInstall graphify? [Y/n] ", true))) {
+                            io.out("Nothing changed.");
+                            return 0;
+                        }
+                    }
+                    const result = installGraphify(hosts, (step) => !opts.json && io.out("→ ".concat(quoteArgv(step.argv))));
+                    print(result, () => {
+                        for (const r of result.steps)
+                            if (!r.ok)
+                                io.out("  ✗ ".concat(r.label, " failed:\n", r.output.split("\n").slice(-6).map((l) => "      ".concat(l)).join("\n")));
+                        if (result.busy)
+                            io.out("Another graphify install is running — try again in a few minutes.");
+                        else
+                            io.out(result.ok ? "✓ graphify: ".concat(result.state.cli, hosts.length ? " (skill for ".concat(hosts.join(", "), ")") : "") : "✗ graphify: not installed".concat(result.blocker ? " — ".concat(result.blocker) : " — log: ".concat(result.log)));
+                    });
+                    return result.ok ? 0 : 1;
+                }
+                throw new UsageError("Usage: forge graphify status | install [--host claude,codex] [--yes] [--dry-run] | skip [--later]");
             }
             case "qa": {
                 const root = forge().root;

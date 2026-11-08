@@ -41,6 +41,6 @@ Status means what you **verified**: `live` only if the flow is wired end to end;
 
 ## 4. Gate and keep in sync
 
-`stage_complete understand` — fix `product.coverage` by adding every missing surface to a feature (or `ignoredSurfaces` with a reason). After later code changes: `product_sync` (the SessionStart hook and the git hooks from `forge hooks install` remind you); it reports features that reference removed code — update the model.
+`stage_complete understand` — fix `product.coverage` by adding every missing surface to a feature (or `ignoredSurfaces` with a reason). After later code changes: `product_sync` (`forge_status` and the git hooks from `forge hooks install` remind you); it reports features that reference removed code — update the model.
 
 Next: `productize-product-vision` (where should this product go?) and `pro-page-complete` (is each page actually done?).
